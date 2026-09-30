@@ -76,7 +76,7 @@ python3 src/build.py      # regenerates every page, the /work pages and sitemap.
 ## WordPress / Elementor mapping
 
 - **Global colours:** Navy `#0F2B50`, Blue `#1F6FD1`, Light `#F1F6FD`, Text `#22324A`, Muted `#5B6B82`.
-- **Global fonts:** Poppins (headings), Inter (body).
+- **Global fonts:** Poppins (headings), Inter (body), Instrument Serif italic for accent words in headings.
 - **Header and footer:** Theme Builder.
 - **Hero:** a two-column container. The 3D scene can be exported as a single WebP or SVG image, or rebuilt as layered images.
 - **Service cards, principles and "why choose" items:** Icon Box / Image Box widgets. The 3D icons are standalone SVGs in `src/art.py`.

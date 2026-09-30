@@ -72,7 +72,8 @@ def sec_head(eb, h, p="", tag="h2", cls=""):
 
 def btn(label, href, kind="primary", arrow=True, ext=False):
     x = ' target="_blank" rel="noopener"' if ext else ""
-    return f'<a class="btn btn--{kind}" href="{href}"{x}>{label}{" " + ARR if arrow else ""}</a>'
+    arr = f'<span class="btn__arrow" aria-hidden="true">{ARR}</span>' if arrow else ""
+    return f'<a class="btn btn--{kind}" href="{href}"{x}>{label}{arr}</a>'
 
 
 def devices(screen, phone=None, alt=""):
@@ -109,7 +110,7 @@ def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=F
   <link rel="icon" type="image/png" href="assets/img/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/style.css?v={ver("assets/css/style.css")}">{ld}
   <!-- Google Analytics (GA4): replace G-XXXXXXXXXX with the OXE measurement ID and uncomment.
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
@@ -248,9 +249,9 @@ def contact_band():
       <div class="contact-band__inner reveal">
         <div class="contact-band__copy">
           {eyebrow("Get in touch")}
-          <h2>Let's create something great together.</h2>
+          <h2>Let's create something <span class="hl">great together</span></h2>
           <p>Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.</p>
-          {btn("Book a Consultation", "contact.html", "white")}
+          {btn("Book a Consultation", "contact.html")}
         </div>
         {contact_buttons("cbtns--band")}
       </div>
@@ -441,18 +442,16 @@ def org_schema():
 HERO_LOGOS = [("xiaomi", "Xiaomi"), ("oppo", "OPPO"), ("netflix", "Netflix"), ("rockers", "Rockers"), ("michael-tailors", "Michael Tailors")]
 
 
-def hero_visual():
-    ppl = "".join(f'<li><img src="assets/img/clients/{f}.webp" alt=""><small>{n}</small></li>' for f, n in HERO_LOGOS)
-    return f'''<div class="hv" aria-hidden="true">
-        <span class="hv__blob hv__blob--a"></span>
-        <span class="hv__blob hv__blob--b"></span>
-        <svg class="hv__arrow" viewBox="0 0 200 220" fill="none"><path d="M190 20C120 -5 40 30 22 120" stroke="#0f2b50" stroke-width="5" stroke-linecap="round"/><path d="M4 96l18 28 24-22" stroke="#0f2b50" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <svg class="hv__arc" viewBox="0 0 60 300" fill="none"><path d="M10 6c40 70 44 200-4 288" stroke="#0f2b50" stroke-width="5" stroke-linecap="round"/></svg>
-        <img class="hv__person" src="assets/img/work/hero-person.png" alt="" width="678" height="1078">
-        <div class="hv__card hv__chip"><span class="hv__ico">{I["monitor"]}</span>Websites that bring enquiries</div>
-        <div class="hv__card hv__stat"><span class="hv__ico hv__ico--round">{I["camcorder"]}</span><b>Since 2020</b><span>Creating content in Bangkok</span><small>{I["check"]} 5 core services</small></div>
-        <div class="hv__card hv__clients"><b>Brands we work with</b><small>Tech, food, retail &amp; lifestyle</small><ul>{ppl}</ul></div>
-      </div>'''
+def badge():
+    """Diamond badge with circular text (hero corner)."""
+    return '''<div class="badge" aria-hidden="true">
+          <svg viewBox="0 0 200 200">
+            <defs><path id="badge-ring" d="M100,100 m-62,0 a62,62 0 1,1 124,0 a62,62 0 1,1 -124,0"/></defs>
+            <circle cx="100" cy="100" r="80" fill="#fff"/>
+            <text font-size="12.6" letter-spacing="3.4" fill="#0f2b50" font-family="Poppins, sans-serif" font-weight="500"><textPath href="#badge-ring">MULTICULTURAL AGENCY · SINCE 2020 · </textPath></text>
+            <path d="M100 72 C103 92 108 97 128 100 C108 103 103 108 100 128 C97 108 92 103 72 100 C92 97 97 92 100 72Z" fill="#0f2b50"/>
+          </svg>
+        </div>'''
 
 
 def home():
@@ -467,20 +466,30 @@ def home():
                 "Multicultural digital marketing agency in Bangkok: website design, social media marketing, video production, photography and digital strategy.",
                 "index.html", schema=org_schema()) + f'''
   <section class="hero">
-    <div class="container hero__inner">
-      <div class="hero__copy">
-        <p class="hero__tag"><b>OXE</b><em>Marketing agency in Bangkok</em></p>
-        <h1>Helping businesses build a stronger <span class="hero__mark">digital presence</span> in a connected world.</h1>
+    <div class="container">
+      <div class="hero__panel">
+        {book_pill()}
+        <h1>Helping businesses build a stronger digital presence in a <span class="hl">connected world</span></h1>
         <p class="lead">{C.HERO["text"]}</p>
         <div class="hero__actions">
           {btn("Book a Consultation", "contact.html")}
           <div class="hero__proof">
-            <div class="hero__logos">{"".join(f'<img src="assets/img/clients/{f}.webp" alt="{n}" width="44" height="44">' for f, n in HERO_LOGOS[:3])}<span>20+</span></div>
-            <p>Brands across Thailand<br>work with OXE</p>
+            <div class="hero__logos">{"".join(f'<img src="assets/img/clients/{f}.webp" alt="{n}" width="48" height="48">' for f, n in HERO_LOGOS[:3])}</div>
+            <p><b>Trusted by 20+ brands</b><span>Xiaomi, OPPO, Netflix &amp; more</span></p>
           </div>
         </div>
+        {badge()}
       </div>
-      {hero_visual()}
+      <div class="intro">
+        <div class="intro__copy reveal">
+          <h2>Websites, video and social content that help businesses <span class="hl">grow online</span></h2>
+          <p>More than just an agency: we are a multicultural team in Bangkok, creating the websites, visual content and campaigns that bring businesses more visibility and more enquiries.</p>
+        </div>
+        <div class="intro__cards">
+          <a class="icard reveal" href="work/tailor-website.html">{img("ind-tailor", "Platinum Tailor website by OXE Marketing")}<span class="icard__go">{ARR}</span><span class="icard__label">Website Design</span></a>
+          <a class="icard reveal" href="work/xiaomi-redmi-watch.html"><video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/xiaomi-redmi-watch-poster.webp" aria-label="Xiaomi Redmi Watch campaign video by OXE Marketing"><source src="assets/video/xiaomi-redmi-watch.mp4" type="video/mp4"></video><span class="icard__go">{ARR}</span><span class="icard__label">Video Production</span></a>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -530,18 +539,22 @@ def collage(imgs, alts):
     return '<div class="collage">' + "".join(f'<figure>{img(i, a, lazy=False)}</figure>' for i, a in zip(imgs, alts)) + '</div>'
 
 
+def book_pill():
+    """Small pill above hero headings: avatar + 'Book a call'."""
+    return f'''<a class="book-pill" href="contact.html">{img("bts-video-2", "", lazy=False, cls="book-pill__av")}<span><small>Based in Bangkok</small>Book a call to learn more</span></a>'''
+
+
 def page_hero(eb, h1, lead, visual="", after="", cls=""):
-    """One hero layout for every inner page: same background, type scale and spacing."""
+    """One hero for every inner page: centred copy on a rounded lavender panel (visual unused, kept for API)."""
     return f'''
-  <section class="page-hero{" page-hero--split" if visual else ""} {cls}">
-    <div class="container page-hero__inner">
-      <div class="page-hero__copy reveal">
+  <section class="phero {cls}">
+    <div class="container">
+      <div class="phero__panel reveal">
         {eyebrow(eb)}
         <h1>{h1}</h1>
         <p class="lead">{lead}</p>
         {after}
       </div>
-      {f'<div class="page-hero__visual reveal">{visual}</div>' if visual else ""}
     </div>
   </section>'''
 
@@ -841,20 +854,21 @@ def form():
       </div>'''
 
 
-CONTACT_H1 = "Let's create something <span class=\"hl\">great together.</span>"
+CONTACT_H1 = "Let's create something <span class=\"hl\">great together</span>"
 
 
 def contact():
     return head("Contact OXE Marketing | Digital Marketing Agency Bangkok",
                 f"Contact OXE Marketing in Bangkok: email {S['email']}, call {S['phone_display']} or message us on WhatsApp to discuss your project.",
                 "contact.html", schema=org_schema()) + f'''
-  <section class="page-hero contact-hero">
+{page_hero("Get in touch", CONTACT_H1, "Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.")}
+
+  <section class="section">
     <div class="container contact-grid">
-      <div class="page-hero__copy contact-intro reveal">
-        {eyebrow("Get in touch")}
-        <h1>{CONTACT_H1}</h1>
-        <p class="lead">Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.</p>
-        <div id="methods">{contact_buttons()}</div>
+      <div class="contact-intro reveal" id="methods">
+        <h2>Talk to us <span class="hl">directly</span></h2>
+        <p class="muted">Message us on WhatsApp, send an email or give us a call. Or use the form and we'll get back to you.</p>
+        {contact_buttons()}
         <p class="contact-loc">{I["pin2"]} {S["city"]}</p>
       </div>
       {form()}
