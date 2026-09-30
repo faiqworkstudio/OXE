@@ -265,7 +265,6 @@ def contact_band():
     <div class="container">
       <div class="contact-band__inner reveal">
         <div class="contact-band__copy">
-          {book_pill()}
           <h2>Let's create something <span class="hl">great together</span></h2>
           <p>Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.</p>
           {btn("Book a Consultation", "contact.html")}
@@ -678,21 +677,88 @@ def services():
 
 
 # ------------------------------------------------------------------ PORTFOLIO
+SPANS = [7, 5, 4, 4, 4, 5, 7]   # bento rhythm on a 12-column grid (JS re-applies it after filtering)
+SPOTLIGHT = "xiaomi-redmi-watch"
+
+
+def bento_spans(count):
+    """Spans for `count` cards on a 12-col grid; the last card of an unfinished row stretches to fill it."""
+    spans, row = [], 0
+    for i in range(count):
+        sp = SPANS[i % len(SPANS)]
+        if row + sp > 12:
+            row = 0
+        spans.append(sp); row += sp
+        if row == 12:
+            row = 0
+    if row:
+        spans[-1] += 12 - row
+    return spans
+
+
+def pcard(p, n, extra=False, span=None):
+    """Portfolio bento card: rounded media with arrow button, category + media count, client and project."""
+    count = media_count(p)
+    return f'''
+        <article class="pc reveal" style="--span:{span or SPANS[n % len(SPANS)]}" data-category="{p["cat"]}"{" data-extra" if extra else ""}>
+          <a class="pc__media" href="work/{p["id"]}.html" aria-label="{plain(p["client"])}: {plain(p["title"])}">{project_media(p)}<span class="pc__go" aria-hidden="true">{ARR}</span></a>
+          <div class="pc__body">
+            <p class="pc__meta"><span class="pc__cat">{p["category"]}</span>{f"<span>{count}</span>" if count else ""}</p>
+            <h3><a href="work/{p["id"]}.html">{p["client"]}</a></h3>
+            <p class="pc__title">{p["title"]}</p>
+          </div>
+        </article>'''
+
+
+PORT_H1 = "Work we're <span class=\"hl\">proud of</span>"
+
+
 def portfolio():
-    fb = "".join(f'<button class="filter-btn{" is-active" if k == "all" else ""}" type="button" data-filter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{t}</button>' for k, t in C.FILTERS)
-    cards = "".join(project_card(p, extra=n >= VISIBLE) for n, p in enumerate(PORT))
+    counts = {k: (len(C.PROJECTS) if k == "all" else sum(k in p["cat"].split() for p in C.PROJECTS)) for k, _ in C.FILTERS}
+    fb = "".join(f'<button class="filter-btn{" is-active" if k == "all" else ""}" type="button" data-filter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{t}<sup>{counts[k]:02d}</sup></button>' for k, t in C.FILTERS)
+    grid_projects = PORT
+    first = bento_spans(7)
+    cards = "".join(pcard(p, n, extra=n >= 7, span=first[n] if n < 7 else None) for n, p in enumerate(grid_projects))
+    f = PBY[SPOTLIGHT]
+    webp(f["video"] + "-poster")
+    thumbs = "".join(f'<li>{img(g, "")}</li>' for g in f["gallery"][:4])
+    tags = "".join(f"<li>{t}</li>" for t in f["tags"])
+    disciplines = len(C.FILTERS) - 1
+    stats = f'<ul class="pstats"><li><b>{len(C.PROJECTS)}</b>projects</li><li><b>{disciplines}</b>disciplines</li><li><b>20+</b>brands</li></ul>'
     return head("Portfolio | OXE Marketing Bangkok",
                 "Selected work by OXE Marketing: websites, video production, social media and photography for brands including Xiaomi, OPPO and Rockers Supercars.",
                 "portfolio.html") + f'''
-{page_hero("Our work", 'Our <span class="hl">Portfolio</span>', "A collection of projects we're proud to share. Each one tells a story of collaboration, creativity, and results.",
-           after=f'<div class="filters" role="group" aria-label="Filter projects by category">{fb}</div>', photos=("xiaomi-campaign", "cake-strawberry-wide"))}
+{page_hero("Portfolio", PORT_H1, "A collection of projects we're proud to share. Each one tells a story of collaboration, creativity, and results.", after=stats, photos=("xiaomi-campaign", "cake-strawberry-wide"))}
 
-  <section class="section section--flush">
+  <section class="section spot-sec">
     <div class="container">
-      <div class="pgrid" data-projects>{cards}
+      <article class="spot reveal">
+        <a class="spot__media" href="work/{f["id"]}.html" aria-label="{plain(f["client"])} case study">
+          <video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{f["video"]}-poster.webp"><source src="assets/video/{f["video"]}.mp4" type="video/mp4"></video>
+          <span class="pc__go" aria-hidden="true">{ARR}</span>
+        </a>
+        <div class="spot__body">
+          <span class="spot__pill"><i aria-hidden="true"></i>Featured project</span>
+          <h2>{f["client"]}<span class="hl"> · {f["title"]}</span></h2>
+          <p>{f["summary"]}</p>
+          <ul class="tags">{tags}</ul>
+          <ul class="spot__thumbs" aria-hidden="true">{thumbs}</ul>
+          {btn("View Case Study", "work/" + f["id"] + ".html")}
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section section--flush" id="projects">
+    <div class="container">
+      <div class="pbar">
+        <h2 class="pbar__title">All <span class="hl">projects</span></h2>
+        <div class="filters" role="group" aria-label="Filter projects by category"><span class="filters__pill" aria-hidden="true"></span>{fb}</div>
+      </div>
+      <div class="pbento" data-projects>{cards}
       </div>
       <p class="filter-empty" hidden>No projects in this category yet.</p>
-      <div class="more-wrap"><button class="btn btn--outline" type="button" data-more>View More Projects</button></div>
+      <div class="more-wrap"><button class="btn btn--primary" type="button" data-more>View More Projects<span class="btn__arrow" aria-hidden="true">{ARR}</span></button></div>
     </div>
   </section>
 {contact_band()}''' + foot()

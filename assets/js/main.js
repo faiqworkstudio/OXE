@@ -112,7 +112,7 @@
   if (!("onpagereveal" in window)) document.documentElement.classList.add("no-vt");
   // Photos and videos unveil (clip + zoom-out) as they scroll into view
   if (!reduced) {
-    document.querySelectorAll(".icard, .why-panel__photo, .pcard__media, .svc-block__visual .slides, .vwall__item, .ind-tile, .mosaic img, .case-media, .viewer__stage").forEach(function (el) {
+    document.querySelectorAll(".icard, .why-panel__photo, .pcard__media, .pc__media, .spot__media, .svc-block__visual .slides, .vwall__item, .ind-tile, .mosaic img, .case-media, .viewer__stage").forEach(function (el) {
       if (!el.closest(".reveal-clip")) { el.classList.add("reveal", "reveal-clip"); }
     });
   }
@@ -258,7 +258,17 @@
   var grid = document.querySelector("[data-projects]");
   if (grid) {
     var filterBtns = document.querySelectorAll(".filter-btn");
-    var cards = grid.querySelectorAll(".pcard");
+    var cards = grid.querySelectorAll(".pc, .pcard");
+    var SPANS = [7, 5, 4, 4, 4, 5, 7];
+    var pill = document.querySelector(".filters__pill");
+    var movePill = function () {
+      var active = document.querySelector(".filter-btn.is-active");
+      if (!pill || !active) return;
+      pill.parentElement.classList.add("has-pill");
+      pill.style.width = active.offsetWidth + "px";
+      pill.style.transform = "translateX(" + active.offsetLeft + "px)";
+    };
+    window.addEventListener("resize", movePill);
     var moreBtn = document.querySelector("[data-more]");
     var empty = document.querySelector(".filter-empty");
     var current = "all";
@@ -273,6 +283,17 @@
         c.hidden = !match || tucked;
         if (!c.hidden) { shown++; c.classList.add("is-visible"); }
       });
+      // keep the bento rhythm for whatever is visible; the last card of an unfinished row fills it
+      var vis = Array.prototype.filter.call(cards, function (c) { return !c.hidden; });
+      var row = 0, last = null;
+      vis.forEach(function (c, i) {
+        var sp = SPANS[i % SPANS.length];
+        if (row + sp > 12) row = 0;
+        c.style.setProperty("--span", sp); row += sp; last = c;
+        if (row === 12) row = 0;
+      });
+      if (row && last) last.style.setProperty("--span", Number(last.style.getPropertyValue("--span")) + 12 - row);
+      movePill();
       if (moreBtn) moreBtn.parentElement.hidden = expanded || current !== "all";
       if (empty) empty.hidden = shown > 0;
     };
