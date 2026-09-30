@@ -128,6 +128,12 @@ def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=F
 {nav}
       </div>
       <a href="contact.html" class="btn btn--primary btn--sm nav__cta">Book a Consultation</a>
+      <div class="nav__contact">
+        <a href="{S['whatsapp']}" target="_blank" rel="noopener" aria-label="WhatsApp">{I["whatsapp"]}</a>
+        <a href="mailto:{S['email']}" aria-label="Email">{I["mail2"]}</a>
+        <a href="tel:{S['phone_tel']}" aria-label="Call">{I["phone2"]}</a>
+        <span>{S['city']}</span>
+      </div>
     </nav>
     <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="site-nav"><span></span></button>
   </div>
@@ -557,16 +563,28 @@ def book_pill():
     return f'''<a class="book-pill" href="contact.html">{img("bts-video-2", "", lazy=False, cls="book-pill__av")}<span><small>Based in Bangkok</small>Book a call to learn more</span></a>'''
 
 
-def page_hero(eb, h1, lead, visual="", after="", cls=""):
-    """One hero for every inner page: centred copy on a rounded lavender panel (visual unused, kept for API)."""
+TICKER = ["Websites", "Social Media", "Video Production", "Photography", "Digital Strategy", "Made in Bangkok"]
+
+
+def page_hero(eb, h1, lead, visual="", after="", cls="", photos=()):
+    """Inner-page hero: centred copy on the lavender panel, with tilted photos,
+    soft glows, a breadcrumb pill and a slow text ticker along the bottom."""
+    pics = "".join(f'<figure class="phero__pic phero__pic--{n}">{img(ph, "", lazy=False)}</figure>' for n, ph in enumerate(photos[:2], 1))
+    words = "".join(f"<span>{w}</span><i>✦</i>" for w in TICKER)
     return f'''
   <section class="phero {cls}">
     <div class="container">
-      <div class="phero__panel reveal">
-        {eyebrow(eb)}
-        <h1>{h1}</h1>
-        <p class="lead">{lead}</p>
-        {after}
+      <div class="phero__panel">
+        <span class="phero__glow phero__glow--a" aria-hidden="true"></span>
+        <span class="phero__glow phero__glow--b" aria-hidden="true"></span>
+        <div class="phero__pics" aria-hidden="true">{pics}</div>
+        <div class="phero__copy reveal">
+          <nav class="phero__crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span aria-hidden="true">/</span><span aria-current="page">{eb}</span></nav>
+          <h1>{h1}</h1>
+          <p class="lead">{lead}</p>
+          {after}
+        </div>
+        <div class="phero__ticker" aria-hidden="true"><div class="phero__track">{words}{words}</div></div>
       </div>
     </div>
   </section>'''
@@ -629,8 +647,7 @@ def services():
                 "Website design & development, social media marketing, video production, photography and digital strategy for businesses in Bangkok and across Thailand.",
                 "services.html") + f'''
 {page_hero("Our services", 'Turn your ideas into <span class="hl">impact</span>', "Strategic marketing, creative content and measurable results: five services, one team, planned around your goals.",
-           collage(["shoot-1", "haji-strawberry", "bts-video-1"], ["Rockers Supercars shoot", "Haji Café social media design", "Corporate video shoot"]),
-           f'<nav class="jump" aria-label="Services on this page">{jump}</nav>')}
+           after=f'<nav class="jump" aria-label="Services on this page">{jump}</nav>', photos=("haji-strawberry", "shoot-1"))}
 
   <section class="section section--flush">
     <div class="container">{blocks}
@@ -654,7 +671,7 @@ def portfolio():
                 "Selected work by OXE Marketing: websites, video production, social media and photography for brands including Xiaomi, OPPO and Rockers Supercars.",
                 "portfolio.html") + f'''
 {page_hero("Our work", 'Our <span class="hl">Portfolio</span>', "A collection of projects we're proud to share. Each one tells a story of collaboration, creativity, and results.",
-           after=f'<div class="filters" role="group" aria-label="Filter projects by category">{fb}</div>')}
+           after=f'<div class="filters" role="group" aria-label="Filter projects by category">{fb}</div>', photos=("xiaomi-campaign", "cake-strawberry-wide"))}
 
   <section class="section section--flush">
     <div class="container">
@@ -755,12 +772,12 @@ def bento():
 
 def about():
     facts = "".join(f"<li><b>{a}</b><span>{b}</span></li>" for a, b in C.ABOUT["facts"])
-    story = "".join(f"<p>{t}</p>" for t in C.ABOUT["story"])
+    story = "".join(f"<p>{t}</p>" for t in [C.ABOUT["intro"]] + C.ABOUT["story"])
     return head("About Us | OXE Marketing, Multicultural Agency in Bangkok",
                 "OXE Marketing is an ASEAN-based multicultural creative and digital agency headquartered in Bangkok, founded in 2020.",
                 "about.html") + f'''
-{page_hero("About us", 'A multicultural team with a <span class="hl">shared vision</span>', C.ABOUT["positioning"] + " " + C.ABOUT["intro"],
-           collage(["bts-video-2", "about-team", "cake-strawberry"], ["OXE crew on a video shoot in Bangkok", "Laptop and camera in a Bangkok studio", "Dessert photography by OXE"]))}
+{page_hero("About us", 'A multicultural team with a <span class="hl">shared vision</span>', C.ABOUT["positioning"],
+           photos=("bts-video-2", "wirever-lifestyle"))}
 
   <section class="facts-wrap">
     <div class="container"><ul class="facts reveal">{facts}</ul></div>
@@ -870,28 +887,56 @@ def form():
 CONTACT_H1 = "Let's create something <span class=\"hl\">great together</span>"
 
 
+NEXT_STEPS = [("We read your message", "Tell us about your business and goals. The more detail, the better."),
+              ("We have a short call", "We learn about your business, audience and timeline, and answer your questions."),
+              ("You get a clear proposal", "Scope, timeline and budget, so you know exactly what you're getting.")]
+
+
 def contact():
+    steps = "".join(f'''<li class="reveal"><span class="step-num">{n}</span><h3>{t}</h3><p>{d}</p></li>''' for n, (t, d) in enumerate(NEXT_STEPS, 1))
     return head("Contact OXE Marketing | Digital Marketing Agency Bangkok",
                 f"Contact OXE Marketing in Bangkok: email {S['email']}, call {S['phone_display']} or message us on WhatsApp to discuss your project.",
                 "contact.html", schema=org_schema()) + f'''
-{page_hero("Get in touch", CONTACT_H1, "Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.")}
+{page_hero("Contact", CONTACT_H1, "Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.", photos=("bts-video-1", "ind-hospitality"))}
 
   <section class="section">
-    <div class="container contact-grid">
-      <div class="contact-intro reveal" id="methods">
-        <h2>Talk to us <span class="hl">directly</span></h2>
-        <p class="muted">Message us on WhatsApp, send an email or give us a call. Or use the form and we'll get back to you.</p>
-        {contact_buttons()}
-        <p class="contact-loc">{I["pin2"]} {S["city"]}</p>
+    <div class="container cgrid">
+      <div class="cgrid__form">{form()}</div>
+      <a class="ctile ctile--wa reveal" href="{S["whatsapp"]}" target="_blank" rel="noopener">
+        <span class="ctile__ico">{I["whatsapp"]}</span>
+        <small>Chat with us</small><b>WhatsApp</b><span class="ctile__val">{S["phone_display"]}</span>
+        <span class="ctile__go" aria-hidden="true">{ARR}</span>
+      </a>
+      <a class="ctile ctile--mail reveal" href="mailto:{S["email"]}">
+        <span class="ctile__ico">{I["mail2"]}</span>
+        <small>Write to us</small><b>Email</b><span class="ctile__val">{S["email"]}</span>
+        <span class="ctile__go" aria-hidden="true">{ARR}</span>
+      </a>
+      <a class="ctile ctile--call reveal" href="tel:{S["phone_tel"]}">
+        <span class="ctile__ico">{I["phone2"]}</span>
+        <small>Talk to us</small><b>Call</b><span class="ctile__val">{S["phone_display"]}</span>
+        <span class="ctile__go" aria-hidden="true">{ARR}</span>
+      </a>
+      <div class="ctile ctile--time reveal">
+        <small>Local time in Bangkok</small>
+        <b class="ctile__clock" data-bkk-clock>--:--</b>
+        <span class="ctile__val">{I["pin2"]} {S["city"]} · ICT (UTC+7)</span>
       </div>
-      {form()}
     </div>
   </section>
 
-  <section class="section section--flush" id="map">
+  <section class="section section--flush" id="next">
     <div class="container">
-      <div class="map reveal">
-        <iframe title="Map showing Bangkok, Thailand" src="https://www.google.com/maps?q=Bangkok,Thailand&amp;z=11&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      {sec_head("What happens next", 'Three simple <span class="hl">steps</span>', cls="sec-head--center")}
+      <ol class="next-steps">{steps}</ol>
+    </div>
+  </section>
+
+  <section class="section" id="map">
+    <div class="container">
+      <div class="map-card reveal">
+        <div class="map"><iframe title="Map showing Bangkok, Thailand" src="https://www.google.com/maps?q=Bangkok,Thailand&amp;z=11&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+        {badge("badge--map")}
       </div>
     </div>
   </section>

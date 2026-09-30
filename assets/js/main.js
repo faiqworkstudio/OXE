@@ -145,6 +145,15 @@
     });
   });
 
+  /* ---------- Contact page: live Bangkok clock ---------- */
+  var clock = document.querySelector("[data-bkk-clock]");
+  if (clock) {
+    var tick = function () {
+      try { clock.textContent = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" }); } catch (e) { /* old browser: keep placeholder */ }
+    };
+    tick(); setInterval(tick, 30000);
+  }
+
   /* ---------- Footer year ---------- */
   document.querySelectorAll("[data-year]").forEach(function (el) {
     el.textContent = new Date().getFullYear();

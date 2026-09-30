@@ -28,7 +28,7 @@ MENU = {
                        ("portfolio.html?filter=video", "Video"), ("portfolio.html?filter=photo", "Photography")],
     "about.html": [("about.html#mission", "Mission &amp; Vision"), ("about.html#story", "Our Story"), ("about.html#why-oxe", "Why OXE"),
                    ("about.html#clients", "Clients")],
-    "contact.html": [("contact.html#enquiry", "Enquiry Form"), ("contact.html#methods", "Call &amp; Email"), ("contact.html#map", "Find Us")],
+    "contact.html": [("contact.html#enquiry", "Enquiry Form"), ("contact.html#next", "What Happens Next"), ("contact.html#map", "Find Us")],
 }
 
 # Mega-menu panel for each page: (eyebrow, one-line intro, visual)
