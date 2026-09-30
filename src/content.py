@@ -114,7 +114,7 @@ FILTERS = [("all", "All"), ("web", "Web Design"), ("social", "Social Media"), ("
 
 PROJECTS = [
     dict(id="tailor-website", client="Local Tailor Business, Bangkok", title="Tailor Website", cat="web", category="Website Design",
-         cover="tailor-website", gallery=[], video=None, device=True,
+         cover="tailor-website", mobile="tailor-website-mobile", gallery=[], video=None, device=True,
          summary="A professional website that showcases craftsmanship and makes it easy for customers to book appointments.",
          challenge="Limited digital presence and few channels for online enquiries.",
          solution="Designed a professional website to establish a stronger online presence and showcase their craftsmanship.",
@@ -141,7 +141,7 @@ PROJECTS = [
          services=["Commercial Video Production", "Cinematic Automotive Videography", "Creative Concept Development", "Drone Footage", "Professional Editing &amp; Color Grading", "Social Media Video Content", "Promotional Brand Videos", "Multi-Platform Content Delivery"]),
 
     dict(id="vincenzo-russo", client="Vincenzo Russo", title="Personal Brand &amp; Blog Website", cat="web", category="Website Design",
-         cover="vincenzo-russo-site", gallery=[], video=None, device=True,
+         cover="vincenzo-russo-site", mobile="vincenzo-russo-site-mobile", gallery=[], video=None, device=True,
          summary="A modern blog website reflecting his personal brand and expertise in gemstones and fine jewellery.",
          challenge="Create a professional online presence where visitors can explore his insights, stories, and industry knowledge while reinforcing his credibility as a trusted voice in gems and jewels.",
          solution="A clean, elegant design with responsive performance across all devices and a content-focused structure that makes it easy to publish and discover articles, built with SEO, fast loading speeds, and a user-friendly experience in mind.",

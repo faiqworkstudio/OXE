@@ -214,7 +214,7 @@ def project_media(p, big=False):
     """Visual for a project card or case-study header."""
     alt = f'{plain(p["client"])}: {plain(p["title"])} by OXE Marketing'
     if p.get("device"):
-        return f'<div class="media-stage">{devices(p["cover"], alt=alt)}</div>'
+        return f'<div class="media-stage">{devices(p["cover"], p.get("mobile"), alt=alt)}</div>'
     if p.get("logo"):
         return f'<div class="media-logo">{img(p["cover"], plain(p["client"]) + " logo")}</div>'
     if not p["cover"]:
@@ -356,7 +356,7 @@ def home():
         <a class="link-arrow reveal" href="portfolio.html">View full portfolio {ARR}</a>
       </div>
       <article class="feature reveal">
-        <div class="feature__media">{devices("tailor-website", alt="Tailor website designed by OXE Marketing on a laptop and phone")}</div>
+        <div class="feature__media">{devices(f["cover"], f.get("mobile"), alt="Tailor website designed by OXE Marketing on a laptop and phone")}</div>
         <div class="feature__body">
           {eyebrow(f["category"])}
           <h3>{f["client"]}</h3>
