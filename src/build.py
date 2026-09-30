@@ -121,6 +121,7 @@ def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=F
 {DEFS}
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
+  <span class="scroll-progress" aria-hidden="true"></span>
   <div class="container site-header__inner">
     {brand()}
     <nav class="nav" id="site-nav" aria-label="Main">
@@ -157,26 +158,36 @@ def mega_visual(h, t):
               </div>'''
 
 
+CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
+
+
 def mega_nav(page):
-    """Top navigation. Each item opens a full-width panel: title, numbered section links and a visual."""
+    """Top navigation. Desktop: each item opens a full-width panel (hover intent / button).
+    Phones & tablets: each item is an accordion that drops down its section links."""
     out = ""
     for n, (h, t) in enumerate(C.NAV, 1):
         cur = CUR if h == page or (page.startswith("work/") and h == "portfolio.html") else ""
         eb, intro, _ = C.MENU_META[h]
+        pid = "menu-" + h.split(".")[0]
         links = "".join(f'<li><a href="{href}"><span class="mega__num">{i:02d}</span><span class="mega__label">{label}</span>{ARR}</a></li>'
                         for i, (href, label) in enumerate(C.MENU[h], 1))
         out += f'''
-        <div class="nav__item">
-          <a class="nav__link" href="{h}"{cur}><span class="nav__num">{n:02d}</span>{t}</a>
-          <div class="mega">
-            <div class="container mega__inner">
-              <div class="mega__intro">
-                <span class="mega__eyebrow">{eb}</span>
-                <a class="mega__title" href="{h}">{t}</a>
-                <p>{intro}</p>
+        <div class="nav__item" data-menu>
+          <div class="nav__row">
+            <a class="nav__link" href="{h}"{cur}><span class="nav__num">{n:02d}</span>{t}</a>
+            <button class="nav__more" type="button" aria-expanded="false" aria-controls="{pid}" aria-label="Show {t} sections">{CHEV}</button>
+          </div>
+          <div class="mega" id="{pid}">
+            <div class="mega__clip">
+              <div class="container mega__inner">
+                <div class="mega__intro">
+                  <span class="mega__eyebrow">{eb}</span>
+                  <a class="mega__title" href="{h}">{t}</a>
+                  <p>{intro}</p>
+                </div>
+                <ul class="mega__list" aria-label="{t} sections">{links}</ul>
+                {mega_visual(h, t)}
               </div>
-              <ul class="mega__list" aria-label="{t} sections">{links}</ul>
-              {mega_visual(h, t)}
             </div>
           </div>
         </div>'''
@@ -423,13 +434,13 @@ def clients_marquee():
 def works_cards():
     """Home "Our Works": one card per portfolio category, linking to the filtered portfolio."""
     out = ""
-    for key, title, cover in C.WORK_CATEGORIES:
+    for i, (key, title, cover) in enumerate(C.WORK_CATEGORIES):
         n = sum(key in p["cat"].split() for p in C.PROJECTS)
         out += f'''
-          <a class="wcard reveal" href="portfolio.html?filter={key}" aria-label="{plain(title)}: view {n} projects">
-            <div class="wcard__head"><h3>{title}</h3><span class="wcard__count">{n:02d}</span></div>
+          <a class="wcard reveal" style="--d:{i * 90}ms" href="portfolio.html?filter={key}" aria-label="{plain(title)}: view {n} projects">
+            <div class="wcard__head"><h3>{title}</h3><span class="wcard__count"><span>{n:02d}</span><span>{n:02d}</span></span></div>
             <div class="wcard__stack">
-              <div class="wcard__img">{img(cover, "")}</div>
+              <div class="wcard__img">{img(cover, "")}<span class="wcard__shine" aria-hidden="true"></span></div>
               <span class="wcard__notch" aria-hidden="true"><span class="wcard__btn">{ARR}</span></span>
             </div>
           </a>'''
@@ -539,9 +550,12 @@ def home():
   <section class="section works-sec" id="work">
     <div class="container">
       <div class="works">
-        <div class="works__head reveal">
-          <h2>Our Works</h2>
-          <p>Explore the websites, campaigns and visual content we've created in partnership with brands across Thailand.</p>
+        <div class="works__head">
+          {sec_head("Portfolio", 'Our <span class="hl">Works</span>')}
+          <div class="works__aside reveal">
+            <p>Explore the websites, campaigns and visual content we've created in partnership with brands across Thailand.</p>
+            {btn("View Portfolio", "portfolio.html")}
+          </div>
         </div>
         <div class="works__grid">{works_cards()}
         </div>
@@ -824,61 +838,63 @@ def about():
 
 
 # ------------------------------------------------------------------ CONTACT
+REQ = ' <b aria-hidden="true">*</b>'
+
+
 def form():
     keys = {"Website Design &amp; Development": "web", "Social Media Marketing": "social", "Video Production": "video",
             "Photography": "photo", "Branding &amp; Creative Design": "strategy"}
-    svc = "".join(f'<option data-key="{keys.get(s, "")}">{s}</option>' for s in C.SERVICE_OPTIONS)
-    bud = "".join(f"<option>{b}</option>" for b in C.BUDGETS)
+    chips = "".join(f'<label class="chip"><input type="checkbox" name="service" value="{plain(sv)}" data-key="{keys.get(sv, "")}"><span>{sv}</span></label>' for sv in C.SERVICE_OPTIONS)
+    budget = "".join(f'<label class="chip"><input type="radio" name="budget" value="{b}"><span>{b}</span></label>' for b in C.BUDGETS)
 
-    def label(id_, text, req):
-        return f'<label for="{id_}">{text}{"" if req else " <em>Optional</em>"}</label>'
-
-    def field(id_, name, text, typ="text", req=False, ac="", err=""):
+    def field(id_, name, text, typ="text", req=False, ac="", ph="", err=""):
         return f'''<div class="field">
-              {label(id_, text, req)}
-              <input id="{id_}" name="{name}" type="{typ}"{f' autocomplete="{ac}"' if ac else ""}{" required" if req else ""}{f' aria-describedby="{id_}-err"' if err else ""}>
-              {f'<span class="error" id="{id_}-err">{err}</span>' if err else ""}
-            </div>'''
+                <label for="{id_}">{text}{REQ if req else ""}</label>
+                <input id="{id_}" name="{name}" type="{typ}" placeholder="{ph}"{f' autocomplete="{ac}"' if ac else ""}{" required" if req else ""}{f' aria-describedby="{id_}-err"' if err else ""}>
+                {f'<span class="error" id="{id_}-err">{err}</span>' if err else ""}
+              </div>'''
     return f'''<div class="form-card reveal" id="enquiry">
-        <h2>Send us a message</h2>
+        <div class="form-card__head">
+          <h2>Tell us about your <span class="hl">project</span></h2>
+          <p>Fields marked <b>*</b> are required.</p>
+        </div>
         <form name="contact" method="POST" action="thank-you.html" data-netlify="true" netlify-honeypot="bot-field" data-contact-form novalidate>
           <input type="hidden" name="form-name" value="contact">
           <p hidden><label>Don't fill this out: <input name="bot-field"></label></p>
-          <div class="form-grid">
-            {field("f-name", "name", "Name", req=True, ac="name", err="Please enter your name.")}
-            {field("f-email", "email", "Email", "email", True, "email", "Please enter a valid email address.")}
-            {field("f-phone", "phone", "Phone", "tel", ac="tel")}
-            {field("f-company", "company", "Company", ac="organization")}
-            <div class="field">
-              {label("f-service", "Service", True)}
-              <select id="f-service" name="service" required aria-describedby="f-service-err">
-                <option value="" selected disabled>Choose one</option>
-                {svc}
-              </select>
-              <span class="error" id="f-service-err">Please choose a service.</span>
+          <fieldset class="fset" data-chips-required aria-describedby="svc-err">
+            <legend><span class="fset__n">01</span>What can we help with? <b aria-hidden="true">*</b></legend>
+            <div class="chips">{chips}</div>
+            <span class="error" id="svc-err">Please choose at least one service.</span>
+          </fieldset>
+          <fieldset class="fset">
+            <legend><span class="fset__n">02</span>About you</legend>
+            <div class="form-grid">
+              {field("f-name", "name", "Name", req=True, ac="name", ph="Your full name", err="Please enter your name.")}
+              {field("f-email", "email", "Email", "email", True, "email", "you@company.com", "Please enter a valid email address.")}
+              {field("f-phone", "phone", "Phone", "tel", ac="tel", ph="+66")}
+              {field("f-company", "company", "Company", ac="organization", ph="Company name")}
             </div>
+          </fieldset>
+          <fieldset class="fset">
+            <legend><span class="fset__n">03</span>Your project</legend>
             <div class="field">
-              {label("f-budget", "Budget", False)}
-              <select id="f-budget" name="budget">
-                <option value="" selected>Choose a range</option>
-                {bud}
-              </select>
-            </div>
-            <div class="field field--full">
-              {label("f-details", "Project details", True)}
-              <textarea id="f-details" name="details" rows="5" required aria-describedby="f-details-err"></textarea>
+              <label for="f-details">Project details <b aria-hidden="true">*</b></label>
+              <textarea id="f-details" name="details" rows="5" placeholder="Your goals, timeline and anything else we should know" required aria-describedby="f-details-err"></textarea>
               <span class="error" id="f-details-err">Please tell us a little about your project.</span>
             </div>
-            <fieldset class="field field--full">
-              <legend>Reply by</legend>
-              <div class="segmented">
-                <label><input type="radio" name="method" value="Email" checked><span>Email</span></label>
-                <label><input type="radio" name="method" value="Phone"><span>Phone</span></label>
-                <label><input type="radio" name="method" value="WhatsApp"><span>WhatsApp</span></label>
-              </div>
-            </fieldset>
+            <p class="fset__sub">Budget <em>optional</em></p>
+            <div class="chips chips--sm">{budget}</div>
+            <p class="fset__sub">Reply by</p>
+            <div class="chips chips--sm">
+              <label class="chip"><input type="radio" name="method" value="Email" checked><span>Email</span></label>
+              <label class="chip"><input type="radio" name="method" value="Phone"><span>Phone</span></label>
+              <label class="chip"><input type="radio" name="method" value="WhatsApp"><span>WhatsApp</span></label>
+            </div>
+          </fieldset>
+          <div class="form-foot">
+            <button type="submit" class="btn btn--primary form-submit">Send message<span class="btn__arrow" aria-hidden="true">{ARR}</span></button>
+            <p>Prefer to chat? <a href="{S["whatsapp"]}" target="_blank" rel="noopener">Message us on WhatsApp</a></p>
           </div>
-          <button type="submit" class="btn btn--navy form-submit">Send message {ARR}</button>
           <div class="form-success" role="status" aria-live="polite">Thank you! Your message has been sent. Our team will get back to you shortly.</div>
         </form>
       </div>'''
@@ -902,25 +918,27 @@ def contact():
   <section class="section">
     <div class="container cgrid">
       <div class="cgrid__form">{form()}</div>
+      <div class="cgrid__side">
       <a class="ctile ctile--wa reveal" href="{S["whatsapp"]}" target="_blank" rel="noopener">
         <span class="ctile__ico">{I["whatsapp"]}</span>
-        <small>Chat with us</small><b>WhatsApp</b><span class="ctile__val">{S["phone_display"]}</span>
+        <span class="ctile__txt"><small>Chat with us</small><b>WhatsApp</b><span class="ctile__val">{S["phone_display"]}</span></span>
         <span class="ctile__go" aria-hidden="true">{ARR}</span>
       </a>
       <a class="ctile ctile--mail reveal" href="mailto:{S["email"]}">
         <span class="ctile__ico">{I["mail2"]}</span>
-        <small>Write to us</small><b>Email</b><span class="ctile__val">{S["email"]}</span>
+        <span class="ctile__txt"><small>Write to us</small><b>Email</b><span class="ctile__val">{S["email"]}</span></span>
         <span class="ctile__go" aria-hidden="true">{ARR}</span>
       </a>
       <a class="ctile ctile--call reveal" href="tel:{S["phone_tel"]}">
         <span class="ctile__ico">{I["phone2"]}</span>
-        <small>Talk to us</small><b>Call</b><span class="ctile__val">{S["phone_display"]}</span>
+        <span class="ctile__txt"><small>Talk to us</small><b>Call</b><span class="ctile__val">{S["phone_display"]}</span></span>
         <span class="ctile__go" aria-hidden="true">{ARR}</span>
       </a>
       <div class="ctile ctile--time reveal">
         <small>Local time in Bangkok</small>
         <b class="ctile__clock" data-bkk-clock>--:--</b>
         <span class="ctile__val">{I["pin2"]} {S["city"]} · ICT (UTC+7)</span>
+      </div>
       </div>
     </div>
   </section>

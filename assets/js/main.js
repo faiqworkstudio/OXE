@@ -28,6 +28,7 @@
       toggle.setAttribute("aria-expanded", String(open));
       toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
     }
+    if (!open) closeAll();
   }
   if (toggle) {
     toggle.addEventListener("click", function () {
@@ -36,17 +37,93 @@
     document.querySelectorAll(".nav a").forEach(function (a) {
       a.addEventListener("click", function () { setNav(false); });
     });
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && document.body.classList.contains("nav-open")) { setNav(false); toggle.focus(); }
-    });
     window.addEventListener("resize", function () {
       if (window.innerWidth >= 1024) setNav(false);
     });
   }
 
+  /* ---------- Menu panels ----------
+     Desktop (mouse): hover intent. A panel opens only after the pointer has
+     actually moved over a menu item and rested ~180ms; it never opens while
+     the page is scrolling, and it closes on scroll, Escape or outside click.
+     Keyboard / touch: the chevron button toggles the panel.
+     Phones & tablets: the same button expands the item as an accordion. */
+  var items = document.querySelectorAll("[data-menu]");
+  var desktop = window.matchMedia("(min-width: 1024px)");
+  var finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+  var openTimer = null, closeTimer = null, lastScroll = 0;
+
+  function setItem(item, open) {
+    item.classList.toggle("is-open", open);
+    var b = item.querySelector(".nav__more");
+    if (b) b.setAttribute("aria-expanded", String(open));
+  }
+  function closeAll(except) {
+    items.forEach(function (it) { if (it !== except) setItem(it, false); });
+  }
+  function clearTimers() { clearTimeout(openTimer); clearTimeout(closeTimer); }
+
+  items.forEach(function (item) {
+    var more = item.querySelector(".nav__more");
+    if (more) more.addEventListener("click", function (e) {
+      e.preventDefault(); clearTimers();
+      var open = !item.classList.contains("is-open");
+      closeAll(item); setItem(item, open);
+    });
+    // hover intent: requires real mouse movement over the link row
+    item.querySelector(".nav__row").addEventListener("mousemove", function () {
+      if (!desktop.matches || !finePointer.matches) return;
+      if (Date.now() - lastScroll < 400) return;
+      clearTimeout(closeTimer);
+      if (item.classList.contains("is-open")) return;
+      clearTimeout(openTimer);
+      openTimer = setTimeout(function () { closeAll(item); setItem(item, true); }, 180);
+    });
+    item.addEventListener("mouseleave", function () {
+      if (!desktop.matches) return;
+      clearTimeout(openTimer);
+      closeTimer = setTimeout(function () { setItem(item, false); }, 260);
+    });
+    item.addEventListener("mouseenter", function () { if (item.classList.contains("is-open")) clearTimeout(closeTimer); });
+    // keyboard: leaving the item with Tab closes it
+    item.addEventListener("focusout", function (e) {
+      if (desktop.matches && !item.contains(e.relatedTarget)) setItem(item, false);
+    });
+  });
+  window.addEventListener("scroll", function () {
+    lastScroll = Date.now();
+    if (desktop.matches) { clearTimers(); closeAll(); }
+  }, { passive: true });
+  document.addEventListener("click", function (e) {
+    if (desktop.matches && !e.target.closest("[data-menu]")) closeAll();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    var open = document.querySelector("[data-menu].is-open");
+    if (open && desktop.matches) { setItem(open, false); open.querySelector(".nav__more").focus(); return; }
+    if (document.body.classList.contains("nav-open")) { setNav(false); if (toggle) toggle.focus(); }
+  });
+  // coming back via the browser's back button: start with everything closed
+  window.addEventListener("pageshow", function () { clearTimers(); closeAll(); });
+
   /* ---------- Reveal on scroll ---------- */
-  var reveals = document.querySelectorAll(".reveal");
   var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Browsers without cross-document view transitions get a soft fade-in instead
+  if (!("onpagereveal" in window)) document.documentElement.classList.add("no-vt");
+  // Photos and videos unveil (clip + zoom-out) as they scroll into view
+  if (!reduced) {
+    document.querySelectorAll(".icard, .why-panel__photo, .pcard__media, .svc-block__visual .slides, .vwall__item, .ind-tile, .mosaic img, .case-media, .viewer__stage").forEach(function (el) {
+      if (!el.closest(".reveal-clip")) { el.classList.add("reveal", "reveal-clip"); }
+    });
+  }
+  var reveals = document.querySelectorAll(".reveal");
+  // Siblings that appear together are staggered (unless a delay is already set)
+  reveals.forEach(function (el) {
+    if (el.style.getPropertyValue("--d")) return;
+    var sibs = Array.prototype.filter.call(el.parentElement.children, function (c) { return c.classList.contains("reveal"); });
+    var i = sibs.indexOf(el);
+    if (sibs.length > 1 && i > 0) el.style.setProperty("--d", Math.min(i, 5) * 80 + "ms");
+  });
   if ("IntersectionObserver" in window && !reduced) {
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
@@ -61,6 +138,24 @@
   window.addEventListener("beforeprint", function () {
     reveals.forEach(function (el) { el.classList.add("is-visible"); });
   });
+
+  /* ---------- Scroll progress + gentle parallax (one rAF per frame) ---------- */
+  var bar = document.querySelector(".scroll-progress");
+  var par = reduced ? [] : Array.prototype.slice.call(document.querySelectorAll(".phero__pic, .badge, .hero__proof .hero__logos"));
+  var ticking = false;
+  function frame() {
+    ticking = false;
+    var max = document.documentElement.scrollHeight - innerHeight;
+    if (bar) bar.style.setProperty("--p", max > 0 ? Math.min(1, scrollY / max) : 0);
+    par.forEach(function (el, k) {
+      var r = el.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > innerHeight) return;
+      var shift = (r.top + r.height / 2 - innerHeight / 2) * (k % 2 ? -0.05 : 0.06);
+      el.style.translate = "0 " + shift.toFixed(1) + "px";
+    });
+  }
+  window.addEventListener("scroll", function () { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }, { passive: true });
+  frame();
 
   /* ---------- Back to top ---------- */
   var toTop = document.querySelector(".to-top");
@@ -210,9 +305,18 @@
     var success = form.querySelector(".form-success");
     var key = new URLSearchParams(location.search).get("service");
     if (key) {
-      var opt = form.querySelector('option[data-key="' + key.replace(/[^a-z]/g, "") + '"]');
-      if (opt) opt.selected = true;
+      var opt = form.querySelector('input[data-key="' + key.replace(/[^a-z]/g, "") + '"]');
+      if (opt) opt.checked = true;
     }
+    // "What can we help with?" needs at least one chip
+    var chipSet = form.querySelector("[data-chips-required]");
+    function validateChips() {
+      if (!chipSet) return true;
+      var ok = !!chipSet.querySelector("input:checked");
+      chipSet.classList.toggle("has-error", !ok);
+      return ok;
+    }
+    if (chipSet) chipSet.addEventListener("change", function () { if (chipSet.classList.contains("has-error")) validateChips(); });
 
     function fieldOf(input) { return input.closest(".field"); }
     function validate(input) {
@@ -223,7 +327,7 @@
       return ok;
     }
     form.querySelectorAll("input, select, textarea").forEach(function (el) {
-      if (el.type === "radio" || el.type === "hidden") return;
+      if (el.type === "radio" || el.type === "checkbox" || el.type === "hidden") return;
       el.addEventListener("blur", function () { if (el.required || el.value) validate(el); });
       el.addEventListener("input", function () {
         var f = fieldOf(el);
@@ -235,9 +339,10 @@
       e.preventDefault();
       var firstBad = null;
       form.querySelectorAll("input, select, textarea").forEach(function (el) {
-        if (el.type === "radio" || el.type === "hidden" || el.name === "bot-field") return;
+        if (el.type === "radio" || el.type === "checkbox" || el.type === "hidden" || el.name === "bot-field") return;
         if (!validate(el) && !firstBad) firstBad = el;
       });
+      if (!validateChips()) firstBad = chipSet.querySelector("input");
       if (firstBad) { firstBad.focus(); return; }
 
       var d = new FormData(form);
@@ -246,7 +351,7 @@
         "Email: " + d.get("email"),
         d.get("phone") ? "Phone: " + d.get("phone") : "",
         d.get("company") ? "Company: " + d.get("company") : "",
-        "Service: " + d.get("service"),
+        "Service: " + d.getAll("service").join(", "),
         d.get("budget") ? "Budget: " + d.get("budget") : "",
         "Preferred contact: " + (d.get("method") || "Email"),
         "",
@@ -262,7 +367,7 @@
         if (d.get("method") === "WhatsApp") {
           window.open("https://wa.me/" + WHATSAPP_NUMBER + "?text=" + encodeURIComponent("Hi OXE Marketing!\n\n" + text), "_blank", "noopener");
         } else {
-          window.location.href = "mailto:" + CONTACT_EMAIL + "?subject=" + encodeURIComponent("New enquiry: " + d.get("service")) + "&body=" + encodeURIComponent(text);
+          window.location.href = "mailto:" + CONTACT_EMAIL + "?subject=" + encodeURIComponent("New enquiry: " + d.getAll("service").join(", ")) + "&body=" + encodeURIComponent(text);
         }
         done();
       }
