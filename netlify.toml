@@ -1,0 +1,22 @@
+# Static site — no build step. Netlify publishes the repository root.
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+# Netlify also serves /services as services.html automatically.
+[[redirects]]
+  from = "/home"
+  to = "/"
+  status = 301
