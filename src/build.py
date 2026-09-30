@@ -77,7 +77,7 @@ def devices(screen, phone=None, alt=""):
 
 # ------------------------------------------------------------------ layout
 def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=False):
-    nav = "\n".join(f'        <a href="{h}"{CUR if h == page or (page.startswith("work/") and h == "portfolio.html") else ""}>{t}</a>' for h, t in C.NAV)
+    nav = mega_nav(page)
     canon = S["url"] + "/" + ("" if page == "index.html" else page.replace(".html", ""))
     ld = f'\n  <script type="application/ld+json">{json.dumps(schema, ensure_ascii=False)}</script>' if schema else ""
     return f'''<!DOCTYPE html>
@@ -126,6 +126,26 @@ def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=F
 '''
 
 
+def mega_nav(page):
+    """Top navigation. Each item opens a full-width panel of anchor links to that page's sections."""
+    out = ""
+    for h, t in C.NAV:
+        cur = CUR if h == page or (page.startswith("work/") and h == "portfolio.html") else ""
+        tiles = "".join(f'<li><a href="{href}"><span class="mega__num">{i:02d}</span><span class="mega__label">{label}</span>{ARR}</a></li>'
+                        for i, (href, label) in enumerate(C.MENU[h], 1))
+        out += f'''
+        <div class="nav__item">
+          <a class="nav__link" href="{h}"{cur}>{t}</a>
+          <div class="mega">
+            <div class="container mega__inner">
+              <a class="mega__title" href="{h}">{t} {ARR}</a>
+              <ul class="mega__list" aria-label="{t} sections">{tiles}</ul>
+            </div>
+          </div>
+        </div>'''
+    return out
+
+
 def brand(white=False):
     return f'''<a class="brand" href="index.html" aria-label="OXE Marketing, home">
       <img src="assets/img/oxe-wordmark{'-white' if white else ''}.png" alt="" width="243" height="100">
@@ -170,6 +190,7 @@ def foot():
   </div>
 </footer>
 
+<button class="to-top" type="button" aria-label="Back to top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
 <a class="wa-float" href="{S['whatsapp']}" target="_blank" rel="noopener" aria-label="Chat with OXE Marketing on WhatsApp">{I["whatsapp"]}</a>
 <script src="assets/js/main.js?v={ver("assets/js/main.js")}" defer></script>
 </body>
@@ -180,7 +201,7 @@ def foot():
 def contact_band():
     items = contact_methods()
     return f'''
-  <section class="contact-band">
+  <section class="contact-band" id="get-in-touch">
     <div class="container">
       <div class="contact-band__inner reveal">
         <span class="shape shape--sphere cb-s1" aria-hidden="true"></span>
@@ -246,7 +267,7 @@ def clients_wall(tint=False):
     # pad the grid to a multiple of 6 (and so of 2 and 3) so no cell is left open
     cells += '<li class="logo-cell logo-cell--blank" aria-hidden="true"></li>' * ((-len(C.CLIENTS)) % 6)
     return f'''
-  <section class="section clients-wall{" section--tint" if tint else ""}" aria-labelledby="clients-title">
+  <section class="section clients-wall{" section--tint" if tint else ""}" id="clients" aria-labelledby="clients-title">
     <div class="container">
       <ul class="logo-wall reveal">
         <li class="logo-wall__feature">
@@ -348,7 +369,7 @@ def home():
     </div>
   </section>
 
-  <section class="section why">
+  <section class="section why" id="why">
     <div class="container why__inner">
       <div class="why__visual reveal">
         <figure class="why__photo">{img("bts-video-1", "The OXE Marketing crew filming a corporate interview in Bangkok")}</figure>
@@ -377,7 +398,7 @@ def home():
     </div>
   </section>
 
-  <section class="section section--flush">
+  <section class="section section--flush" id="featured">
     <div class="container">
       <div class="sec-row">
         {sec_head("Featured case study", 'Selected <span class="hl">Projects</span>', "From websites to social media, video, and photography, we've helped brands across different industries tell their stories and grow online.")}
@@ -405,17 +426,42 @@ def home():
 
 
 # ------------------------------------------------------------------ SERVICES
+def service_media(s):
+    """Several videos playing together, or a crossfading slideshow of images."""
+    title = plain(s["title"])
+    if s.get("videos"):
+        tiles = ""
+        for v, client in s["videos"]:
+            webp(v + "-poster")
+            tiles += (f'<figure class="vwall__item"><video muted loop playsinline preload="none" poster="assets/img/work/{v}-poster.webp" '
+                      f'aria-label="{plain(client)} video by OXE Marketing"><source src="assets/video/{v}.mp4" type="video/mp4"></video>'
+                      f'<figcaption>{client}</figcaption></figure>')
+        return f'<div class="vwall" data-vwall>{tiles}</div>'
+    slides, dots = "", ""
+    for i, name in enumerate(s["slides"]):
+        if name.startswith("device:"):
+            p = next(p for p in C.PROJECTS if p["cover"] == name[7:])
+            inner = f'<div class="slide__stage">{devices(p["cover"], p.get("mobile"), alt=plain(p["client"]) + " website by OXE Marketing")}</div>'
+        else:
+            inner = img(name, f"{title} by OXE Marketing, image {i + 1}")
+        slides += f'<figure class="slide{" is-active" if i == 0 else ""}"{"" if i == 0 else " aria-hidden=" + chr(34) + "true" + chr(34)}>{inner}</figure>'
+        dots += f'<button type="button" aria-label="Show image {i + 1} of {len(s["slides"])}"{" aria-current=" + chr(34) + "true" + chr(34) if i == 0 else ""}></button>'
+    return f'''<div class="slideshow" data-slideshow aria-roledescription="carousel" aria-label="{title} examples">
+            <div class="slides">{slides}</div>
+            <div class="slide-dots">{dots}</div>
+          </div>'''
+
+
 def services():
     jump = "".join(f'<a href="#{s["key"]}"><b>{s["num"]}</b>{s["title"]}</a>' for s in C.SERVICES)
     blocks = ""
     for n, s in enumerate(C.SERVICES):
         what = "".join(f"<li>{I['check']}{x}</li>" for x in s["what"])
         dl = "".join(f"<li>{I['check']}{x}</li>" for x in s["deliverables"])
-        steps = "".join(f"<li><b>{i}</b>{x}</li>" for i, x in enumerate(s["process"], 1))
         blocks += f'''
       <article class="svc-block{" svc-block--rev" if n % 2 else ""}" id="{s["key"]}">
         <div class="svc-block__visual reveal">
-          {img(s["img"], plain(s["title"]) + " by OXE Marketing")}
+          {service_media(s)}
           <span class="svc-block__badge float-a" aria-hidden="true">{ART[s["art"]]}</span>
         </div>
         <div class="svc-block__body reveal">
@@ -426,8 +472,6 @@ def services():
             <div><h3>What we do</h3><ul class="checks">{what}</ul></div>
             <div><h3>Deliverables</h3><ul class="checks">{dl}</ul></div>
           </div>
-          <h3>Process</h3>
-          <ol class="steps">{steps}</ol>
           <div class="btn-row">
             {btn("Book a Consultation", "contact.html?service=" + s["key"])}
             {btn("See related work", "portfolio.html", "text")}
@@ -458,9 +502,9 @@ def services():
     </div>
   </section>
 
-  <section class="section section--tint">
+  <section class="section section--tint" id="industries">
     <div class="container">
-      {sec_head("Industries", 'Who We <span class="hl">Work With</span>', "Experience across local businesses and international brands in Thailand.")}
+      {sec_head("Industries", 'Industries We <span class="hl">Worked With</span>', "Experience across local businesses and international brands in Thailand.")}
       <ul class="industries">{ind}</ul>
     </div>
   </section>
@@ -576,10 +620,29 @@ def case(p):
 
 
 # ------------------------------------------------------------------ ABOUT
+def bento():
+    """Why companies choose OXE: bento grid with one feature card, a photo tile and a year card."""
+    items = C.ABOUT["choose"]
+    # grid-area letter for each item, in content order
+    areas = ["b", "c", "a", "e", "d", "f", "g", "h"]
+    cells = ""
+    for n, ((ico, t, d), area) in enumerate(zip(items, areas), 1):
+        num = f'<span class="bento__num">{n:02d}</span>'
+        if area == "a":
+            body = f'<div class="bento__art" aria-hidden="true"><span class="float-a">{ART["web"]}</span><span class="float-b">{ART["video"]}</span><span class="float-c">{ART["social"]}</span></div>{num}<h3>{t}</h3><p>{d}</p>'
+        elif area == "d":
+            body = f'{img("bts-video-1", "OXE Marketing crew on set during a corporate video shoot")}<div class="bento__overlay">{num}<h3>{t}</h3><p>{d}</p></div>'
+        elif area == "g":
+            body = f'{num}<b class="bento__year" aria-hidden="true">2020</b><h3>{t}</h3><p>{d}</p>'
+        else:
+            body = f'<span class="ico">{I[ico]}</span>{num}<h3>{t}</h3><p>{d}</p>'
+        cells += f'\n        <li class="bento__cell bento__cell--{area} reveal">{body}</li>'
+    return f'<ul class="bento">{cells}\n      </ul>'
+
+
 def about():
     facts = "".join(f"<li><b>{a}</b><span>{b}</span></li>" for a, b in C.ABOUT["facts"])
     story = "".join(f"<p>{t}</p>" for t in C.ABOUT["story"])
-    choose = "".join(f'<li class="reveal"><span class="ico">{I[i]}</span><h3>{t}</h3><p>{d}</p></li>' for i, t, d in C.ABOUT["choose"])
     return head("About Us | OXE Marketing, Multicultural Agency in Bangkok",
                 "OXE Marketing is an ASEAN-based multicultural creative and digital agency headquartered in Bangkok, founded in 2020.",
                 "about.html") + f'''
@@ -602,7 +665,7 @@ def about():
     <div class="container"><ul class="facts reveal">{facts}</ul></div>
   </section>
 
-  <section class="section">
+  <section class="section" id="mission">
     <div class="container mv">
       <article class="mv__card reveal">
         <span class="mv__art" aria-hidden="true">{ART["strategy"]}</span>
@@ -617,7 +680,7 @@ def about():
     </div>
   </section>
 
-  <section class="section section--tint">
+  <section class="section section--tint" id="story">
     <div class="container story">
       <div>
         {sec_head("Our story", 'Creative and digital marketing, <span class="hl">since 2020</span>')}
@@ -631,10 +694,10 @@ def about():
     </div>
   </section>
 
-  <section class="section">
+  <section class="section" id="why-oxe">
     <div class="container">
       {sec_head("Why companies choose OXE", 'Your all-in-one <span class="hl">marketing partner</span>')}
-      <ul class="choose">{choose}</ul>
+      {bento()}
     </div>
   </section>
 
@@ -655,7 +718,7 @@ def form():
               <input id="{id_}" name="{name}" type="{typ}"{f' autocomplete="{ac}"' if ac else ""}{f' placeholder="{ph}"' if ph else ""}{" required" if req else ""}{f' aria-describedby="{id_}-err"' if err else ""}>
               {f'<span class="error" id="{id_}-err">{err}</span>' if err else ""}
             </div>'''
-    return f'''<div class="form-card reveal">
+    return f'''<div class="form-card reveal" id="enquiry">
         <h2>Tell us about your project</h2>
         <p class="form-card__intro">Fill out the form and our team will get back to you as soon as possible. Fields marked * are required.</p>
         <form name="contact" method="POST" action="thank-you.html" data-netlify="true" netlify-honeypot="bot-field" data-contact-form novalidate>
@@ -712,14 +775,14 @@ def contact():
     <div class="container contact-grid">
       <div class="contact-intro">
         {sec_head("Get in touch", CONTACT_H1, "Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.", "h1")}
-        <ul class="methods reveal">{contact_methods()}</ul>
+        <ul class="methods reveal" id="methods">{contact_methods()}</ul>
         <div class="reveal">{btn(I["whatsapp"] + " Chat on WhatsApp", S["whatsapp"], "whatsapp", arrow=False, ext=True)}</div>
       </div>
       {form()}
     </div>
   </section>
 
-  <section class="section section--flush">
+  <section class="section section--flush" id="map">
     <div class="container">
       <div class="map reveal">
         <iframe title="Map showing Bangkok, Thailand" src="https://www.google.com/maps?q=Bangkok,Thailand&amp;z=11&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>

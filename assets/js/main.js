@@ -62,6 +62,61 @@
     reveals.forEach(function (el) { el.classList.add("is-visible"); });
   });
 
+  /* ---------- Back to top ---------- */
+  var toTop = document.querySelector(".to-top");
+  if (toTop) {
+    var toggleTop = function () { toTop.classList.toggle("is-visible", window.scrollY > 600); };
+    window.addEventListener("scroll", toggleTop, { passive: true });
+    toggleTop();
+    toTop.addEventListener("click", function () {
+      window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+      var skip = document.querySelector(".skip-link");
+      if (skip) skip.focus({ preventScroll: true });
+    });
+  }
+
+  /* ---------- Service slideshows (crossfade, pause on hover/focus or when off-screen) ---------- */
+  document.querySelectorAll("[data-slideshow]").forEach(function (show) {
+    var slides = show.querySelectorAll(".slide");
+    var dots = show.querySelectorAll(".slide-dots button");
+    var i = 0, timer = null, hovered = false, inView = false;
+    if (slides.length < 2) return;
+    function go(n) {
+      slides[i].classList.remove("is-active"); slides[i].setAttribute("aria-hidden", "true");
+      dots[i].removeAttribute("aria-current");
+      i = (n + slides.length) % slides.length;
+      slides[i].classList.add("is-active"); slides[i].removeAttribute("aria-hidden");
+      dots[i].setAttribute("aria-current", "true");
+    }
+    function sync() {
+      clearInterval(timer); timer = null;
+      if (!reduced && inView && !hovered) timer = setInterval(function () { go(i + 1); }, 4000);
+    }
+    dots.forEach(function (d, n) { d.addEventListener("click", function () { go(n); sync(); }); });
+    show.addEventListener("mouseenter", function () { hovered = true; sync(); });
+    show.addEventListener("mouseleave", function () { hovered = false; sync(); });
+    show.addEventListener("focusin", function () { hovered = true; sync(); });
+    show.addEventListener("focusout", function () { hovered = false; sync(); });
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (es) { inView = es[0].isIntersecting; sync(); }, { threshold: 0.3 }).observe(show);
+    } else { inView = true; sync(); }
+  });
+
+  /* ---------- Video walls: play muted while on screen, pause when not ---------- */
+  document.querySelectorAll("[data-vwall]").forEach(function (wall) {
+    var vids = wall.querySelectorAll("video");
+    if (reduced || !("IntersectionObserver" in window)) {
+      vids.forEach(function (v) { v.controls = true; });
+      return;
+    }
+    new IntersectionObserver(function (es) {
+      vids.forEach(function (v) {
+        if (es[0].isIntersecting) { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
+        else v.pause();
+      });
+    }, { threshold: 0.25 }).observe(wall);
+  });
+
   /* ---------- Footer year ---------- */
   document.querySelectorAll("[data-year]").forEach(function (el) {
     el.textContent = new Date().getFullYear();

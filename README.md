@@ -14,10 +14,10 @@ The site runs on Netlify as it is, and every section maps to an Elementor sectio
 | Page | File | Sections |
 |---|---|---|
 | Home | `index.html` | 3D hero, five service cards, Why OXE (real crew photos and four principles), "Our Works" category panel (links to the filtered portfolio), featured case study, client logo wall, contact band |
-| Services | `services.html` | Five service blocks (visual, intro, what we do, deliverables, process, CTA), industries |
+| Services | `services.html` | Five service blocks (image slideshow or a wall of videos, intro, what we do, deliverables, CTA), industries we worked with |
 | Portfolio | `portfolio.html` | Category filters (All / Web Design / Social Media / Video / Photography), project cards, View More |
 | Case studies | `work/<project>.html` | One page per project: Client / Challenge / Solution / Outcome, video or gallery, services provided, next project |
-| About Us | `about.html` | Positioning, key facts, mission and vision, story, why companies choose OXE, client logo wall |
+| About Us | `about.html` | Positioning, key facts, mission and vision, story, why companies choose OXE (bento grid), client logo wall |
 | Contact | `contact.html` | Contact methods, full enquiry form, map |
 | — | `thank-you.html`, `404.html` | Form fallback and not-found pages |
 
@@ -30,6 +30,8 @@ pip install pillow        # once
 python3 src/build.py      # regenerates every page, the /work pages and sitemap.xml
 ```
 
+- **Menu.** Each top-menu item opens a full-width panel of shortcuts to that page's sections, set in `MENU` in `content.py`.
+- **Service visuals.** Each service has `slides` (images; `device:<image>` shows a laptop and phone mockup) or `videos` in `content.py`.
 - **Adding a project.** Put the images (as `.jpg`) in `assets/img/work/` and add an entry to `PROJECTS`. Videos go in `assets/video/<name>.mp4` with a `<name>-poster.jpg`. The build converts images to WebP automatically.
 - **Content rule.** Only use facts supplied by OXE. When a Challenge, Solution or Outcome isn't known, leave it as `None` and the page shows a neutral "case study coming soon" note. Don't add results, numbers or testimonials that OXE hasn't supplied.
 - **3D illustrations.** These are in `src/art.py`. All of them share the same materials (white matte, OXE blue, soft shadow), so new ones stay consistent.

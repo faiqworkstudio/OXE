@@ -18,6 +18,19 @@ SITE = {
     "social": {"facebook": "", "instagram": "", "tiktok": "", "linkedin": ""},
 }
 
+# Mega-menu: short anchor links to the sections of each page (href, label)
+MENU = {
+    "index.html": [("index.html#services", "Services"), ("index.html#why", "Why OXE"), ("index.html#work", "Our Works"),
+                   ("index.html#featured", "Case Study"), ("index.html#clients", "Clients"), ("index.html#get-in-touch", "Get in Touch")],
+    "services.html": [("services.html#web", "Web Design"), ("services.html#social", "Social Media"), ("services.html#video", "Video"),
+                      ("services.html#photo", "Photography"), ("services.html#strategy", "Strategy"), ("services.html#industries", "Industries")],
+    "portfolio.html": [("portfolio.html", "All Work"), ("portfolio.html?filter=web", "Web Design"), ("portfolio.html?filter=social", "Social Media"),
+                       ("portfolio.html?filter=video", "Video"), ("portfolio.html?filter=photo", "Photography")],
+    "about.html": [("about.html#mission", "Mission &amp; Vision"), ("about.html#story", "Our Story"), ("about.html#why-oxe", "Why OXE"),
+                   ("about.html#clients", "Clients")],
+    "contact.html": [("contact.html#enquiry", "Enquiry Form"), ("contact.html#methods", "Call &amp; Email"), ("contact.html#map", "Find Us")],
+}
+
 NAV = [("index.html", "Home"), ("services.html", "Services"), ("portfolio.html", "Portfolio"),
        ("about.html", "About Us"), ("contact.html", "Contact")]
 
@@ -29,36 +42,31 @@ HERO = {
 
 # ------------------------------------------------------------------ SERVICES
 SERVICES = [
-    dict(key="web", num="01", art="web", img="tailor-website", title="Website Design &amp; Development",
+    dict(key="web", slides=["device:tailor-website", "device:vincenzo-russo-site"], num="01", art="web", img="tailor-website", title="Website Design &amp; Development",
          short="Modern, responsive websites that look great, perform well, and convert visitors into customers.",
          intro="Modern, responsive websites that build credibility and turn visitors into enquiries, optimised for mobile devices and search engines, and easy for your team to update.",
          what=["Business websites", "Landing pages", "Mobile responsive design", "SEO foundations", "Contact forms", "Booking integrations"],
-         deliverables=["Custom website design", "Responsive build on WordPress / Elementor", "Contact &amp; booking forms", "SEO-friendly structure", "Google Analytics set-up", "Launch support"],
-         process=["Discovery", "Design", "Build", "Launch"]),
-    dict(key="social", num="02", art="social", img="haji-strawberry", title="Social Media Marketing",
+         deliverables=["Custom website design", "Responsive build on WordPress / Elementor", "Contact &amp; booking forms", "SEO-friendly structure", "Google Analytics set-up", "Launch support"]),
+    dict(key="social", slides=["haji-strawberry", "gaia-huge", "dh-honey-bbq", "haji-made-with-love", "gaiatribe-day", "wearable-breathing"], num="02", art="social", img="haji-strawberry", title="Social Media Marketing",
          short="Strategic campaigns that increase visibility, engage audiences, and drive business growth.",
          intro="Strategic social media that keeps your brand visible and relevant across Facebook, Instagram, TikTok and LinkedIn, from content planning to publishing.",
          what=["Content creation", "Social media strategy", "Monthly management", "Photography", "Short-form videos"],
-         deliverables=["Content strategy &amp; calendar", "Designed posts &amp; stories", "Short-form video", "Photography", "Meta advertising", "Monthly management &amp; reporting"],
-         process=["Strategy", "Content plan", "Create", "Publish &amp; review"]),
-    dict(key="video", num="03", art="video", img="bts-video-2", title="Video Production",
+         deliverables=["Content strategy &amp; calendar", "Designed posts &amp; stories", "Short-form video", "Photography", "Meta advertising", "Monthly management &amp; reporting"]),
+    dict(key="video", videos=[("rockers-supercars", "Rockers Supercars"), ("xiaomi-redmi-watch", "Xiaomi"), ("wine-connection", "Wine Connection"), ("haji-cafe", "Haji Café")], num="03", art="video", img="bts-video-2", title="Video Production",
          short="Engaging videos that tell your story and bring your brand to life, from commercials to social media content.",
          intro="High-quality video that captures attention and tells your story, managed end to end: concept, storyboard, filming, editing and colour grading.",
          what=["Promotional videos", "Product videos", "Brand storytelling", "Event coverage", "Corporate videos"],
-         deliverables=["Creative concept &amp; storyboard", "Filming (incl. drone where needed)", "Editing &amp; motion graphics", "Colour grading", "Cut-downs for social media"],
-         process=["Concept", "Pre-production", "Filming", "Post-production"]),
-    dict(key="photo", num="04", art="photo", img="cake-strawberry-wide", title="Photography",
+         deliverables=["Creative concept &amp; storyboard", "Filming (incl. drone where needed)", "Editing &amp; motion graphics", "Colour grading", "Cut-downs for social media"]),
+    dict(key="photo", slides=["cake-strawberry-wide", "wirever-packaging", "dh-table", "shoot-1", "wirever-lifestyle", "cake-chocolate"], num="04", art="photo", img="cake-strawberry-wide", title="Photography",
          short="High-quality photography for brands, products, events, and more.",
          intro="Commercial photography that makes your products, food, spaces and people look their best across your website, social media and print.",
          what=["Product photography", "Food &amp; beverage", "Events", "Real estate &amp; interiors", "Lifestyle &amp; portraits"],
-         deliverables=["Shot list &amp; styling plan", "On-location or studio shoot", "Professional retouching", "Web- and social-ready files"],
-         process=["Brief", "Plan &amp; style", "Shoot", "Retouch &amp; deliver"]),
-    dict(key="strategy", num="05", art="strategy", img="social-insights", title="Digital Strategy",
+         deliverables=["Shot list &amp; styling plan", "On-location or studio shoot", "Professional retouching", "Web- and social-ready files"]),
+    dict(key="strategy", slides=["social-insights", "influencer-talent", "event-stage"], num="05", art="strategy", img="social-insights", title="Digital Strategy",
          short="Customised marketing plans that combine creativity, data, and industry insights for measurable growth.",
          intro="Customised marketing plans that combine creativity, data and industry insight, including advertising, influencer marketing, SEO and campaign management.",
          what=["Marketing strategy", "Advertising (Meta)", "Influencer &amp; talent sourcing", "SEO", "Press releases &amp; blogging"],
-         deliverables=["Marketing plan &amp; channel mix", "Campaign set-up &amp; optimisation", "Talent &amp; influencer coordination", "Performance reporting"],
-         process=["Audit", "Plan", "Launch", "Optimise"]),
+         deliverables=["Marketing plan &amp; channel mix", "Campaign set-up &amp; optimisation", "Talent &amp; influencer coordination", "Performance reporting"]),
 ]
 
 INDUSTRIES = [("suit", "Tailors"), ("gem2", "Jewelry"), ("dish", "Restaurants"), ("building", "Hospitality"),
