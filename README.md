@@ -1,85 +1,80 @@
-# OXE Marketing — Website Design
+# OXE Marketing — Website
 
-The website design for **OXE Marketing Thailand**, a multicultural marketing agency in Bangkok.
-It follows the *OXE websites guidelines* brief and the *What is OXE — Overall Guide* content document.
-The layout follows the client's mockup. Section patterns (the work ticker, numbered process, FAQ accordion and pill buttons) are adapted from asiamediastudio.com, the main reference, using OXE's blue and white.
+The website for **OXE Marketing**, a multicultural digital marketing agency in Bangkok.
 
-It is a fast static site: plain HTML, CSS and a small amount of JavaScript. It has no build step, so it can go live on Netlify as it is.
-It also serves as the pixel reference for the planned WordPress + Elementor build.
+It is a fast static site: HTML, one CSS file and a small script, with no framework. The look is modern editorial with soft 3D:
+- white and very light blue backgrounds, with OXE blue as the accent;
+- Poppins for headings and Inter for body text;
+- device mockups and a set of 3D illustrations built in CSS and SVG, all sharing one lighting style.
+
+The site runs on Netlify as it is, and every section maps to an Elementor section for the planned WordPress build.
 
 ## Pages
 
-| Page | File | Contents |
+| Page | File | Sections |
 |---|---|---|
-| Home | `index.html` | Hero, services overview, Why OXE, auto-scrolling "Selected work" strip, featured case study (tailor website), CTA |
-| Services | `services.html` | Website Design, Video Production, Social Media Marketing (each with its "Include" list), Photography, Digital Strategy and Branding, industries, a five-step process, FAQ |
-| Portfolio | `portfolio.html` | Category filter, project cards plus "View More Projects", and a pop-up with Client / Challenge / Solution / Outcome, photos or a playable video, and the services provided |
-| About Us | `about.html` | Story, stats, mission & vision, values, brands we've worked with |
-| Contact | `contact.html` | Contact form, phone, email, WhatsApp button, Google Map, FAQ |
-| — | `thank-you.html`, `404.html` | Form fallback page and not-found page |
+| Home | `index.html` | 3D hero, five service cards, Why OXE (real crew photos and four principles), featured case study plus three projects, contact band |
+| Services | `services.html` | Five service blocks (visual, intro, what we do, deliverables, process, CTA), industries |
+| Portfolio | `portfolio.html` | Category filters (All / Web Design / Social Media / Video / Photography), project cards, View More |
+| Case studies | `work/<project>.html` | One page per project: Client / Challenge / Solution / Outcome, video or gallery, services provided, next project |
+| About Us | `about.html` | Positioning, key facts, mission and vision, story, why companies choose OXE, client logos |
+| Contact | `contact.html` | Contact methods, full enquiry form, map |
+| — | `thank-you.html`, `404.html` | Form fallback and not-found pages |
 
-## Brief checklist
+## Editing content
 
-- **Branding:** OXE logo (taken from the reference-work PDF), light blue & white theme, Poppins + Inter fonts, consistent spacing scale (see the `:root` tokens in `assets/css/style.css`)
-- **Home:** hero ✔ services overview ✔ Why OXE ✔ featured case study ✔ CTA ✔
-- **Services:** Website Design ✔ Video Production ✔ Social Media Marketing ✔
-- **Portfolio:** filter by category ✔ project cards ✔ Client / Challenge / Solution / Outcome ✔
-- **Contact:** form ✔ WhatsApp button (on the page, plus a floating button on every page) ✔ email ✔ phone ✔ Google Map ✔
-- **Technical:** mobile responsive ✔ fast loading (about 1.3 MB of images, lazy-loaded) ✔ basic SEO (titles, meta descriptions, canonical, Open Graph, `sitemap.xml`, `robots.txt`) ✔ SSL (automatic on Netlify) ✔ Google Analytics ready (GA4 snippet commented out in every `<head>`) ✔
+All text, services and projects live in **`src/content.py`**. The page templates are in `src/build.py`. After editing, rebuild with:
 
-## Put it live on Netlify
+```bash
+pip install pillow        # once
+python3 src/build.py      # regenerates every page, the /work pages and sitemap.xml
+```
 
-**Option A: connect the GitHub repository (recommended; redeploys on every push)**
-
-1. Sign in at <https://app.netlify.com> and choose **Add new site → Import an existing project → GitHub**.
-2. Pick the `faiqworkstudio/OXE` repository and the branch you want to publish.
-3. Leave **Build command** empty and set **Publish directory** to `.`, because `netlify.toml` already sets this. Then click **Deploy**.
-4. Under **Domain management**, add `oxemarketingth.com`. Netlify issues the free SSL certificate automatically.
-
-**Option B: drag and drop.** Download the repository as a ZIP, unzip it, and drag the folder onto <https://app.netlify.com/drop>.
-
-### Contact form (Netlify Forms)
-
-The form is already set up for Netlify Forms (`data-netlify="true"`, with a honeypot to block spam).
-After the first deploy:
-
-- Go to **Site configuration → Forms** and enable form detection if Netlify asks you to, then redeploy once.
-- Submissions appear under **Forms → contact**. To have them emailed to the team, open **Forms → Form notifications → Add notification → Email** and enter `Sales@oxemarketingth.com`.
-
-If the site is opened outside Netlify, for example directly from disk, the form falls back to opening the visitor's email app or WhatsApp.
+- **Adding a project.** Put the images (as `.jpg`) in `assets/img/work/` and add an entry to `PROJECTS`. Videos go in `assets/video/<name>.mp4` with a `<name>-poster.jpg`. The build converts images to WebP automatically.
+- **Content rule.** Only use facts supplied by OXE. When a Challenge, Solution or Outcome isn't known, leave it as `None` and the page shows a neutral "case study coming soon" note. Don't add results, numbers or testimonials that OXE hasn't supplied.
+- **3D illustrations.** These are in `src/art.py`. All of them share the same materials (white matte, OXE blue, soft shadow), so new ones stay consistent.
 
 ## Still to do before launch
 
-- Confirm the client names on the portfolio cards (for example Wine Connection, Haji Café, DH Foods) and the FAQ answers (prices, timelines).
-- To add a project, put its photos in `assets/img/work/` and add an entry with its Client / Challenge / Solution / Outcome.
-- Videos live in `assets/video/` (web-compressed H.264 with a poster frame in `assets/img/work/*-poster.jpg`). To add one, drop the MP4 there and give the project a `video` name.
-- Add the real social media links in the footer. They currently point to `#`.
-- Add the GA4 measurement ID: uncomment the snippet in each page's `<head>` and replace `G-XXXXXXXXXX`.
-- If OXE has a street address, update the map `src` on `contact.html`. It currently centres on Bangkok.
-- Confirm the budget ranges in the contact form and the "20+ brands" figure.
+- [ ] Social media profile URLs: `SITE["social"]` in `content.py`. The icons link to `#` until these are filled in.
+- [ ] Screenshots of the Anthony Bespoke Tailor website. That card currently shows a branded placeholder.
+- [ ] Written case studies for Haji Café, Dh Foods, Gaia Tribe, Wirever, Wine Connection, event coverage and the corporate video. These currently show real media plus a "coming soon" note.
+- [ ] Confirm that the OPPO and Icy Lemonade card images belong to those campaigns.
+- [ ] Confirm the budget ranges in the contact form (`BUDGETS`).
+- [ ] Add the GA4 measurement ID: uncomment the snippet in `head()` in `build.py`.
+- [ ] If OXE has a street address, update the map on the contact page.
 
-## Moving to WordPress + Elementor
+## Put it live on Netlify
 
-The brief asks for a WordPress + Elementor site that can be edited without coding. Each section of this design maps directly to an Elementor section:
+1. In Netlify, choose **Add new site → Import an existing project → GitHub** and pick this repository and branch. Leave the build command empty and set the publish directory to `.` (`netlify.toml` already sets this).
+2. Add the custom domain `oxemarketingth.com` under **Domain management**. SSL is issued automatically.
+3. **Forms → contact.** Add an email notification to `Sales@oxemarketingth.com`.
 
-- **Global settings:** in *Site Settings → Global Colors*, add Primary `#0B47A8`, Secondary `#2F80ED`, Accent `#3EC1E0`, Light `#E6F4FD` and Text `#0F1B2D`. In *Global Fonts*, set Poppins for headings and Inter for text.
-- **Header and footer:** Theme Builder → Header / Footer.
-- **Service cards, Why OXE items and industries:** Icon Box widgets in a 3-column container.
-- **Portfolio:** a *Portfolio* custom post type. Use ACF fields for Client, Challenge, Solution, Outcome and Services, then a Loop Grid with taxonomy filter set to category.
-- **Contact form:** Elementor Pro *Form* widget, with the same fields and options as the form here.
-- **Floating WhatsApp button:** a plugin such as *Click to Chat*, with the number set to `66824480050`.
-- **Hosting:** SSL via the host or Let's Encrypt, Rank Math or Yoast for SEO, Site Kit for Google Analytics.
+`netlify.toml` caches images and video for a week. CSS and JS are revalidated on every visit and are linked with a `?v=` content hash, so a new deploy never shows new pages with an old stylesheet.
 
-## Project structure
+## Quality checklist
 
-```
-index.html  services.html  portfolio.html  about.html  contact.html
-thank-you.html  404.html  netlify.toml  robots.txt  sitemap.xml
-assets/
-  css/style.css      design tokens, components, responsive rules
-  js/main.js         mobile menu, scroll reveal, portfolio filter & pop-up, form
-  img/oxe-logo.png   logo (transparent PNG)
-  img/work/          portfolio and section images
-```
+- **Responsive:** tested at 375, 390, 768, 1024 and 1440px with no horizontal scrolling.
+- **Accessibility:**
+  - semantic landmarks, one `h1` per page, and a skip link;
+  - visible focus states and keyboard-accessible menu and filters (Esc closes the menu);
+  - labelled form fields with error messages;
+  - `prefers-reduced-motion` respected.
+- **Performance:**
+  - WebP images, lazy-loaded below the fold;
+  - no JavaScript framework; one small deferred script;
+  - 3D built in CSS and SVG, with no WebGL.
+- **SEO:**
+  - unique titles and descriptions, canonical URLs and Open Graph;
+  - `ProfessionalService` and `BreadcrumbList` structured data;
+  - `sitemap.xml` and `robots.txt`.
 
-To preview locally, run `python3 -m http.server` in this folder and open <http://localhost:8000>.
+## WordPress / Elementor mapping
+
+- **Global colours:** Navy `#0F2B50`, Blue `#1F6FD1`, Light `#F1F6FD`, Text `#22324A`, Muted `#5B6B82`.
+- **Global fonts:** Poppins (headings), Inter (body).
+- **Header and footer:** Theme Builder.
+- **Hero:** a two-column container. The 3D scene can be exported as a single WebP or SVG image, or rebuilt as layered images.
+- **Service cards, principles and "why choose" items:** Icon Box / Image Box widgets. The 3D icons are standalone SVGs in `src/art.py`.
+- **Portfolio and case studies:** a *Portfolio* custom post type with ACF fields for Client, Category, Summary, Challenge, Solution, Outcome, Services and Gallery. Use a Loop Grid with a taxonomy filter and a single-post template.
+- **Contact:** Elementor Pro Form with the same fields. For WhatsApp, use *Click to Chat* set to `66824480050`.

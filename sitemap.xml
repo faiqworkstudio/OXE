@@ -1,8 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://www.oxemarketingth.com/</loc><priority>1.0</priority></url>
-  <url><loc>https://www.oxemarketingth.com/services.html</loc><priority>0.9</priority></url>
-  <url><loc>https://www.oxemarketingth.com/portfolio.html</loc><priority>0.9</priority></url>
-  <url><loc>https://www.oxemarketingth.com/about.html</loc><priority>0.7</priority></url>
-  <url><loc>https://www.oxemarketingth.com/contact.html</loc><priority>0.8</priority></url>
+  <url><loc>https://www.oxemarketingth.com/</loc></url>
+  <url><loc>https://www.oxemarketingth.com/services</loc></url>
+  <url><loc>https://www.oxemarketingth.com/portfolio</loc></url>
+  <url><loc>https://www.oxemarketingth.com/about</loc></url>
+  <url><loc>https://www.oxemarketingth.com/contact</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/tailor-website</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/xiaomi-redmi-watch</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/rockers-supercars</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/vincenzo-russo</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/haji-cafe</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/oppo</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/icy-lemonade</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/stratton</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/anthony-bespoke-tailor</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/dh-foods</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/gaia-tribe</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/wirever</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/wine-connection</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/event-coverage</loc></url>
+  <url><loc>https://www.oxemarketingth.com/work/corporate-video</loc></url>
 </urlset>
