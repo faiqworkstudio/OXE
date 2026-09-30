@@ -248,12 +248,17 @@ def contact_band():
     <div class="container">
       <div class="contact-band__inner reveal">
         <div class="contact-band__copy">
-          {eyebrow("Get in touch")}
+          {book_pill()}
           <h2>Let's create something <span class="hl">great together</span></h2>
           <p>Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.</p>
           {btn("Book a Consultation", "contact.html")}
         </div>
-        {contact_buttons("cbtns--band")}
+        <div class="contact-band__card">
+          <p class="contact-band__label">Talk to us directly</p>
+          {contact_buttons("cbtns--band")}
+          <p class="contact-loc">{I["pin2"]} {S["city"]}</p>
+        </div>
+        {badge("badge--band")}
       </div>
     </div>
   </section>
@@ -426,7 +431,7 @@ def works_cards():
 
 
 def principle_list(items):
-    return "".join(f'<li><span class="ico">{I[i]}</span><div><h3>{t}</h3><p>{d}</p></div></li>' for i, t, d in items)
+    return "".join(f'<li><span class="principles__ico">{I[i]}</span><h3>{t}</h3><p>{d}</p></li>' for i, t, d in items)
 
 
 # ------------------------------------------------------------------ HOME
@@ -442,9 +447,9 @@ def org_schema():
 HERO_LOGOS = [("xiaomi", "Xiaomi"), ("oppo", "OPPO"), ("netflix", "Netflix"), ("rockers", "Rockers"), ("michael-tailors", "Michael Tailors")]
 
 
-def badge():
-    """Diamond badge with circular text (hero corner)."""
-    return '''<div class="badge" aria-hidden="true">
+def badge(cls=""):
+    """Diamond badge with circular text (hero corner, why panel, contact band)."""
+    return f'''<div class="badge {cls}" aria-hidden="true">
           <svg viewBox="0 0 200 200">
             <defs><path id="badge-ring" d="M100,100 m-62,0 a62,62 0 1,1 124,0 a62,62 0 1,1 -124,0"/></defs>
             <circle cx="100" cy="100" r="80" fill="#fff"/>
@@ -456,12 +461,18 @@ def badge():
 
 def home():
     cards = "".join(f'''
-        <a class="svc-card reveal" href="services.html#{s["key"]}">
-          <div class="svc-card__top"><span class="num">{s["num"]}</span><span class="svc-card__art">{ART[s["art"]]}</span></div>
+        <a class="scard reveal" href="services.html#{s["key"]}">
+          <span class="scard__art">{ART[s["art"]]}</span>
           <h3>{s["title"]}</h3>
           <p>{s["short"]}</p>
-          <span class="svc-card__go">Learn more {ARR}</span>
+          <span class="scard__go" aria-hidden="true">{ARR}</span>
         </a>''' for s in C.SERVICES)
+    cards += f'''
+        <a class="scard scard--cta reveal" href="contact.html">
+          <span class="scard__eyebrow">Not sure where to start?</span>
+          <h3>Tell us about your business and we'll suggest the <span class="hl">right mix</span></h3>
+          <span class="scard__go" aria-hidden="true">{ARR}</span>
+        </a>'''
     return head("OXE Marketing | Digital Marketing Agency in Bangkok",
                 "Multicultural digital marketing agency in Bangkok: website design, social media marketing, video production, photography and digital strategy.",
                 "index.html", schema=org_schema()) + f'''
@@ -497,22 +508,25 @@ def home():
     <div class="container">
       <div class="sec-row">
         {sec_head("What we do", 'Our <span class="hl">Services</span>', "We offer a full range of digital marketing services to help your brand grow, engage your audience, and achieve real results.")}
-        <a class="link-arrow reveal" href="services.html">All services {ARR}</a>
+        <div class="reveal">{btn("All Services", "services.html")}</div>
       </div>
-      <div class="svc-cards">{cards}
+      <div class="scards">{cards}
       </div>
     </div>
   </section>
 
   <section class="section why" id="why">
-    <div class="container why__inner">
-      <div class="why__visual reveal">
-        <figure class="why__photo">{img("bts-video-1", "The OXE Marketing crew filming a corporate interview in Bangkok")}</figure>
-        <figure class="why__photo2">{img("about-team", "Laptop and camera set up in a Bangkok studio")}</figure>
-      </div>
-      <div class="why__copy">
-        {sec_head("Why OXE", C.WHY["title"], C.WHY["text"])}
-        <ul class="principles reveal">{principle_list(C.WHY["principles"])}</ul>
+    <div class="container">
+      <div class="why-panel">
+        <div class="why-panel__media reveal">
+          <figure class="why-panel__photo">{img("bts-video-1", "The OXE Marketing crew filming a corporate interview in Bangkok")}</figure>
+          <figure class="why-panel__photo why-panel__photo--sm">{img("bts-video-2", "OXE Marketing crew on a studio shoot")}</figure>
+        </div>
+        <div class="why-panel__copy">
+          {sec_head("Why OXE", C.WHY["title"], C.WHY["text"])}
+          <ul class="principles reveal">{principle_list(C.WHY["principles"])}</ul>
+          <div class="reveal">{btn("More About OXE", "about.html")}</div>
+        </div>
       </div>
     </div>
   </section>
