@@ -430,20 +430,35 @@ def clients_marquee():
   </section>'''
 
 
-def works_cards():
-    """Home "Our Works": one card per portfolio category, linking to the filtered portfolio."""
-    out = ""
+WORK_VIDEO = {"video": "xiaomi-redmi-watch"}
+
+
+def works_list():
+    """Home "Our Works": large category rows + one media frame that crossfades on hover/focus."""
+    rows, stage = "", ""
     for i, (key, title, cover) in enumerate(C.WORK_CATEGORIES):
-        n = sum(key in p["cat"].split() for p in C.PROJECTS)
-        out += f'''
-          <a class="wcard reveal" style="--d:{i * 90}ms" href="portfolio.html?filter={key}" aria-label="{plain(title)}: view {n} projects">
-            <div class="wcard__head"><h3>{title}</h3><span class="wcard__count"><span>{n:02d}</span><span>{n:02d}</span></span></div>
-            <div class="wcard__stack">
-              <div class="wcard__img">{img(cover, "")}<span class="wcard__shine" aria-hidden="true"></span></div>
-              <span class="wcard__notch" aria-hidden="true"><span class="wcard__btn">{ARR}</span></span>
-            </div>
-          </a>'''
-    return out
+        ps = [p for p in C.PROJECTS if key in p["cat"].split()]
+        clients = list(dict.fromkeys(plain(p["client"]) for p in ps))[:3]
+        on = " is-active" if i == 0 else ""
+        rows += f'''
+            <li><a class="wrow{on}" href="portfolio.html?filter={key}" data-i="{i}">
+              <span class="wrow__count">{len(ps):02d}</span>
+              <span class="wrow__title">{title}</span>
+              <span class="wrow__clients">{" · ".join(clients)}</span>
+              <span class="wrow__go" aria-hidden="true">{ARR}</span>
+            </a></li>'''
+        if key in WORK_VIDEO:
+            v = WORK_VIDEO[key]
+            webp(v + "-poster")
+            media = f'<video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{v}-poster.webp"><source src="assets/video/{v}.mp4" type="video/mp4"></video>'
+        else:
+            media = img(cover, "")
+        stage += f'<figure class="wstage{on}" data-i="{i}" aria-hidden="true">{media}<figcaption>{title}</figcaption></figure>'
+    return f'''<div class="wlist" data-wlist>
+          <ol class="wlist__rows">{rows}
+          </ol>
+          <div class="wlist__stage">{stage}</div>
+        </div>'''
 
 
 def principle_list(items):
@@ -556,8 +571,7 @@ def home():
             {btn("View Portfolio", "portfolio.html")}
           </div>
         </div>
-        <div class="works__grid">{works_cards()}
-        </div>
+        {works_list()}
       </div>
     </div>
   </section>
@@ -634,26 +648,23 @@ def service_media(s):
 def services():
     jump = "".join(f'<a href="#{s["key"]}">{s["title"]}</a>' for s in C.SERVICES)
     blocks = ""
+    tones = ["lav", "white", "lav", "white", "navy"]
     for n, s in enumerate(C.SERVICES):
-        what = "".join(f"<li>{I['check']}{x}</li>" for x in s["what"])
+        what = "".join(f"<li>{I['check']}<span>{x}</span></li>" for x in s["what"])
         blocks += f'''
-      <article class="svc-block{" svc-block--rev" if n % 2 else ""}" id="{s["key"]}">
-        <div class="svc-block__visual reveal">
-          {service_media(s)}
-        </div>
-        <div class="svc-block__body reveal">
-          <div class="svc-block__head">
-            <span class="svc-block__mark" aria-hidden="true">{ART[s["art"]]}</span>
-            <h2>{s["title"]}</h2>
-          </div>
-          <p class="lead">{s["intro"]}</p>
-          <h3 class="svc-block__label">What we do</h3>
-          <ul class="svc-block__list">{what}</ul>
+      <article class="scard2 scard2--{tones[n % len(tones)]}" id="{s["key"]}" style="--i:{n}">
+        <div class="scard2__body">
+          <span class="scard2__mark" aria-hidden="true">{ART[s["art"]]}</span>
+          <h2>{s["title"]}</h2>
+          <p class="scard2__intro">{s["intro"]}</p>
+          <p class="scard2__label">What we do</p>
+          <ul class="scard2__list">{what}</ul>
           <div class="btn-row">
             {btn("Book a Consultation", "contact.html?service=" + s["key"])}
-            {btn("See related work", "portfolio.html", "text")}
+            <a class="link-arrow" href="portfolio.html">See related work {ARR}</a>
           </div>
         </div>
+        <div class="scard2__media">{service_media(s)}</div>
       </article>'''
     ind = "".join(f'<li class="ind-tile reveal">{img(im, t + " industry")}<span>{t}</span></li>' for t, im in C.INDUSTRIES)
     return head("Services | Website Design, Video & Social Media in Bangkok | OXE Marketing",
@@ -662,8 +673,13 @@ def services():
 {page_hero("Our services", 'Turn your ideas into <span class="hl">impact</span>', "Strategic marketing, creative content and measurable results: five services, one team, planned around your goals.",
            after=f'<nav class="jump" aria-label="Services on this page">{jump}</nav>', photos=("haji-strawberry", "shoot-1"))}
 
-  <section class="section section--flush">
-    <div class="container">{blocks}
+  <section class="section svc-stack-sec">
+    <div class="container">
+      <div class="sec-row">
+        {sec_head("What we do", 'Five services, <span class="hl">one team</span>', "Everything your brand needs to be seen, trusted and chosen online, planned together so it works together.")}
+      </div>
+      <div class="svc-stack">{blocks}
+      </div>
     </div>
   </section>
 
@@ -721,8 +737,6 @@ def portfolio():
     cards = "".join(pcard(p, n, extra=n >= 7, span=first[n] if n < 7 else None) for n, p in enumerate(grid_projects))
     f = PBY[SPOTLIGHT]
     webp(f["video"] + "-poster")
-    thumbs = "".join(f'<li>{img(g, "")}</li>' for g in f["gallery"][:4])
-    tags = "".join(f"<li>{t}</li>" for t in f["tags"])
     disciplines = len(C.FILTERS) - 1
     stats = f'<ul class="pstats"><li><b>{len(C.PROJECTS)}</b>projects</li><li><b>{disciplines}</b>disciplines</li><li><b>20+</b>brands</li></ul>'
     return head("Portfolio | OXE Marketing Bangkok",
@@ -733,17 +747,26 @@ def portfolio():
   <section class="section spot-sec">
     <div class="container">
       <article class="spot reveal">
-        <a class="spot__media" href="work/{f["id"]}.html" aria-label="{plain(f["client"])} case study">
-          <video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{f["video"]}-poster.webp"><source src="assets/video/{f["video"]}.mp4" type="video/mp4"></video>
-          <span class="pc__go" aria-hidden="true">{ARR}</span>
-        </a>
-        <div class="spot__body">
-          <span class="spot__pill"><i aria-hidden="true"></i>Featured project</span>
-          <h2>{f["client"]}<span class="hl"> · {f["title"]}</span></h2>
-          <p>{f["summary"]}</p>
-          <ul class="tags">{tags}</ul>
-          <ul class="spot__thumbs" aria-hidden="true">{thumbs}</ul>
-          {btn("View Case Study", "work/" + f["id"] + ".html")}
+        <header class="spot__bar">
+          <span>Featured project</span>
+          <span class="spot__rule" aria-hidden="true"></span>
+          <span>{f["category"]}</span>
+        </header>
+        <div class="spot__grid">
+          <div class="spot__copy">
+            <p class="spot__client">{f["client"]}</p>
+            <h2><span class="hl">{f["title"]}</span></h2>
+            <p>{f["summary"]}</p>
+            <dl class="spot__facts">
+              <div><dt>Client</dt><dd>{f["client"]}</dd></div>
+              <div><dt>Service</dt><dd>{f["category"]}</dd></div>
+              <div><dt>Scope</dt><dd>Concept to final edit</dd></div>
+            </dl>
+            <a class="link-arrow" href="work/{f["id"]}.html">View case study {ARR}</a>
+          </div>
+          <a class="spot__media" href="work/{f["id"]}.html" aria-label="{plain(f["client"])} case study">
+            <video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{f["video"]}-poster.webp"><source src="assets/video/{f["video"]}.mp4" type="video/mp4"></video>
+          </a>
         </div>
       </article>
     </div>

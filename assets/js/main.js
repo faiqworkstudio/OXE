@@ -249,6 +249,31 @@
     tick(); setInterval(tick, 30000);
   }
 
+  /* ---------- Home "Our Works": rows drive the media frame ---------- */
+  document.querySelectorAll("[data-wlist]").forEach(function (list) {
+    var rows = list.querySelectorAll(".wrow");
+    var frames = list.querySelectorAll(".wstage");
+    var fine = window.matchMedia("(hover: hover)");
+    function activate(i) {
+      rows.forEach(function (r) { r.classList.toggle("is-active", r.getAttribute("data-i") === String(i)); });
+      frames.forEach(function (f) {
+        var on = f.getAttribute("data-i") === String(i);
+        f.classList.toggle("is-active", on);
+        var v = f.querySelector("video");
+        if (v) { if (on && !reduced) { v.muted = true; var pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); } else v.pause(); }
+      });
+    }
+    rows.forEach(function (r) {
+      var i = r.getAttribute("data-i");
+      r.addEventListener("mouseenter", function () { if (fine.matches) activate(i); });
+      r.addEventListener("focus", function () { activate(i); });
+      // touch: first tap previews, second tap opens the portfolio
+      r.addEventListener("click", function (e) {
+        if (!fine.matches && !r.classList.contains("is-active")) { e.preventDefault(); activate(i); }
+      });
+    });
+  });
+
   /* ---------- Footer year ---------- */
   document.querySelectorAll("[data-year]").forEach(function (el) {
     el.textContent = new Date().getFullYear();
