@@ -441,9 +441,6 @@ def org_schema():
 HERO_LOGOS = [("xiaomi", "Xiaomi"), ("oppo", "OPPO"), ("netflix", "Netflix"), ("rockers", "Rockers"), ("michael-tailors", "Michael Tailors")]
 
 
-HERO_STRIP = [("wirever", "Wirever"), ("the-continent", "The Continent"), ("minor-international", "Minor International"), ("dh-foods", "Dh Foods")]
-
-
 def hero_visual():
     ppl = "".join(f'<li><img src="assets/img/clients/{f}.webp" alt=""><small>{n}</small></li>' for f, n in HERO_LOGOS)
     return f'''<div class="hv" aria-hidden="true">
@@ -484,9 +481,6 @@ def home():
         </div>
       </div>
       {hero_visual()}
-    </div>
-    <div class="container">
-      <ul class="hero__brands" aria-label="Some of our clients">{"".join(f'<li><img src="assets/img/clients/{f}.webp" alt="{n}" loading="lazy"></li>' for f, n in HERO_STRIP)}</ul>
     </div>
   </section>
 
