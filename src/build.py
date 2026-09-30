@@ -444,8 +444,7 @@ def works_list():
             <li><a class="wrow{on}" href="portfolio.html?filter={key}" data-i="{i}">
               <span class="wrow__count">{len(ps):02d}</span>
               <span class="wrow__title">{title}</span>
-              <span class="wrow__clients">{" · ".join(clients)}</span>
-              <span class="wrow__bar" aria-hidden="true"></span>
+              <span class="wrow__clients"><span>{" · ".join(clients)}</span></span>
               <span class="wrow__go" aria-hidden="true">{ARR}</span>
             </a></li>'''
         if key in WORK_VIDEO:
@@ -492,19 +491,21 @@ def badge(cls=""):
 
 
 def home():
-    cards = "".join(f'''
-        <a class="scard reveal" href="services.html#{s["key"]}">
-          <span class="scard__art">{ART[s["art"]]}</span>
-          <h3>{s["title"]}</h3>
-          <p>{s["short"]}</p>
-          <span class="scard__go" aria-hidden="true">{ARR}</span>
-        </a>''' for s in C.SERVICES)
-    cards += f'''
-        <a class="scard scard--cta reveal" href="contact.html">
-          <span class="scard__eyebrow">Not sure where to start?</span>
-          <h3>Tell us about your business and we'll suggest the <span class="hl">right mix</span></h3>
-          <span class="scard__go" aria-hidden="true">{ARR}</span>
-        </a>'''
+    tones = ["lav", "white", "lav", "white", "navy"]
+    cards = ""
+    for n, sv in enumerate(C.SERVICES):
+        what = "".join(f"<li>{I['check']}<span>{x}</span></li>" for x in sv["what"][:4])
+        cards += f'''
+        <article class="scard2 scard2--{tones[n % len(tones)]}" style="--i:{n}">
+          <div class="scard2__body">
+            <span class="scard2__mark" aria-hidden="true">{ART[sv["art"]]}</span>
+            <h3>{sv["title"]}</h3>
+            <p class="scard2__intro">{sv["short"]}</p>
+            <ul class="scard2__list">{what}</ul>
+            <a class="link-arrow" href="services.html#{sv["key"]}">Learn more {ARR}</a>
+          </div>
+          <a class="scard2__media" href="services.html#{sv["key"]}" tabindex="-1" aria-hidden="true">{img(sv["img"], "")}</a>
+        </article>'''
     return head("OXE Marketing | Digital Marketing Agency in Bangkok",
                 "Multicultural digital marketing agency in Bangkok: website design, social media marketing, video production, photography and digital strategy.",
                 "index.html", schema=org_schema()) + f'''
@@ -541,7 +542,7 @@ def home():
         {sec_head("What we do", 'Our <span class="hl">Services</span>', "We offer a full range of digital marketing services to help your brand grow, engage your audience, and achieve real results.")}
         <div class="reveal">{btn("All Services", "services.html")}</div>
       </div>
-      <div class="scards">{cards}
+      <div class="svc-stack">{cards}
       </div>
     </div>
   </section>
@@ -563,10 +564,10 @@ def home():
   </section>
 
   <section class="section works-sec" id="work">
-    <div class="container works-scroll" data-works-scroll>
+    <div class="container">
       <div class="works">
         <div class="works__head reveal">
-          <h2 class="works__title">Our <span class="hl">Works</span><sup>{len(C.PROJECTS):02d}</sup></h2>
+          <h2 class="works__title">Our <span class="hl">Works</span></h2>
           <p class="works__lede">Websites, campaigns and visual content we've created with brands across Thailand.</p>
           {btn("View Portfolio", "portfolio.html")}
         </div>
@@ -647,23 +648,26 @@ def service_media(s):
 def services():
     jump = "".join(f'<a href="#{s["key"]}">{s["title"]}</a>' for s in C.SERVICES)
     blocks = ""
-    tones = ["lav", "white", "lav", "white", "navy"]
     for n, s in enumerate(C.SERVICES):
-        what = "".join(f"<li>{I['check']}<span>{x}</span></li>" for x in s["what"])
+        what = "".join(f"<li>{I['check']}{x}</li>" for x in s["what"])
         blocks += f'''
-      <article class="scard2 scard2--{tones[n % len(tones)]}" id="{s["key"]}" style="--i:{n}">
-        <div class="scard2__body">
-          <span class="scard2__mark" aria-hidden="true">{ART[s["art"]]}</span>
-          <h2>{s["title"]}</h2>
-          <p class="scard2__intro">{s["intro"]}</p>
-          <p class="scard2__label">What we do</p>
-          <ul class="scard2__list">{what}</ul>
+      <article class="svc-block{" svc-block--rev" if n % 2 else ""}" id="{s["key"]}">
+        <div class="svc-block__visual reveal">
+          {service_media(s)}
+        </div>
+        <div class="svc-block__body reveal">
+          <div class="svc-block__head">
+            <span class="svc-block__mark" aria-hidden="true">{ART[s["art"]]}</span>
+            <h2>{s["title"]}</h2>
+          </div>
+          <p class="lead">{s["intro"]}</p>
+          <h3 class="svc-block__label">What we do</h3>
+          <ul class="svc-block__list">{what}</ul>
           <div class="btn-row">
             {btn("Book a Consultation", "contact.html?service=" + s["key"])}
-            <a class="link-arrow" href="portfolio.html">See related work {ARR}</a>
+            {btn("See related work", "portfolio.html", "text")}
           </div>
         </div>
-        <div class="scard2__media">{service_media(s)}</div>
       </article>'''
     ind = "".join(f'<li class="ind-tile reveal">{img(im, t + " industry")}<span>{t}</span></li>' for t, im in C.INDUSTRIES)
     return head("Services | Website Design, Video & Social Media in Bangkok | OXE Marketing",
@@ -672,13 +676,8 @@ def services():
 {page_hero("Our services", 'Turn your ideas into <span class="hl">impact</span>', "Strategic marketing, creative content and measurable results: five services, one team, planned around your goals.",
            after=f'<nav class="jump" aria-label="Services on this page">{jump}</nav>', photos=("haji-strawberry", "shoot-1"))}
 
-  <section class="section svc-stack-sec">
-    <div class="container">
-      <div class="sec-row">
-        {sec_head("What we do", 'Five services, <span class="hl">one team</span>', "Everything your brand needs to be seen, trusted and chosen online, planned together so it works together.")}
-      </div>
-      <div class="svc-stack">{blocks}
-      </div>
+  <section class="section section--flush">
+    <div class="container">{blocks}
     </div>
   </section>
 

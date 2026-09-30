@@ -142,9 +142,15 @@
   /* ---------- Scroll progress + gentle parallax (one rAF per frame) ---------- */
   var bar = document.querySelector(".scroll-progress");
   var par = reduced ? [] : Array.prototype.slice.call(document.querySelectorAll(".phero__pic, .badge, .hero__proof .hero__logos"));
+  var stackCards = Array.prototype.slice.call(document.querySelectorAll(".scard2"));
   var ticking = false;
   function frame() {
     ticking = false;
+    // stacking service cards: hide a card's floating icon once the next card slides over it
+    stackCards.forEach(function (c, k) {
+      var next = stackCards[k + 1];
+      c.classList.toggle("is-covered", !!next && next.getBoundingClientRect().top - c.getBoundingClientRect().top < 160);
+    });
     var max = document.documentElement.scrollHeight - innerHeight;
     if (bar) bar.style.setProperty("--p", max > 0 ? Math.min(1, scrollY / max) : 0);
     par.forEach(function (el, k) {
@@ -263,22 +269,6 @@
         if (v) { if (on && !reduced) { v.muted = true; var pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); } else v.pause(); }
       });
     }
-    // Desktop: the panel pins while you scroll and steps through the categories
-    var wrap = list.closest("[data-works-scroll]");
-    var pinned = window.matchMedia("(min-width: 1024px) and (prefers-reduced-motion: no-preference)");
-    var cur = 0, raf = false;
-    function onWorksScroll() {
-      raf = false;
-      if (!wrap || !pinned.matches) return;
-      var total = wrap.offsetHeight - innerHeight;
-      var prog = Math.min(1, Math.max(0, -wrap.getBoundingClientRect().top / total));
-      var n = rows.length;
-      var i = Math.min(n - 1, Math.floor(prog * n));
-      if (i !== cur) { cur = i; activate(i); }
-      var active = list.querySelector(".wrow.is-active");
-      if (active) active.style.setProperty("--seg", Math.min(1, prog * n - i).toFixed(3));
-    }
-    window.addEventListener("scroll", function () { if (!raf) { raf = true; requestAnimationFrame(onWorksScroll); } }, { passive: true });
     rows.forEach(function (r) {
       var i = r.getAttribute("data-i");
       r.addEventListener("mouseenter", function () { if (fine.matches) activate(i); });
