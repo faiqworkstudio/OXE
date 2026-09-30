@@ -263,6 +263,22 @@
         if (v) { if (on && !reduced) { v.muted = true; var pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); } else v.pause(); }
       });
     }
+    // Desktop: the panel pins while you scroll and steps through the categories
+    var wrap = list.closest("[data-works-scroll]");
+    var pinned = window.matchMedia("(min-width: 1024px) and (prefers-reduced-motion: no-preference)");
+    var cur = 0, raf = false;
+    function onWorksScroll() {
+      raf = false;
+      if (!wrap || !pinned.matches) return;
+      var total = wrap.offsetHeight - innerHeight;
+      var prog = Math.min(1, Math.max(0, -wrap.getBoundingClientRect().top / total));
+      var n = rows.length;
+      var i = Math.min(n - 1, Math.floor(prog * n));
+      if (i !== cur) { cur = i; activate(i); }
+      var active = list.querySelector(".wrow.is-active");
+      if (active) active.style.setProperty("--seg", Math.min(1, prog * n - i).toFixed(3));
+    }
+    window.addEventListener("scroll", function () { if (!raf) { raf = true; requestAnimationFrame(onWorksScroll); } }, { passive: true });
     rows.forEach(function (r) {
       var i = r.getAttribute("data-i");
       r.addEventListener("mouseenter", function () { if (fine.matches) activate(i); });
@@ -332,6 +348,11 @@
         btn.setAttribute("aria-pressed", "true");
         current = btn.getAttribute("data-filter");
         applyFilter();
+        var gtop = grid.getBoundingClientRect().top;
+        if (gtop < 0 || gtop > innerHeight * .6) {
+          var bar = document.querySelector(".pbar");
+          window.scrollTo({ top: gtop + scrollY - (bar ? bar.offsetHeight : 0) - 110, behavior: reduced ? "auto" : "smooth" });
+        }
       });
     });
     if (moreBtn) {

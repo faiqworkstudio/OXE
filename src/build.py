@@ -445,6 +445,7 @@ def works_list():
               <span class="wrow__count">{len(ps):02d}</span>
               <span class="wrow__title">{title}</span>
               <span class="wrow__clients">{" · ".join(clients)}</span>
+              <span class="wrow__bar" aria-hidden="true"></span>
               <span class="wrow__go" aria-hidden="true">{ARR}</span>
             </a></li>'''
         if key in WORK_VIDEO:
@@ -562,7 +563,7 @@ def home():
   </section>
 
   <section class="section works-sec" id="work">
-    <div class="container">
+    <div class="container works-scroll" data-works-scroll>
       <div class="works">
         <div class="works__head">
           {sec_head("Portfolio", 'Our <span class="hl">Works</span>')}
@@ -754,6 +755,7 @@ def portfolio():
         </header>
         <div class="spot__grid">
           <div class="spot__copy">
+            <img class="spot__logo" src="assets/img/clients/xiaomi.webp" alt="{plain(f["client"])} logo" width="203" height="203">
             <p class="spot__client">{f["client"]}</p>
             <h2><span class="hl">{f["title"]}</span></h2>
             <p>{f["summary"]}</p>
