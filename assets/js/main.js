@@ -56,33 +56,42 @@
     el.textContent = new Date().getFullYear();
   });
 
-  /* ---------- Portfolio filter ---------- */
+  /* ---------- Portfolio filter + "View more" ---------- */
   var filterBtns = document.querySelectorAll(".filter-btn");
   var projects = document.querySelectorAll(".project");
-  if (filterBtns.length) {
-    filterBtns.forEach(function (btn) {
-      var f = btn.getAttribute("data-filter");
-      var n = f === "all" ? projects.length
-        : Array.prototype.filter.call(projects, function (p) {
-            return p.getAttribute("data-category").split(" ").indexOf(f) > -1;
-          }).length;
-      var c = btn.querySelector(".count");
-      if (c) c.textContent = n;
+  var moreBtn = document.querySelector("[data-more]");
+  var current = "all";
+  var expanded = false;
 
-      btn.addEventListener("click", function () {
-        filterBtns.forEach(function (b) {
-          b.classList.remove("is-active");
-          b.setAttribute("aria-pressed", "false");
-        });
-        btn.classList.add("is-active");
-        btn.setAttribute("aria-pressed", "true");
-        projects.forEach(function (p) {
-          var show = f === "all" || p.getAttribute("data-category").split(" ").indexOf(f) > -1;
-          p.classList.toggle("is-hidden", !show);
-        });
+  function applyFilter() {
+    projects.forEach(function (p) {
+      var cats = p.getAttribute("data-category").split(" ");
+      var match = current === "all" || cats.indexOf(current) > -1;
+      // Extra projects stay tucked away on "All" until "View More" is pressed
+      var extraHidden = current === "all" && !expanded && p.hasAttribute("data-extra");
+      p.hidden = !match || extraHidden;
+    });
+    if (moreBtn) moreBtn.parentElement.hidden = expanded || current !== "all";
+  }
+  filterBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      filterBtns.forEach(function (b) {
+        b.classList.remove("is-active");
+        b.setAttribute("aria-pressed", "false");
       });
+      btn.classList.add("is-active");
+      btn.setAttribute("aria-pressed", "true");
+      current = btn.getAttribute("data-filter");
+      applyFilter();
+    });
+  });
+  if (moreBtn) {
+    moreBtn.addEventListener("click", function () {
+      expanded = true;
+      applyFilter();
     });
   }
+  if (projects.length) applyFilter();
 
   /* ---------- Project modal ---------- */
   var modal = document.getElementById("project-modal");
@@ -102,10 +111,14 @@
     if (!modal) return;
     modal.classList.remove("is-open");
     document.body.classList.remove("modal-open");
+    modal.querySelector("[data-modal-body]").innerHTML = ""; // stops any playing video
     if (lastFocus) lastFocus.focus();
   }
   document.querySelectorAll("[data-open-project]").forEach(function (btn) {
-    btn.addEventListener("click", function () { openModal(btn.closest(".project")); });
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      openModal(btn.closest(".project"));
+    });
   });
   if (modal) {
     modal.querySelectorAll("[data-close]").forEach(function (el) {

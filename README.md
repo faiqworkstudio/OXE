@@ -13,7 +13,7 @@ It also serves as the pixel reference for the planned WordPress + Elementor buil
 |---|---|---|
 | Home | `index.html` | Hero, client marquee, services overview, Why OXE, featured case study (Xiaomi), contact form |
 | Services | `services.html` | Website Design, Video Production, Social Media Marketing, Photography and Digital Strategy (each with the "Include" list), a four-step process, industries |
-| Portfolio | `portfolio.html` | Category filter, 8 project cards (Client / Challenge / Solution / Outcome), a details pop-up with services provided, a behind-the-scenes gallery, and "Why companies choose OXE" |
+| Portfolio | `portfolio.html` | Category filter, 9 project cards plus "View More Projects" (17 in total), and a pop-up with Client / Challenge / Solution / Outcome, photos or a playable video, and the services provided |
 | About Us | `about.html` | Story, stats, mission & vision, values |
 | Contact | `contact.html` | Contact form, phone, email, WhatsApp button, office hours, Google Map |
 | — | `thank-you.html`, `404.html` | Form fallback page and not-found page |
@@ -50,7 +50,8 @@ If the site is opened outside Netlify, for example directly from disk, the form 
 
 ## Still to do before launch
 
-- Replace the three branded placeholder cards on the Portfolio page (Anthony Bespoke Tailor, Rockers Supercars, Stratton Gems & Jewellery) with real photos from the Google Drive folders. Put the images in `assets/img/work/` and swap the placeholder `<div class="placeholder">` for an `<img>`.
+- Two portfolio cards (Anthony Bespoke Tailor, Stratton Gems & Jewellery, both behind "View More Projects") still use branded placeholders. Add their photos to `assets/img/work/` and list them in that project's `imgs`.
+- Videos live in `assets/video/` (web-compressed H.264 with a poster frame in `assets/img/work/*-poster.jpg`). To add one, drop the MP4 there and give the project a `video` name.
 - Add the real social media links in the footer. They currently point to `#`.
 - Add the GA4 measurement ID: uncomment the snippet in each page's `<head>` and replace `G-XXXXXXXXXX`.
 - If OXE has a street address, update the map `src` on `contact.html`. It currently centres on Bangkok.
