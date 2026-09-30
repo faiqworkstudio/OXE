@@ -13,7 +13,7 @@ The site runs on Netlify as it is, and every section maps to an Elementor sectio
 
 | Page | File | Sections |
 |---|---|---|
-| Home | `index.html` | 3D hero, five service cards, Why OXE (real crew photos and four principles), "Our Works" category panel (links to the filtered portfolio), animated brands slider, contact band |
+| Home | `index.html` | 3D hero, five service cards, Why OXE (real crew photos and four principles), "Our Works" category panel (links to the filtered portfolio), client logo wall, contact band |
 | Services | `services.html` | Five service blocks (image slideshow, device mockups or a wall of videos; 3D mark, intro, what we do, CTA), industries we worked with |
 | Portfolio | `portfolio.html` | Category filters (All / Web Design / Social Media / Video / Photography), project cards, View More |
 | Case studies | `work/<project>.html` | One page per project: a media viewer with every image and video of the project, Client / Challenge / Solution / Outcome, services provided, next project |

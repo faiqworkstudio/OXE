@@ -516,7 +516,7 @@ def home():
     </div>
   </section>
 
-{clients_marquee()}
+{clients_wall()}
 {contact_band()}''' + foot()
 
 
