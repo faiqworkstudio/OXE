@@ -441,12 +441,20 @@ def org_schema():
 HERO_LOGOS = [("xiaomi", "Xiaomi"), ("oppo", "OPPO"), ("netflix", "Netflix"), ("rockers", "Rockers"), ("michael-tailors", "Michael Tailors")]
 
 
+HERO_STRIP = [("wirever", "Wirever"), ("the-continent", "The Continent"), ("minor-international", "Minor International"), ("dh-foods", "Dh Foods")]
+
+
 def hero_visual():
-    return f'''<div class="hero__visual" aria-hidden="true">
-        <div class="hero__devices devices">
-          <div class="dev-laptop"><div class="dev-laptop__lid"><div class="dev-laptop__screen">{img("tailor-website", "", lazy=False)}</div></div><div class="dev-laptop__base"></div></div>
-          <div class="dev-phone"><div class="dev-phone__screen"><video class="hero__video" muted loop playsinline autoplay preload="metadata" poster="assets/img/work/xiaomi-redmi-watch-poster.webp"><source src="assets/video/xiaomi-redmi-watch.mp4" type="video/mp4"></video></div></div>
-        </div>
+    ppl = "".join(f'<li><img src="assets/img/clients/{f}.webp" alt=""><small>{n}</small></li>' for f, n in HERO_LOGOS)
+    return f'''<div class="hv" aria-hidden="true">
+        <span class="hv__blob hv__blob--a"></span>
+        <span class="hv__blob hv__blob--b"></span>
+        <svg class="hv__arrow" viewBox="0 0 200 220" fill="none"><path d="M190 20C120 -5 40 30 22 120" stroke="#0f2b50" stroke-width="5" stroke-linecap="round"/><path d="M4 96l18 28 24-22" stroke="#0f2b50" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="hv__arc" viewBox="0 0 60 300" fill="none"><path d="M10 6c40 70 44 200-4 288" stroke="#0f2b50" stroke-width="5" stroke-linecap="round"/></svg>
+        <img class="hv__person" src="assets/img/work/hero-person.png" alt="" width="678" height="1078">
+        <div class="hv__card hv__chip"><span class="hv__ico">{I["monitor"]}</span>Websites that bring enquiries</div>
+        <div class="hv__card hv__stat"><span class="hv__ico hv__ico--round">{I["camcorder"]}</span><b>Since 2020</b><span>Creating content in Bangkok</span><small>{I["check"]} 5 core services</small></div>
+        <div class="hv__card hv__clients"><b>Brands we work with</b><small>Tech, food, retail &amp; lifestyle</small><ul>{ppl}</ul></div>
       </div>'''
 
 
@@ -464,18 +472,21 @@ def home():
   <section class="hero">
     <div class="container hero__inner">
       <div class="hero__copy">
-        <h1>{C.HERO["title"]}</h1>
+        <p class="hero__tag"><b>OXE</b><em>Marketing agency in Bangkok</em></p>
+        <h1>Helping businesses build a stronger <span class="hero__mark">digital presence</span> in a connected world.</h1>
         <p class="lead">{C.HERO["text"]}</p>
-        <div class="btn-row">
+        <div class="hero__actions">
           {btn("Book a Consultation", "contact.html")}
-          {btn("View Portfolio", "portfolio.html", "outline")}
-        </div>
-        <div class="hero__trust">
-          <div class="hero__logos">{"".join(f'<img src="assets/img/clients/{f}.webp" alt="{n}" width="40" height="40">' for f, n in HERO_LOGOS)}</div>
-          <p>Trusted by <b>Xiaomi, OPPO, Netflix</b> and brands across Thailand</p>
+          <div class="hero__proof">
+            <div class="hero__logos">{"".join(f'<img src="assets/img/clients/{f}.webp" alt="{n}" width="44" height="44">' for f, n in HERO_LOGOS[:3])}<span>20+</span></div>
+            <p>Brands across Thailand<br>work with OXE</p>
+          </div>
         </div>
       </div>
       {hero_visual()}
+    </div>
+    <div class="container">
+      <ul class="hero__brands" aria-label="Some of our clients">{"".join(f'<li><img src="assets/img/clients/{f}.webp" alt="{n}" loading="lazy"></li>' for f, n in HERO_STRIP)}</ul>
     </div>
   </section>
 
