@@ -565,12 +565,10 @@ def home():
   <section class="section works-sec" id="work">
     <div class="container works-scroll" data-works-scroll>
       <div class="works">
-        <div class="works__head">
-          {sec_head("Portfolio", 'Our <span class="hl">Works</span>')}
-          <div class="works__aside reveal">
-            <p>Explore the websites, campaigns and visual content we've created in partnership with brands across Thailand.</p>
-            {btn("View Portfolio", "portfolio.html")}
-          </div>
+        <div class="works__head reveal">
+          <h2 class="works__title">Our <span class="hl">Works</span><sup>{len(C.PROJECTS):02d}</sup></h2>
+          <p class="works__lede">Websites, campaigns and visual content we've created with brands across Thailand.</p>
+          {btn("View Portfolio", "portfolio.html")}
         </div>
         {works_list()}
       </div>
