@@ -236,6 +236,30 @@ def project_card(p, h="h3"):
         </article>'''
 
 
+def clients_wall(tint=False):
+    """Logo wall: bordered grid with a feature panel in the middle."""
+    cells = ""
+    for f, name in C.CLIENTS:
+        w, h = Image.open(os.path.join(ROOT, "assets/img/clients", f + ".webp")).size
+        kind = "wide" if w / h > 1.6 else "badge"
+        cells += f'<li class="logo-cell logo-cell--{kind}"><img src="assets/img/clients/{f}.webp" alt="{plain(name) if name else ""}" width="{w}" height="{h}" loading="lazy" decoding="async"></li>'
+    # pad the grid to a multiple of 6 (and so of 2 and 3) so no cell is left open
+    cells += '<li class="logo-cell logo-cell--blank" aria-hidden="true"></li>' * ((-len(C.CLIENTS)) % 6)
+    return f'''
+  <section class="section clients-wall{" section--tint" if tint else ""}" aria-labelledby="clients-title">
+    <div class="container">
+      <ul class="logo-wall reveal">
+        <li class="logo-wall__feature">
+          {eyebrow("Clients &amp; partners")}
+          <h2 id="clients-title">Trusted by brands across <span class="hl">Thailand</span> and beyond</h2>
+          <p>From global technology names to local favourites, these are some of the businesses we've worked with.</p>
+          <a class="btn btn--navy" href="contact.html">Book a Consultation <span aria-hidden="true">»</span></a>
+        </li>{cells}
+      </ul>
+    </div>
+  </section>'''
+
+
 def principle_list(items):
     return "".join(f'<li><span class="ico">{I[i]}</span><div><h3>{t}</h3><p>{d}</p></div></li>' for i, t, d in items)
 
@@ -350,6 +374,7 @@ def home():
       </div>
     </div>
   </section>
+{clients_wall()}
 {contact_band()}''' + foot()
 
 
@@ -587,12 +612,7 @@ def about():
     </div>
   </section>
 
-  <section class="section section--tint">
-    <div class="container clients">
-      {sec_head("Clients &amp; partners", 'Some of the brands <span class="hl">we work with</span>')}
-      <figure class="clients__logos reveal">{img("client-logos", "Logos of OXE Marketing clients and partners, including Xiaomi, OPPO, Minor International, Netflix, Rockers, Stratton, Dh Foods, Wirever and The Continent")}</figure>
-    </div>
-  </section>
+{clients_wall()}
 {contact_band()}''' + foot()
 
 

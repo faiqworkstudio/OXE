@@ -226,3 +226,18 @@ PROJECTS = [
 ]
 
 FEATURED = "tailor-website"
+
+# ------------------------------------------------------------------ CLIENTS
+# Logos from OXE's "some of our clients and partners" page (reference-work PDF).
+# (file in assets/img/clients/, brand name). None = name not confirmed yet:
+# the logo is shown without alt text. TODO: ask OXE for those brand names.
+CLIENTS = [
+    ("xiaomi", "Xiaomi"), ("oppo", "OPPO"), ("netflix", "Netflix"), ("minor-international", "Minor International"),
+    ("the-continent", "The Continent"), ("rockers", "Rockers Supercars"),
+    ("stratton", "Stratton Gems &amp; Jewels"), ("dh-foods", "Dh Foods"), ("wirever", "Wirever"),
+    ("michael-tailors", "Michael Tailors"), ("russos", "Russo's Gemstones"), ("lalisa", "Lalisa"),
+    ("alchemi-botanics", "Alchemi Botanics"), ("commonzcent", "Commonzcent"), ("nakhon-thai", "Nakhon Thai"),
+    ("shoeswedo", "Shoeswedo"), ("bmb", "BMB Bangkok Morocco"),
+    ("client-wolf", None), ("client-brush", None), ("client-gown", None), ("client-star", None),
+    ("client-figure", None), ("client-y", None),
+]

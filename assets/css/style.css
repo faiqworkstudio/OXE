@@ -88,6 +88,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn--white:hover { background: var(--sky-100); }
 .btn--glass { background: rgba(255, 255, 255, .12); color: #fff; border-color: rgba(255, 255, 255, .45); }
 .btn--glass:hover { background: rgba(255, 255, 255, .2); }
+.btn--navy { background: var(--navy); color: #fff; }
+.btn--navy:hover { background: var(--blue); transform: translateY(-1px); }
 .btn--whatsapp { background: #1fa855; color: #fff; }
 .btn--whatsapp:hover { background: #178c46; }
 .btn--text { padding-left: 4px; padding-right: 4px; color: var(--blue); }
@@ -411,9 +413,34 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .choose .ico { margin-bottom: var(--s-4); }
 .choose h3 { font-size: 1rem; margin-bottom: 6px; }
 .choose p { font-size: 14px; color: var(--muted); margin: 0; }
-.clients__logos { max-width: 720px; margin: 0 auto; padding: var(--s-5); background: #fff; border-radius: var(--r-lg); box-shadow: var(--shadow-sm); }
-.clients__logos img { width: 100%; border-radius: var(--r-sm); }
-.clients .sec-head { text-align: center; margin-left: auto; margin-right: auto; }
+
+
+/* ---------- Client logo wall ---------- */
+/* 1px grid lines come from the list background showing through 1px gaps;
+   the mask fades the outer edges so the grid dissolves into the page. */
+.logo-wall { --cell: 96px; --fade-x: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); --fade-y: linear-gradient(180deg, #000 88%, transparent); display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: auto; grid-auto-rows: var(--cell); gap: 1px; background: #e3e9f1; -webkit-mask-image: var(--fade-x), var(--fade-y); -webkit-mask-composite: source-in; mask-image: var(--fade-x), var(--fade-y); mask-composite: intersect; }
+.section--tint .logo-wall li { background: var(--sky-50); }
+.logo-cell, .logo-wall__feature { background: #fff; }
+.logo-cell { display: grid; place-items: center; padding: var(--s-2); }
+.logo-cell img { transition: transform .4s var(--ease); }
+.logo-cell:hover img { transform: scale(1.06); }
+.logo-cell--wide img { max-width: min(84%, 170px); max-height: 30px; width: auto; height: auto; object-fit: contain; }
+.logo-cell--badge img { width: auto; height: 50px; max-width: 80%; object-fit: contain; border-radius: 10px; }
+.logo-wall__feature { grid-column: 1 / -1; grid-row: 1; order: -1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--s-6) var(--s-5); }
+.logo-wall__feature .eyebrow { margin-bottom: var(--s-3); }
+.logo-wall__feature h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 500; line-height: 1.2; max-width: 16em; margin-bottom: var(--s-3); }
+.logo-wall__feature p { color: var(--muted); max-width: 34em; font-size: 15px; margin-bottom: var(--s-5); }
+@media (min-width: 640px) {
+  .logo-wall { --cell: 128px; grid-template-columns: repeat(4, 1fr); }
+  .logo-cell--wide img { max-height: 40px; }
+  .logo-cell--badge img { height: 64px; border-radius: 12px; }
+}
+@media (min-width: 1024px) {
+  .logo-wall { grid-template-rows: none; --cell: 150px; --fade-y: linear-gradient(180deg, transparent, #000 9%, #000 91%, transparent); grid-template-columns: repeat(6, 1fr); }
+  .logo-cell--wide img { max-height: 46px; }
+  .logo-wall__feature { order: 0; grid-column: 3 / 5; grid-row: 2 / 5; padding: var(--s-6); }
+  .logo-cell--badge img { height: 76px; }
+}
 
 /* ---------- Contact page ---------- */
 .contact-grid { display: grid; gap: var(--s-7); align-items: start; }

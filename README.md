@@ -13,11 +13,11 @@ The site runs on Netlify as it is, and every section maps to an Elementor sectio
 
 | Page | File | Sections |
 |---|---|---|
-| Home | `index.html` | 3D hero, five service cards, Why OXE (real crew photos and four principles), featured case study plus three projects, contact band |
+| Home | `index.html` | 3D hero, five service cards, Why OXE (real crew photos and four principles), featured case study plus three projects, client logo wall, contact band |
 | Services | `services.html` | Five service blocks (visual, intro, what we do, deliverables, process, CTA), industries |
 | Portfolio | `portfolio.html` | Category filters (All / Web Design / Social Media / Video / Photography), project cards, View More |
 | Case studies | `work/<project>.html` | One page per project: Client / Challenge / Solution / Outcome, video or gallery, services provided, next project |
-| About Us | `about.html` | Positioning, key facts, mission and vision, story, why companies choose OXE, client logos |
+| About Us | `about.html` | Positioning, key facts, mission and vision, story, why companies choose OXE, client logo wall |
 | Contact | `contact.html` | Contact methods, full enquiry form, map |
 | — | `thank-you.html`, `404.html` | Form fallback and not-found pages |
 
@@ -40,6 +40,7 @@ python3 src/build.py      # regenerates every page, the /work pages and sitemap.
 - [ ] Screenshots of the Anthony Bespoke Tailor website. That card currently shows a branded placeholder.
 - [ ] Written case studies for Haji Café, Dh Foods, Gaia Tribe, Wirever, Wine Connection, event coverage and the corporate video. These currently show real media plus a "coming soon" note.
 - [ ] Confirm that the OPPO and Icy Lemonade card images belong to those campaigns.
+- [ ] Names of six client logos (the wolf, brush-stroke, gown, star, gold-figure and "Y" logos) so they get alt text: `CLIENTS` in `content.py`.
 - [ ] Confirm the budget ranges in the contact form (`BUDGETS`).
 - [ ] Add the GA4 measurement ID: uncomment the snippet in `head()` in `build.py`.
 - [ ] If OXE has a street address, update the map on the contact page.
