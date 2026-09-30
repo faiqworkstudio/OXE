@@ -260,6 +260,22 @@ def clients_wall(tint=False):
   </section>'''
 
 
+def works_cards():
+    """Home "Our Works": one card per portfolio category, linking to the filtered portfolio."""
+    out = ""
+    for key, title, cover in C.WORK_CATEGORIES:
+        n = sum(key in p["cat"].split() for p in C.PROJECTS)
+        out += f'''
+          <a class="wcard reveal" href="portfolio.html?filter={key}" aria-label="{plain(title)}: view {n} projects">
+            <div class="wcard__head"><h3>{title}</h3><span class="wcard__count">{n:02d}</span></div>
+            <div class="wcard__stack">
+              <div class="wcard__img">{img(cover, "")}</div>
+              <span class="wcard__notch" aria-hidden="true"><span class="wcard__btn">{ARR}</span></span>
+            </div>
+          </a>'''
+    return out
+
+
 def principle_list(items):
     return "".join(f'<li><span class="ico">{I[i]}</span><div><h3>{t}</h3><p>{d}</p></div></li>' for i, t, d in items)
 
@@ -302,7 +318,6 @@ def home():
           <span class="svc-card__go">Learn more {ARR}</span>
         </a>''' for s in C.SERVICES)
     f = PBY[C.FEATURED]
-    more = "".join(project_card(PBY[i]) for i in ["xiaomi-redmi-watch", "rockers-supercars", "haji-cafe"])
     tags = "".join(f"<li>{t}</li>" for t in f["tags"])
     return head("OXE Marketing | Digital Marketing Agency in Bangkok",
                 "Multicultural digital marketing agency in Bangkok: website design, social media marketing, video production, photography and digital strategy.",
@@ -349,10 +364,23 @@ def home():
     </div>
   </section>
 
-  <section class="section" id="work">
+  <section class="section works-sec" id="work">
+    <div class="container">
+      <div class="works">
+        <div class="works__head reveal">
+          <h2>Our Works</h2>
+          <p>Explore the websites, campaigns and visual content we've created in partnership with brands across Thailand.</p>
+        </div>
+        <div class="works__grid">{works_cards()}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--flush">
     <div class="container">
       <div class="sec-row">
-        {sec_head("Featured work", 'Selected <span class="hl">Projects</span>', "From websites to social media, video, and photography, we've helped brands across different industries tell their stories and grow online.")}
+        {sec_head("Featured case study", 'Selected <span class="hl">Projects</span>', "From websites to social media, video, and photography, we've helped brands across different industries tell their stories and grow online.")}
         <a class="link-arrow reveal" href="portfolio.html">View full portfolio {ARR}</a>
       </div>
       <article class="feature reveal">
@@ -370,8 +398,6 @@ def home():
           {btn("View Case Study", "work/" + f["id"] + ".html")}
         </div>
       </article>
-      <div class="pgrid pgrid--3">{more}
-      </div>
     </div>
   </section>
 {clients_wall()}

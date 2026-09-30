@@ -9,8 +9,15 @@
   var header = document.querySelector(".site-header");
   var toggle = document.querySelector(".nav-toggle");
 
+  // The header is position:fixed, so compacting it never shifts the page.
+  // Separate on/off thresholds (hysteresis) stop it flickering at one point.
+  var compact = false;
   function onScroll() {
-    if (header) header.classList.toggle("is-scrolled", window.scrollY > 12);
+    if (!header) return;
+    var y = window.scrollY;
+    if (!compact && y > 40) compact = true;
+    else if (compact && y < 8) compact = false;
+    header.classList.toggle("is-scrolled", compact);
   }
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
@@ -97,7 +104,10 @@
     if (moreBtn) {
       moreBtn.addEventListener("click", function () { expanded = true; applyFilter(); });
     }
-    applyFilter();
+    // portfolio.html?filter=web|social|video|photo (links from the home "Our Works" cards)
+    var initial = new URLSearchParams(location.search).get("filter");
+    var initialBtn = initial && document.querySelector('.filter-btn[data-filter="' + initial.replace(/[^a-z]/g, "") + '"]');
+    if (initialBtn) initialBtn.click(); else applyFilter();
   }
 
   /* ---------- Contact form ----------

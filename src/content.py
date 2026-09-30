@@ -241,3 +241,12 @@ CLIENTS = [
     ("client-wolf", None), ("client-brush", None), ("client-gown", None), ("client-star", None),
     ("client-figure", None), ("client-y", None),
 ]
+
+# ------------------------------------------------------------------ HOME: OUR WORKS
+# (portfolio filter key, card title, cover image in assets/img/work)
+WORK_CATEGORIES = [
+    ("web", "Web Design", "tailor-website"),
+    ("social", "Social Media", "haji-strawberry"),
+    ("video", "Video Production", "xiaomi-campaign"),
+    ("photo", "Photography", "cake-strawberry-wide"),
+]
