@@ -2,7 +2,7 @@
 
 The website design for **OXE Marketing Thailand**, a multicultural marketing agency in Bangkok.
 It follows the *OXE websites guidelines* brief and the *What is OXE — Overall Guide* content document.
-The main visual reference was asiamediastudio.com, with primal.co.th as a secondary reference.
+The layout follows the client's mockup. Section patterns (the work ticker, numbered process, FAQ accordion and pill buttons) are adapted from asiamediastudio.com, the main reference, using OXE's blue and white.
 
 It is a fast static site: plain HTML, CSS and a small amount of JavaScript. It has no build step, so it can go live on Netlify as it is.
 It also serves as the pixel reference for the planned WordPress + Elementor build.
@@ -11,11 +11,11 @@ It also serves as the pixel reference for the planned WordPress + Elementor buil
 
 | Page | File | Contents |
 |---|---|---|
-| Home | `index.html` | Hero, client marquee, services overview, Why OXE, featured case study (Xiaomi), contact form |
-| Services | `services.html` | Website Design, Video Production, Social Media Marketing, Photography and Digital Strategy (each with the "Include" list), a four-step process, industries |
-| Portfolio | `portfolio.html` | Category filter, 9 project cards plus "View More Projects" (17 in total), and a pop-up with Client / Challenge / Solution / Outcome, photos or a playable video, and the services provided |
-| About Us | `about.html` | Story, stats, mission & vision, values |
-| Contact | `contact.html` | Contact form, phone, email, WhatsApp button, office hours, Google Map |
+| Home | `index.html` | Hero, services overview, Why OXE, auto-scrolling "Selected work" strip, featured case study (tailor website), CTA |
+| Services | `services.html` | Website Design, Video Production, Social Media Marketing (each with its "Include" list), Photography, Digital Strategy and Branding, industries, a five-step process, FAQ |
+| Portfolio | `portfolio.html` | Category filter, project cards plus "View More Projects", and a pop-up with Client / Challenge / Solution / Outcome, photos or a playable video, and the services provided |
+| About Us | `about.html` | Story, stats, mission & vision, values, brands we've worked with |
+| Contact | `contact.html` | Contact form, phone, email, WhatsApp button, Google Map, FAQ |
 | — | `thank-you.html`, `404.html` | Form fallback page and not-found page |
 
 ## Brief checklist
@@ -50,7 +50,8 @@ If the site is opened outside Netlify, for example directly from disk, the form 
 
 ## Still to do before launch
 
-- Two portfolio cards (Anthony Bespoke Tailor, Stratton Gems & Jewellery, both behind "View More Projects") still use branded placeholders. Add their photos to `assets/img/work/` and list them in that project's `imgs`.
+- Confirm the client names on the portfolio cards (for example Wine Connection, Haji Café, DH Foods) and the FAQ answers (prices, timelines).
+- To add a project, put its photos in `assets/img/work/` and add an entry with its Client / Challenge / Solution / Outcome.
 - Videos live in `assets/video/` (web-compressed H.264 with a poster frame in `assets/img/work/*-poster.jpg`). To add one, drop the MP4 there and give the project a `video` name.
 - Add the real social media links in the footer. They currently point to `#`.
 - Add the GA4 measurement ID: uncomment the snippet in each page's `<head>` and replace `G-XXXXXXXXXX`.

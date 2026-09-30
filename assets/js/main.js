@@ -120,6 +120,14 @@
       openModal(btn.closest(".project"));
     });
   });
+  // Deep link: portfolio.html#project-id opens that case study
+  if (modal && location.hash) {
+    var target = document.getElementById(location.hash.slice(1));
+    if (target && target.classList.contains("project")) {
+      target.hidden = false;
+      openModal(target);
+    }
+  }
   if (modal) {
     modal.querySelectorAll("[data-close]").forEach(function (el) {
       el.addEventListener("click", closeModal);
