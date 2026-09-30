@@ -117,6 +117,38 @@
     }, { threshold: 0.25 }).observe(wall);
   });
 
+  /* ---------- Hero phone video: respect reduced motion ---------- */
+  var heroVideo = document.querySelector(".hero__video");
+  if (heroVideo && reduced) { heroVideo.removeAttribute("autoplay"); heroVideo.pause(); }
+
+  /* ---------- Case-study media viewer ---------- */
+  document.querySelectorAll("[data-viewer]").forEach(function (viewer) {
+    var items = viewer.querySelectorAll(".viewer__item");
+    var thumbs = viewer.querySelectorAll(".viewer__thumbs button");
+    var count = viewer.querySelector(".viewer__count");
+    var i = 0;
+    if (items.length < 2) return;
+    function show(n) {
+      var old = items[i];
+      var v = old.querySelector("video"); if (v) v.pause();
+      old.classList.remove("is-active"); old.setAttribute("aria-hidden", "true");
+      thumbs[i].removeAttribute("aria-current");
+      i = (n + items.length) % items.length;
+      items[i].classList.add("is-active"); items[i].removeAttribute("aria-hidden");
+      thumbs[i].setAttribute("aria-current", "true");
+      thumbs[i].scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduced ? "auto" : "smooth" });
+      if (count) count.textContent = (i + 1) + " / " + items.length;
+    }
+    thumbs.forEach(function (t, n) { t.addEventListener("click", function () { show(n); }); });
+    viewer.querySelector(".viewer__nav--prev").addEventListener("click", function () { show(i - 1); });
+    viewer.querySelector(".viewer__nav--next").addEventListener("click", function () { show(i + 1); });
+    viewer.addEventListener("keydown", function (e) {
+      if (e.target.tagName === "VIDEO") return;
+      if (e.key === "ArrowRight") { show(i + 1); e.preventDefault(); }
+      if (e.key === "ArrowLeft") { show(i - 1); e.preventDefault(); }
+    });
+  });
+
   /* ---------- Footer year ---------- */
   document.querySelectorAll("[data-year]").forEach(function (el) {
     el.textContent = new Date().getFullYear();

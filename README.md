@@ -14,9 +14,9 @@ The site runs on Netlify as it is, and every section maps to an Elementor sectio
 | Page | File | Sections |
 |---|---|---|
 | Home | `index.html` | 3D hero, five service cards, Why OXE (real crew photos and four principles), "Our Works" category panel (links to the filtered portfolio), featured case study, client logo wall, contact band |
-| Services | `services.html` | Five service blocks (image slideshow or a wall of videos, intro, what we do, deliverables, CTA), industries we worked with |
+| Services | `services.html` | Five service blocks (image slideshow, device mockups or a wall of videos; 3D mark, intro, what we do, CTA), industries we worked with |
 | Portfolio | `portfolio.html` | Category filters (All / Web Design / Social Media / Video / Photography), project cards, View More |
-| Case studies | `work/<project>.html` | One page per project: Client / Challenge / Solution / Outcome, video or gallery, services provided, next project |
+| Case studies | `work/<project>.html` | One page per project: a media viewer with every image and video of the project, Client / Challenge / Solution / Outcome, services provided, next project |
 | About Us | `about.html` | Positioning, key facts, mission and vision, story, why companies choose OXE (bento grid), client logo wall |
 | Contact | `contact.html` | Contact methods, full enquiry form, map |
 | — | `thank-you.html`, `404.html` | Form fallback and not-found pages |
@@ -41,7 +41,7 @@ python3 src/build.py      # regenerates every page, the /work pages and sitemap.
 - [ ] Social media profile URLs: `SITE["social"]` in `content.py`. The icons link to `#` until these are filled in.
 - [ ] Screenshots of the Anthony Bespoke Tailor website. That card currently shows a branded placeholder.
 - [ ] Written case studies for Haji Café, Dh Foods, Gaia Tribe, Wirever, Wine Connection, event coverage and the corporate video. These currently show real media plus a "coming soon" note.
-- [ ] Confirm that the OPPO and Icy Lemonade card images belong to those campaigns.
+- [ ] Campaign images for OPPO and Icy Lemonade (OPPO shows its logo, Icy Lemonade a placeholder until then).
 - [ ] Names of six client logos (the wolf, brush-stroke, gown, star, gold-figure and "Y" logos) so they get alt text: `CLIENTS` in `content.py`.
 - [ ] Confirm the budget ranges in the contact form (`BUDGETS`).
 - [ ] Add the GA4 measurement ID: uncomment the snippet in `head()` in `build.py`.

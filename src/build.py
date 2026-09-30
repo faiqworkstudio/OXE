@@ -21,6 +21,15 @@ ARR = I["arrow"]
 PBY = {p["id"]: p for p in C.PROJECTS}
 
 
+def has_media(p):
+    return bool(p.get("video") or (p["cover"] and not p["cover"].startswith("logo:") and not p.get("logo")))
+
+
+# Portfolio order: projects with real photos/video first; the rest sit behind "View More"
+PORT = sorted(C.PROJECTS, key=lambda p: not has_media(p))
+VISIBLE = 9
+
+
 def ver(path):
     """Content hash for cache-busting ?v= query strings."""
     return hashlib.md5(open(os.path.join(ROOT, path), "rb").read()).hexdigest()[:8]
@@ -126,20 +135,41 @@ def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=F
 '''
 
 
+def mega_visual(h, t):
+    kind, v = C.MENU_META[h][2]
+    if kind == "img":
+        return f'<a class="mega__visual mega__visual--img" href="{h}" tabindex="-1" aria-hidden="true">{img(v, "")}<span>{t} {ARR}</span></a>'
+    if kind == "mosaic":
+        return f'<a class="mega__visual mega__visual--mosaic" href="{h}" tabindex="-1" aria-hidden="true">' + "".join(img(x, "") for x in v) + f'<span>{t} {ARR}</span></a>'
+    if kind == "art":
+        return f'<div class="mega__visual mega__visual--art" aria-hidden="true"><span class="float-a">{ART[v]}</span><span class="float-b">{ART["video"]}</span><span class="float-c">{ART["social"]}</span></div>'
+    return f'''<div class="mega__visual mega__visual--contact">
+                <a href="mailto:{S["email"]}"><span class="ico">{I["mail2"]}</span>{S["email"]}</a>
+                <a href="tel:{S["phone_tel"]}"><span class="ico">{I["phone2"]}</span>{S["phone_display"]}</a>
+                <a href="{S["whatsapp"]}" target="_blank" rel="noopener"><span class="ico">{I["whatsapp"]}</span>WhatsApp us</a>
+              </div>'''
+
+
 def mega_nav(page):
-    """Top navigation. Each item opens a full-width panel of anchor links to that page's sections."""
+    """Top navigation. Each item opens a full-width panel: title, numbered section links and a visual."""
     out = ""
-    for h, t in C.NAV:
+    for n, (h, t) in enumerate(C.NAV, 1):
         cur = CUR if h == page or (page.startswith("work/") and h == "portfolio.html") else ""
-        tiles = "".join(f'<li><a href="{href}"><span class="mega__num">{i:02d}</span><span class="mega__label">{label}</span>{ARR}</a></li>'
+        eb, intro, _ = C.MENU_META[h]
+        links = "".join(f'<li><a href="{href}"><span class="mega__num">{i:02d}</span><span class="mega__label">{label}</span>{ARR}</a></li>'
                         for i, (href, label) in enumerate(C.MENU[h], 1))
         out += f'''
         <div class="nav__item">
-          <a class="nav__link" href="{h}"{cur}>{t}</a>
+          <a class="nav__link" href="{h}"{cur}><span class="nav__num">{n:02d}</span>{t}</a>
           <div class="mega">
             <div class="container mega__inner">
-              <a class="mega__title" href="{h}">{t} {ARR}</a>
-              <ul class="mega__list" aria-label="{t} sections">{tiles}</ul>
+              <div class="mega__intro">
+                <span class="mega__eyebrow">{eb}</span>
+                <a class="mega__title" href="{h}">{t}</a>
+                <p>{intro}</p>
+              </div>
+              <ul class="mega__list" aria-label="{t} sections">{links}</ul>
+              {mega_visual(h, t)}
             </div>
           </div>
         </div>'''
@@ -231,30 +261,100 @@ def contact_methods():
 
 
 # ------------------------------------------------------------------ shared components
+def logo_img(p):
+    """Client logo for projects without imagery: 'logo:<file>' (assets/img/clients) or a work image flagged logo."""
+    alt = plain(p["client"]) + " logo"
+    if p["cover"].startswith("logo:"):
+        f = p["cover"][5:]
+        w, h = Image.open(os.path.join(ROOT, "assets/img/clients", f + ".webp")).size
+        return f'<img src="assets/img/clients/{f}.webp" alt="{alt}" width="{w}" height="{h}" loading="lazy">'
+    return img(p["cover"], alt)
+
+
 def project_media(p, big=False):
-    """Visual for a project card or case-study header."""
+    """Visual for a project card."""
     alt = f'{plain(p["client"])}: {plain(p["title"])} by OXE Marketing'
     if p.get("device"):
         return f'<div class="media-stage">{devices(p["cover"], p.get("mobile"), alt=alt)}</div>'
-    if p.get("logo"):
-        return f'<div class="media-logo">{img(p["cover"], plain(p["client"]) + " logo")}</div>'
+    if p["cover"] and (p.get("logo") or p["cover"].startswith("logo:")):
+        return f'<div class="media-logo">{logo_img(p)}</div>'
     if not p["cover"]:
         return f'<div class="media-placeholder" role="img" aria-label="{plain(p["client"])}">{ART["web"]}<span>{p["client"]}</span></div>'
     return img(p["cover"], alt, lazy=not big)
 
 
-def project_card(p, h="h3"):
+def media_items(p):
+    """Everything we can show for a project, in order: video, device mockup / cover, gallery."""
+    items = []
+    if p.get("video"):
+        items.append(("video", p["video"]))
+    if p.get("device"):
+        items.append(("device", p["cover"]))
+    elif p["cover"] and not (p.get("logo") or p["cover"].startswith("logo:")):
+        items.append(("img", p["cover"]))
+    for g in p["gallery"]:
+        if ("img", g) not in items:
+            items.append(("img", g))
+    return items
+
+
+def media_count(p):
+    items = media_items(p)
+    n_img = sum(k != "video" for k, _ in items)
+    parts = ([f'{n_img} image{"s" if n_img != 1 else ""}'] if n_img else []) + (["video"] if p.get("video") else [])
+    return " · ".join(parts)
+
+
+def project_card(p, extra=False, h="h3"):
     play = '<span class="play" aria-hidden="true"></span>' if p.get("video") else ""
+    count = media_count(p)
     return f'''
-        <article class="pcard reveal" data-category="{p["cat"]}"{" data-extra" if p.get("extra") else ""}>
-          <div class="pcard__media">{project_media(p)}{play}<span class="chip">{p["category"]}</span></div>
+        <article class="pcard reveal" data-category="{p["cat"]}"{" data-extra" if extra else ""}>
+          <div class="pcard__media">{project_media(p)}{play}<span class="chip">{p["category"]}</span>{f'<span class="chip chip--count">{count}</span>' if count else ""}</div>
           <div class="pcard__body">
-            <small>{p["client"]}</small>
-            <{h}><a href="work/{p["id"]}.html">{p["title"]}</a></{h}>
+            <{h}><a href="work/{p["id"]}.html">{p["client"]}</a></{h}>
+            <small>{p["title"]}</small>
             <p>{p["summary"]}</p>
             <span class="link-arrow" aria-hidden="true">View Project {ARR}</span>
           </div>
         </article>'''
+
+
+def viewer(p):
+    """Case-study media viewer: every image / video of the project, with thumbnails and arrows."""
+    items = media_items(p)
+    if not items:
+        return f'<div class="case-media reveal">{project_media(p, big=True)}</div>'
+    who = plain(p["client"])
+    stage, thumbs = "", ""
+    for n, (kind, name) in enumerate(items):
+        active = " is-active" if n == 0 else ""
+        hidden = "" if n == 0 else ' aria-hidden="true"'
+        if kind == "video":
+            webp(name + "-poster")
+            body = f'<video controls playsinline preload="{"metadata" if n == 0 else "none"}" poster="assets/img/work/{name}-poster.webp"><source src="assets/video/{name}.mp4" type="video/mp4">Your browser does not support video.</video>'
+            th = f'<img src="assets/img/work/{name}-poster.webp" alt="" loading="lazy"><span class="play" aria-hidden="true"></span>'
+            label = f"Play the {who} video"
+        elif kind == "device":
+            body = f'<div class="viewer__device">{devices(name, p.get("mobile"), alt=who + " website on laptop and phone")}</div>'
+            th = f'<img src="assets/img/work/{name}.webp" alt="" loading="lazy">'
+            label = "Show the website on laptop and phone"
+        else:
+            body = img(name, f"{who} project by OXE Marketing, image {n + 1}", lazy=n > 0)
+            th = f'<img src="assets/img/work/{name}.webp" alt="" loading="lazy">'
+            label = f"Show image {n + 1}"
+        stage += f'<figure class="viewer__item viewer__item--{kind}{active}"{hidden}>{body}</figure>'
+        thumbs += f'<li><button type="button" aria-label="{label}"{" aria-current=" + chr(34) + "true" + chr(34) if n == 0 else ""}>{th}</button></li>'
+    multi = len(items) > 1
+    nav = f'''<button class="viewer__nav viewer__nav--prev" type="button" aria-label="Previous">{ARR}</button>
+          <button class="viewer__nav viewer__nav--next" type="button" aria-label="Next">{ARR}</button>
+          <span class="viewer__count" aria-live="polite">1 / {len(items)}</span>''' if multi else ""
+    return f'''<div class="viewer reveal" data-viewer aria-roledescription="carousel" aria-label="{who} project media">
+        <div class="viewer__stage">{stage}
+          {nav}
+        </div>
+        {f'<ul class="viewer__thumbs">{thumbs}</ul>' if multi else ""}
+      </div>'''
 
 
 def clients_wall(tint=False):
@@ -311,22 +411,18 @@ def org_schema():
             "knowsAbout": ["Website design", "Social media marketing", "Video production", "Photography", "Digital strategy"]}
 
 
-def hero_scene():
-    return f'''<div class="scene" aria-hidden="true">
-        <span class="scene__glow"></span>
-        <span class="shape shape--sphere sc-sphere"></span>
-        <span class="shape shape--ring sc-ring"></span>
-        <span class="shape shape--pill sc-pill"></span>
-        <span class="shape shape--sphere sc-sphere2"></span>
-        <div class="podium"><span class="podium__top"></span></div>
-        <div class="sc-devices">{devices("tailor-website", "haji-strawberry")}</div>
-        <div class="sc-camera float-a">{ART["photo"]}</div>
-        <div class="glass sc-chart float-b">
-          <small>Campaign overview</small>
-          <svg viewBox="0 0 120 54"><path d="M4 46 C24 44 30 30 46 32 S74 18 86 16 S108 6 116 4" fill="none" stroke="#1f6fd1" stroke-width="3" stroke-linecap="round"/><path d="M4 46 C24 44 30 30 46 32 S74 18 86 16 S108 6 116 4 V54 H4Z" fill="#1f6fd1" opacity=".1"/></svg>
-          <span class="legend"><i></i>Reach <i class="b"></i>Engagement</span>
+HERO_LOGOS = [("xiaomi", "Xiaomi"), ("oppo", "OPPO"), ("netflix", "Netflix"), ("rockers", "Rockers"), ("michael-tailors", "Michael Tailors")]
+
+
+def hero_visual():
+    return f'''<div class="hero__visual" aria-hidden="true">
+        <span class="hero__glow"></span>
+        <div class="hero__devices devices">
+          <div class="dev-laptop"><div class="dev-laptop__lid"><div class="dev-laptop__screen">{img("tailor-website", "", lazy=False)}</div></div><div class="dev-laptop__base"></div></div>
+          <div class="dev-phone"><div class="dev-phone__screen"><video class="hero__video" muted loop playsinline autoplay preload="metadata" poster="assets/img/work/xiaomi-redmi-watch-poster.webp"><source src="assets/video/xiaomi-redmi-watch.mp4" type="video/mp4"></video></div></div>
         </div>
-        <div class="glass sc-social float-c">{I["instagram"]}{I["facebook"]}{I["tiktok"]}<span class="heart">{I["heart"]}</span></div>
+        <div class="glass hero__chip hero__chip--web float-a"><span class="ico">{I["monitor"]}</span><div><b>Website Design</b><small>Platinum Tailor</small></div></div>
+        <div class="glass hero__chip hero__chip--video float-b"><span class="ico">{I["camcorder"]}</span><div><b>Video Production</b><small>Xiaomi campaign</small></div></div>
       </div>'''
 
 
@@ -346,15 +442,19 @@ def home():
   <section class="hero">
     <div class="container hero__inner">
       <div class="hero__copy">
-        {eyebrow(C.HERO["eyebrow"])}
+        <span class="hero__pill"><i aria-hidden="true"></i>{C.HERO["eyebrow"]}</span>
         <h1>{C.HERO["title"]}</h1>
         <p class="lead">{C.HERO["text"]}</p>
         <div class="btn-row">
-          {btn("View Portfolio", "portfolio.html")}
-          {btn("Book a Consultation", "contact.html", "outline")}
+          {btn("Book a Consultation", "contact.html")}
+          {btn("View Portfolio", "portfolio.html", "outline")}
+        </div>
+        <div class="hero__trust">
+          <div class="hero__logos">{"".join(f'<img src="assets/img/clients/{f}.webp" alt="{n}" width="40" height="40" loading="lazy">' for f, n in HERO_LOGOS)}</div>
+          <p>Trusted by <b>Xiaomi, OPPO, Netflix</b> and brands across Thailand</p>
         </div>
       </div>
-      {hero_scene()}
+      {hero_visual()}
     </div>
   </section>
 
@@ -441,12 +541,13 @@ def service_media(s):
     for i, name in enumerate(s["slides"]):
         if name.startswith("device:"):
             p = next(p for p in C.PROJECTS if p["cover"] == name[7:])
-            inner = f'<div class="slide__stage">{devices(p["cover"], p.get("mobile"), alt=plain(p["client"]) + " website by OXE Marketing")}</div>'
+            inner = f'<div class="slide__devices">{devices(p["cover"], p.get("mobile"), alt=plain(p["client"]) + " website by OXE Marketing")}</div>'
         else:
             inner = img(name, f"{title} by OXE Marketing, image {i + 1}")
         slides += f'<figure class="slide{" is-active" if i == 0 else ""}"{"" if i == 0 else " aria-hidden=" + chr(34) + "true" + chr(34)}>{inner}</figure>'
         dots += f'<button type="button" aria-label="Show image {i + 1} of {len(s["slides"])}"{" aria-current=" + chr(34) + "true" + chr(34) if i == 0 else ""}></button>'
-    return f'''<div class="slideshow" data-slideshow aria-roledescription="carousel" aria-label="{title} examples">
+    only_devices = all(n.startswith("device:") for n in s["slides"])
+    return f'''<div class="slideshow{" slideshow--devices" if only_devices else ""}" data-slideshow aria-roledescription="carousel" aria-label="{title} examples">
             <div class="slides">{slides}</div>
             <div class="slide-dots">{dots}</div>
           </div>'''
@@ -457,21 +558,20 @@ def services():
     blocks = ""
     for n, s in enumerate(C.SERVICES):
         what = "".join(f"<li>{I['check']}{x}</li>" for x in s["what"])
-        dl = "".join(f"<li>{I['check']}{x}</li>" for x in s["deliverables"])
         blocks += f'''
       <article class="svc-block{" svc-block--rev" if n % 2 else ""}" id="{s["key"]}">
         <div class="svc-block__visual reveal">
           {service_media(s)}
-          <span class="svc-block__badge float-a" aria-hidden="true">{ART[s["art"]]}</span>
         </div>
         <div class="svc-block__body reveal">
-          <span class="num">{s["num"]}</span>
-          <h2>{s["title"]}</h2>
-          <p class="lead">{s["intro"]}</p>
-          <div class="svc-block__lists">
-            <div><h3>What we do</h3><ul class="checks">{what}</ul></div>
-            <div><h3>Deliverables</h3><ul class="checks">{dl}</ul></div>
+          <b class="svc-block__ghost" aria-hidden="true">{s["num"]}</b>
+          <div class="svc-block__head">
+            <span class="svc-block__mark" aria-hidden="true"><span class="float-a">{ART[s["art"]]}</span></span>
+            <div><span class="num">Service {s["num"]}</span><h2>{s["title"]}</h2></div>
           </div>
+          <p class="lead">{s["intro"]}</p>
+          <h3 class="svc-block__label">What we do</h3>
+          <ul class="svc-block__list">{what}</ul>
           <div class="btn-row">
             {btn("Book a Consultation", "contact.html?service=" + s["key"])}
             {btn("See related work", "portfolio.html", "text")}
@@ -514,7 +614,7 @@ def services():
 # ------------------------------------------------------------------ PORTFOLIO
 def portfolio():
     fb = "".join(f'<button class="filter-btn{" is-active" if k == "all" else ""}" type="button" data-filter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{t}</button>' for k, t in C.FILTERS)
-    cards = "".join(project_card(p) for p in C.PROJECTS)
+    cards = "".join(project_card(p, extra=n >= VISIBLE) for n, p in enumerate(PORT))
     return head("Portfolio | OXE Marketing Bangkok",
                 "Selected work by OXE Marketing: websites, video production, social media and photography for brands including Xiaomi, OPPO and Rockers Supercars.",
                 "portfolio.html") + f'''
@@ -538,27 +638,10 @@ def portfolio():
 
 # ------------------------------------------------------------------ CASE STUDY
 def case(p):
-    i = C.PROJECTS.index(p)
-    nxt = C.PROJECTS[(i + 1) % len(C.PROJECTS)]
+    i = PORT.index(p)
+    nxt = PORT[(i + 1) % len(PORT)]
     svc = "".join(f"<li>{I['check']}{x}</li>" for x in p["services"])
     tags = "".join(f"<li>{t}</li>" for t in p["tags"])
-    if p.get("video"):
-        v = p["video"]
-        webp(v + "-poster")
-        media = f'<video class="case-video" controls playsinline preload="none" poster="assets/img/work/{v}-poster.webp"><source src="assets/video/{v}.mp4" type="video/mp4">Your browser does not support video.</video>'
-    else:
-        media = project_media(p, big=True)
-    gal_imgs = ([p["cover"]] if p.get("video") and p["cover"] and not p.get("device") else []) + p["gallery"]
-    gallery = ""
-    if gal_imgs:
-        gallery = f'''
-  <section class="section section--flush">
-    <div class="container">
-      <h2 class="h-sm reveal">Project gallery</h2>
-      <div class="gallery reveal">{"".join(f"<figure>{img(g, plain(p['client']) + ' project image by OXE Marketing')}</figure>" for g in gal_imgs)}</div>
-    </div>
-  </section>'''
-
     def block(n, label, text):
         if text:
             return f'<section class="ccs reveal"><span class="num">{n}</span><div><h2>{label}</h2><p>{text}</p></div></section>'
@@ -581,7 +664,7 @@ def case(p):
       <div class="case-hero__grid">
         <div class="reveal">
           {eyebrow(p["category"])}
-          <h1>{p["title"]}</h1>
+          <h1>{p["client"]}<span class="case-hero__sub">{p["title"]}</span></h1>
           <p class="lead">{p["summary"]}</p>
         </div>
         <dl class="case-meta reveal">
@@ -590,7 +673,7 @@ def case(p):
           <div><dt>Tags</dt><dd><ul class="tags">{tags}</ul></dd></div>
         </dl>
       </div>
-      <div class="case-media reveal">{media}</div>
+      {viewer(p)}
     </div>
   </section>
 
@@ -606,7 +689,6 @@ def case(p):
       </aside>
     </div>
   </section>
-{gallery}
   <section class="section section--flush">
     <div class="container">
       <a class="next-project reveal" href="work/{nxt["id"]}.html">
@@ -832,4 +914,4 @@ if __name__ == "__main__":
         write(f'work/{p["id"]}.html', case(p))
     write("thank-you.html", simple("thank-you.html", "Thank You", "Thank you! Message received.", "Our team will get back to you as soon as possible. Need a faster reply? Message us on WhatsApp."))
     write("404.html", simple("404.html", "Page Not Found", "Sorry, we couldn't find that page.", "The page may have moved. Head back home or explore our work."))
-    sitemap(list(pages) + [f'work/{p["id"]}.html' for p in C.PROJECTS])
+    sitemap(list(pages) + [f'work/{p["id"]}.html' for p in PORT])

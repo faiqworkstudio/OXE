@@ -31,6 +31,16 @@ MENU = {
     "contact.html": [("contact.html#enquiry", "Enquiry Form"), ("contact.html#methods", "Call &amp; Email"), ("contact.html#map", "Find Us")],
 }
 
+# Mega-menu panel for each page: (eyebrow, one-line intro, visual)
+# visual: ("img", image) | ("art", 3D art key) | ("mosaic", [images]) | ("contact", None)
+MENU_META = {
+    "index.html": ("Start here", "Websites, content &amp; strategy from Bangkok.", ("img", "about-team")),
+    "services.html": ("What we do", "Five services. One team.", ("art", "web")),
+    "portfolio.html": ("Selected work", "Real projects for real brands.", ("mosaic", ["xiaomi-campaign", "haji-strawberry", "shoot-1"])),
+    "about.html": ("Who we are", "A multicultural team since 2020.", ("img", "bts-video-2")),
+    "contact.html": ("Say hello", "Let's talk about your project.", ("contact", None)),
+}
+
 NAV = [("index.html", "Home"), ("services.html", "Services"), ("portfolio.html", "Portfolio"),
        ("about.html", "About Us"), ("contact.html", "Contact")]
 
@@ -121,8 +131,8 @@ BUDGETS = ["Under ฿30,000", "฿30,000 – ฿80,000", "฿80,000 – ฿150,0
 FILTERS = [("all", "All"), ("web", "Web Design"), ("social", "Social Media"), ("video", "Video"), ("photo", "Photography")]
 
 PROJECTS = [
-    dict(id="tailor-website", client="Local Tailor Business, Bangkok", title="Tailor Website", cat="web", category="Website Design",
-         cover="tailor-website", mobile="tailor-website-mobile", gallery=[], video=None, device=True,
+    dict(id="tailor-website", client="Platinum Tailor", title="Website Design &amp; Development", cat="web", category="Website Design",
+         cover="tailor-website", mobile="tailor-website-mobile", gallery=["tailor-website", "tailor-website-mobile"], video=None, device=True,
          summary="A professional website that showcases craftsmanship and makes it easy for customers to book appointments.",
          challenge="Limited digital presence and few channels for online enquiries.",
          solution="Designed a professional website to establish a stronger online presence and showcase their craftsmanship.",
@@ -130,8 +140,8 @@ PROJECTS = [
          tags=["Web Design", "UI/UX", "Booking Integration"],
          services=["Website Design", "UI/UX Design", "Responsive Development", "Booking Integration", "SEO-Friendly Structure"]),
 
-    dict(id="xiaomi-redmi-watch", client="Xiaomi", title="Redmi Watch 2 Lite Campaign Video", cat="video", category="Video Production",
-         cover="xiaomi-campaign", gallery=["wearable-breathing", "wearable-waterproof"], video="xiaomi-redmi-watch",
+    dict(id="xiaomi-redmi-watch", client="Xiaomi", title="Redmi Watch 2 Lite Campaign", cat="video", category="Video Production",
+         cover="xiaomi-campaign", gallery=["xiaomi-watch-wrist", "xiaomi-bts-rooftop", "xiaomi-bts-set", "xiaomi-bts-pool", "xiaomi-tiktok", "wearable-breathing", "wearable-waterproof"], video="xiaomi-redmi-watch",
          summary="End-to-end promotional video production for the Redmi Watch 2 Lite, from concept to final edit.",
          challenge="Create engaging, lifestyle-driven content that showcased the smartwatch's key features while appealing to Xiaomi's target audience across digital and social media platforms.",
          solution="OXE managed every stage: creative concept, storyboard, production planning, talent sourcing, location coordination, filming and post-production, combining cinematic visuals with product-focused storytelling to highlight the watch's design, fitness capabilities and everyday functionality.",
@@ -139,7 +149,7 @@ PROJECTS = [
          tags=["Video Production", "Campaign", "Talent Casting"],
          services=["Creative Concept Development", "Storyboard Creation", "Full Video Production", "Model &amp; Talent Casting", "Production Planning &amp; Coordination", "Professional Cinematography", "Product Lifestyle Filming", "Video Editing &amp; Motion Graphics", "Color Grading", "Social Media Content Optimization"]),
 
-    dict(id="rockers-supercars", client="Rockers Supercars", title="Promotional Video Production", cat="video photo", category="Video Production",
+    dict(id="rockers-supercars", client="Rockers Supercars", title="Supercar Promotional Video", cat="video photo", category="Video Production",
          cover="shoot-1", gallery=["shoot-2"], video="rockers-supercars",
          summary="Promotional video content capturing the excitement, luxury, and performance of an exclusive supercar collection.",
          challenge="Create visually striking content that resonates with automotive enthusiasts while elevating the brand's presence across digital platforms.",
@@ -149,7 +159,7 @@ PROJECTS = [
          services=["Commercial Video Production", "Cinematic Automotive Videography", "Creative Concept Development", "Drone Footage", "Professional Editing &amp; Color Grading", "Social Media Video Content", "Promotional Brand Videos", "Multi-Platform Content Delivery"]),
 
     dict(id="vincenzo-russo", client="Vincenzo Russo", title="Personal Brand &amp; Blog Website", cat="web", category="Website Design",
-         cover="vincenzo-russo-site", mobile="vincenzo-russo-site-mobile", gallery=[], video=None, device=True,
+         cover="vincenzo-russo-site", mobile="vincenzo-russo-site-mobile", gallery=["vincenzo-russo-site", "vincenzo-russo-site-mobile"], video=None, device=True,
          summary="A modern blog website reflecting his personal brand and expertise in gemstones and fine jewellery.",
          challenge="Create a professional online presence where visitors can explore his insights, stories, and industry knowledge while reinforcing his credibility as a trusted voice in gems and jewels.",
          solution="A clean, elegant design with responsive performance across all devices and a content-focused structure that makes it easy to publish and discover articles, built with SEO, fast loading speeds, and a user-friendly experience in mind.",
@@ -158,14 +168,14 @@ PROJECTS = [
          services=["Website Design &amp; Development", "UI/UX Design", "Responsive Development", "Blog &amp; Content Management", "SEO-Friendly Website Structure", "Performance Optimization", "Brand-Focused Visual Design"]),
 
     dict(id="haji-cafe", client="Haji Café", title="Café Social Media &amp; Photography", cat="social photo", category="Social Media",
-         cover="haji-strawberry", gallery=["haji-made-with-love", "haji-your-choice", "cake-strawberry-wide", "haji-matcha", "haji-menu", "haji-chocolate", "cake-chocolate"], video="haji-cafe",
+         cover="haji-strawberry", gallery=["haji-made-with-love", "haji-your-choice", "cake-strawberry-wide", "haji-matcha", "haji-menu", "haji-chocolate", "haji-visit", "cake-chocolate"], video="haji-cafe",
          summary="Branded social media graphics, menu design, dessert photography and video for a Bangkok café.",
          challenge=None, solution=None, outcome=None,
          tags=["Social Media", "Photography", "Graphic Design"],
          services=["Social Media Content", "Graphic Design", "Menu Design", "Food Photography", "Video"]),
 
     dict(id="oppo", client="OPPO", title="Influencer &amp; Talent Campaign Support", cat="social", category="Influencer &amp; Talent",
-         cover="influencer-talent", gallery=[], video=None,
+         cover="logo:oppo", gallery=[], video=None,  # TODO: add OPPO campaign images
          summary="Influencer, model, and talent sourcing for a promotional campaign.",
          challenge="Ensure the campaign featured the right personalities to authentically represent the product while delivering engaging, high-quality content.",
          solution="Working closely with the campaign team, OXE managed the talent selection process, coordinated communications, and supported production logistics, carefully matching influencers and models to the campaign objectives.",
@@ -174,7 +184,7 @@ PROJECTS = [
          services=["Influencer Sourcing", "Model &amp; Talent Casting", "Talent Management &amp; Coordination", "Campaign Planning Support", "Production Coordination", "Shoot Scheduling &amp; Logistics", "Brand &amp; Talent Matching"]),
 
     dict(id="icy-lemonade", client="Icy Lemonade", title="Talent Scouting, Social Media &amp; Performance Marketing", cat="social", category="Social Media",
-         cover="social-insights", gallery=[], video=None,
+         cover=None, gallery=[], video=None,  # TODO: add Icy Lemonade campaign images
          summary="Talent sourcing, social media content and Meta advertising for an energetic, youthful drinks brand.",
          challenge="Increase brand awareness, build audience engagement, and drive business growth across digital platforms.",
          solution="OXE sourced models and content creators aligned with the brand's identity, created content for Instagram, Facebook, and TikTok, and planned, launched, and optimised Meta advertising campaigns, continuously refining targeting, creative, and strategy.",
@@ -201,13 +211,13 @@ PROJECTS = [
          services=["Custom Website Design", "Website Development", "UI/UX Design", "Responsive Development", "SEO-Friendly Website Structure", "Performance Optimization", "Contact &amp; Appointment Integration", "Ongoing Website Support &amp; Maintenance"]),
 
     # ---- Real OXE media without a written case study yet (shown after "View More Projects")
-    dict(id="dh-foods", client="Dh Foods", title="Sauce Product Photography &amp; Social Content", cat="social photo", category="Photography", extra=True,
-         cover="dh-table", gallery=["dh-honey-bbq", "dh-sauce"], video=None,
+    dict(id="dh-foods", client="Dh Foods", title="Sauce Photography &amp; Social Content", cat="social photo", category="Photography", extra=True,
+         cover="dh-table", gallery=["dh-honey-bbq", "dh-grill", "dh-sauce", "dh-nhatrang"], video=None,
          summary="Product photography and social media creatives for a sauce and marinade range.",
          challenge=None, solution=None, outcome=None, tags=["Photography", "Social Media"],
          services=["Product Photography", "Social Media Content", "Graphic Design"]),
-    dict(id="gaia-tribe", client="Gaia Tribe", title="Instagram Campaign Graphics", cat="social", category="Social Media", extra=True,
-         cover="gaia-huge", gallery=["gaiatribe-day", "gaia-flavours"], video=None,
+    dict(id="gaia-tribe", client="Gaia Tribe", title="Instagram Campaign", cat="social", category="Social Media", extra=True,
+         cover="gaia-huge", gallery=["gaiatribe-day", "gaia-beach", "gaia-review", "gaia-flavours"], video=None,
          summary="Campaign graphics and creator content for a plant-based nutrition brand.",
          challenge=None, solution=None, outcome=None, tags=["Social Media", "Graphic Design"],
          services=["Social Media Content", "Graphic Design", "Creator Content"]),
@@ -217,16 +227,26 @@ PROJECTS = [
          challenge=None, solution=None, outcome=None, tags=["Photography", "Product"],
          services=["Product Photography", "Lifestyle Photography", "Retouching"]),
     dict(id="wine-connection", client="Wine Connection", title="Restaurant Promo Video", cat="video", category="Video Production", extra=True,
-         cover="wine-connection-poster", gallery=[], video="wine-connection",
+         cover="wine-connection-poster", gallery=["wine-connection-still-3", "wine-connection-still-9"], video="wine-connection",
          summary="A short, social-first promotional video of food, drinks, and atmosphere.",
          challenge=None, solution=None, outcome=None, tags=["Video Production", "Food &amp; Beverage"],
          services=["Video Production", "Editing", "Social Media Video"]),
-    dict(id="event-coverage", client="Technology launch event", title="Event Coverage", cat="video photo", category="Video Production", extra=True,
-         cover="event-stage", gallery=[], video=None,
-         summary="Photo and video coverage of a live stage event in Bangkok.",
-         challenge=None, solution=None, outcome=None, tags=["Event Coverage"],
-         services=["Event Coverage", "Photography", "Video"]),
-    dict(id="corporate-video", client="Corporate client", title="Corporate Interview Video", cat="video", category="Video Production", extra=True,
+    dict(id="event-management", client="AiOcean &amp; Meta Events", title="Event Project Management", cat="", category="Project Management", extra=True,
+         cover="event-stage", gallery=["meta-event-registration"], video=None,
+         summary="Project management for technology events in Bangkok, including an AiOcean stage event and a Meta event registration desk.",
+         challenge=None, solution=None, outcome=None, tags=["Project Management", "Events"],
+         services=["Project Management", "Event Coordination"]),
+    dict(id="influencer-marketing", client="Influencer &amp; Blogging Marketing", title="Creator &amp; Talent Campaigns", cat="social", category="Influencer &amp; Talent", extra=True,
+         cover="influencer-talent", gallery=[], video=None,
+         summary="Sourcing and coordinating influencers, bloggers and on-screen talent for brand campaigns.",
+         challenge=None, solution=None, outcome=None, tags=["Influencer Marketing", "Talent"],
+         services=["Influencer Sourcing", "Blogging", "Model &amp; Talent Casting"]),
+    dict(id="account-management", client="Social Media Account Management", title="Page Management &amp; Insights", cat="social", category="Social Media", extra=True,
+         cover="social-insights", gallery=[], video=None,
+         summary="Managing brand pages and tracking growth and engagement insights across Facebook and Instagram.",
+         challenge=None, solution=None, outcome=None, tags=["Social Media", "Analytics"],
+         services=["Account Management", "Content Publishing", "Insights &amp; Reporting"]),
+    dict(id="corporate-video", client="Studio Interview Production", title="Corporate Interview Video", cat="video", category="Video Production", extra=True,
          cover="bts-video-2", gallery=["bts-video-1"], video=None,
          summary="A multi-camera interview shoot with professional lighting and direction.",
          challenge=None, solution=None, outcome=None, tags=["Corporate Video"],
