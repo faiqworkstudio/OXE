@@ -13,8 +13,9 @@ import os
 WORK = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets/img/work") + "/"
 
 def paste(canvas, src, box, x, y, width=None, scale=None):
-    c = src.crop(box)
-    s = scale or (width / c.width)
+    k = src.width / 1400 if src.width > 1000 else 1  # crop boxes are authored for a 1400px source
+    c = src.crop(tuple(round(v * k) for v in box))
+    s = (scale / k if scale else None) or (width / c.width)
     c = c.resize((round(c.width * s), round(c.height * s)), Image.LANCZOS)
     canvas.paste(c, (x, y))
     return y + c.height

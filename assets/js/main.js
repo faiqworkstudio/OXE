@@ -102,30 +102,25 @@
     } else { inView = true; sync(); }
   });
 
-  /* ---------- Video walls: play muted while on screen, pause when not ---------- */
-  document.querySelectorAll("[data-vwall]").forEach(function (wall) {
-    var vids = wall.querySelectorAll("video");
-    if (reduced || !("IntersectionObserver" in window)) {
-      vids.forEach(function (v) { v.controls = true; });
-      return;
-    }
-    new IntersectionObserver(function (es) {
-      vids.forEach(function (v) {
-        if (es[0].isIntersecting) { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
+  /* ---------- Autoplay videos: play muted while on screen, pause when not ---------- */
+  var autoVids = document.querySelectorAll("video[autoplay]");
+  if (reduced) {
+    autoVids.forEach(function (v) { v.removeAttribute("autoplay"); v.pause(); v.controls = true; });
+  } else if ("IntersectionObserver" in window) {
+    var vio = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        var v = e.target;
+        if (e.isIntersecting) { v.muted = true; var p = v.play(); if (p && p.catch) p.catch(function () {}); }
         else v.pause();
       });
-    }, { threshold: 0.25 }).observe(wall);
-  });
-
-  /* ---------- Hero phone video: respect reduced motion ---------- */
-  var heroVideo = document.querySelector(".hero__video");
-  if (heroVideo && reduced) { heroVideo.removeAttribute("autoplay"); heroVideo.pause(); }
+    }, { threshold: 0.2 });
+    autoVids.forEach(function (v) { vio.observe(v); });
+  }
 
   /* ---------- Case-study media viewer ---------- */
   document.querySelectorAll("[data-viewer]").forEach(function (viewer) {
     var items = viewer.querySelectorAll(".viewer__item");
     var thumbs = viewer.querySelectorAll(".viewer__thumbs button");
-    var count = viewer.querySelector(".viewer__count");
     var i = 0;
     if (items.length < 2) return;
     function show(n) {
@@ -137,7 +132,8 @@
       items[i].classList.add("is-active"); items[i].removeAttribute("aria-hidden");
       thumbs[i].setAttribute("aria-current", "true");
       thumbs[i].scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduced ? "auto" : "smooth" });
-      if (count) count.textContent = (i + 1) + " / " + items.length;
+      var nv = items[i].querySelector("video");
+      if (nv && !reduced) { nv.muted = true; var pr = nv.play(); if (pr && pr.catch) pr.catch(function () {}); }
     }
     thumbs.forEach(function (t, n) { t.addEventListener("click", function () { show(n); }); });
     viewer.querySelector(".viewer__nav--prev").addEventListener("click", function () { show(i - 1); });

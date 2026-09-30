@@ -220,44 +220,43 @@ def foot():
   </div>
 </footer>
 
-<button class="to-top" type="button" aria-label="Back to top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
-<a class="wa-float" href="{S['whatsapp']}" target="_blank" rel="noopener" aria-label="Chat with OXE Marketing on WhatsApp">{I["whatsapp"]}</a>
+<div class="fab-stack">
+  <button class="fab fab--top to-top" type="button" aria-label="Back to top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+  <a class="fab fab--ig" href="{S["social"].get("instagram") or "#"}" target="_blank" rel="noopener" aria-label="OXE Marketing on Instagram">{I["instagram"]}</a>
+  <a class="fab fab--fb" href="{S["social"].get("facebook") or "#"}" target="_blank" rel="noopener" aria-label="OXE Marketing on Facebook">{I["facebook"]}</a>
+  <a class="fab fab--wa" href="{S['whatsapp']}" target="_blank" rel="noopener" aria-label="Chat with OXE Marketing on WhatsApp">{I["whatsapp"]}</a>
+</div>
 <script src="assets/js/main.js?v={ver("assets/js/main.js")}" defer></script>
 </body>
 </html>
 '''
 
 
+def contact_buttons(cls=""):
+    """WhatsApp, email and phone as matching solid buttons: one of each, used everywhere."""
+    return f'''<div class="cbtns {cls}">
+          <a class="cbtn cbtn--wa" href="{S["whatsapp"]}" target="_blank" rel="noopener">{I["whatsapp"]}<span><small>WhatsApp</small>{S["phone_display"]}</span></a>
+          <a class="cbtn cbtn--mail" href="mailto:{S["email"]}">{I["mail2"]}<span><small>Email</small>{S["email"]}</span></a>
+          <a class="cbtn cbtn--call" href="tel:{S["phone_tel"]}">{I["phone2"]}<span><small>Call</small>{S["phone_display"]}</span></a>
+        </div>'''
+
+
 def contact_band():
-    items = contact_methods()
     return f'''
   <section class="contact-band" id="get-in-touch">
     <div class="container">
       <div class="contact-band__inner reveal">
-        <span class="shape shape--sphere cb-s1" aria-hidden="true"></span>
-        <span class="shape shape--ring cb-s2" aria-hidden="true"></span>
         <div class="contact-band__copy">
           {eyebrow("Get in touch")}
           <h2>Let's create something great together.</h2>
           <p>Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.</p>
-          <div class="btn-row">
-            {btn("Book a Consultation", "contact.html", "white")}
-            {btn(I["whatsapp"] + " WhatsApp Us", S["whatsapp"], "glass", arrow=False, ext=True)}
-          </div>
+          {btn("Book a Consultation", "contact.html", "white")}
         </div>
-        <ul class="contact-band__list">{items}</ul>
+        {contact_buttons("cbtns--band")}
       </div>
     </div>
   </section>
 '''
-
-
-def contact_methods():
-    rows = [("whatsapp", "WhatsApp", f'<a href="{S["whatsapp"]}" target="_blank" rel="noopener">{S["phone_display"]}</a>'),
-            ("mail2", "Email", f'<a href="mailto:{S["email"]}">{S["email"]}</a>'),
-            ("phone2", "Phone", f'<a href="tel:{S["phone_tel"]}">{S["phone_display"]}</a>'),
-            ("pin2", "Location", f'<span>{S["city"]}</span>')]
-    return "".join(f'<li><span class="ico">{I[i]}</span><div><small>{t}</small>{v}</div></li>' for i, t, v in rows)
 
 
 # ------------------------------------------------------------------ shared components
@@ -280,6 +279,11 @@ def project_media(p, big=False):
         return f'<div class="media-logo">{logo_img(p)}</div>'
     if not p["cover"]:
         return f'<div class="media-placeholder" role="img" aria-label="{plain(p["client"])}">{ART["web"]}<span>{p["client"]}</span></div>'
+    if p.get("video") and not big:
+        v = p["video"]
+        webp(v + "-poster")
+        return (f'<video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{v}-poster.webp" aria-label="{alt}">'
+                f'<source src="assets/video/{v}.mp4" type="video/mp4"></video>')
     return img(p["cover"], alt, lazy=not big)
 
 
@@ -306,12 +310,12 @@ def media_count(p):
 
 
 def project_card(p, extra=False, h="h3"):
-    play = '<span class="play" aria-hidden="true"></span>' if p.get("video") else ""
     count = media_count(p)
     return f'''
         <article class="pcard reveal" data-category="{p["cat"]}"{" data-extra" if extra else ""}>
-          <div class="pcard__media">{project_media(p)}{play}<span class="chip">{p["category"]}</span>{f'<span class="chip chip--count">{count}</span>' if count else ""}</div>
+          <div class="pcard__media">{project_media(p)}</div>
           <div class="pcard__body">
+            <span class="pcard__meta">{p["category"]}{f" · {count}" if count else ""}</span>
             <{h}><a href="work/{p["id"]}.html">{p["client"]}</a></{h}>
             <small>{p["title"]}</small>
             <p>{p["summary"]}</p>
@@ -332,7 +336,7 @@ def viewer(p):
         hidden = "" if n == 0 else ' aria-hidden="true"'
         if kind == "video":
             webp(name + "-poster")
-            body = f'<video controls playsinline preload="{"metadata" if n == 0 else "none"}" poster="assets/img/work/{name}-poster.webp"><source src="assets/video/{name}.mp4" type="video/mp4">Your browser does not support video.</video>'
+            body = f'<video controls muted loop playsinline{" autoplay" if n == 0 else ""} preload="{"metadata" if n == 0 else "none"}" poster="assets/img/work/{name}-poster.webp"><source src="assets/video/{name}.mp4" type="video/mp4">Your browser does not support video.</video>'
             th = f'<img src="assets/img/work/{name}-poster.webp" alt="" loading="lazy"><span class="play" aria-hidden="true"></span>'
             label = f"Play the {who} video"
         elif kind == "device":
@@ -348,7 +352,7 @@ def viewer(p):
     multi = len(items) > 1
     nav = f'''<button class="viewer__nav viewer__nav--prev" type="button" aria-label="Previous">{ARR}</button>
           <button class="viewer__nav viewer__nav--next" type="button" aria-label="Next">{ARR}</button>
-          <span class="viewer__count" aria-live="polite">1 / {len(items)}</span>''' if multi else ""
+''' if multi else ""
     return f'''<div class="viewer reveal" data-viewer aria-roledescription="carousel" aria-label="{who} project media">
         <div class="viewer__stage">{stage}
           {nav}
@@ -378,6 +382,29 @@ def clients_wall(tint=False):
         </li>{cells}
       </ul>
     </div>
+  </section>'''
+
+
+BRANDS_H2 = "Brands we've <span class=\"hl\">worked with</span>"
+
+
+def clients_marquee():
+    """Home: two rows of client logos scrolling in opposite directions."""
+    def tile(f, name):
+        w, h = Image.open(os.path.join(ROOT, "assets/img/clients", f + ".webp")).size
+        return f'<li><img src="assets/img/clients/{f}.webp" alt="{plain(name) if name else ""}" width="{w}" height="{h}" loading="lazy"></li>'
+    half = (len(C.CLIENTS) + 1) // 2
+    rows = ""
+    for n, part in enumerate((C.CLIENTS[:half], C.CLIENTS[half:])):
+        items = "".join(tile(f, nm) for f, nm in part)
+        dup = items.replace('<li>', '<li aria-hidden="true">').replace('alt="', 'alt="" data-alt="')
+        rows += f'<div class="marquee{" marquee--rev" if n else ""}"><ul class="marquee__track">{items}{dup}</ul></div>'
+    return f'''
+  <section class="section clients-slider" id="clients">
+    <div class="container">
+      {sec_head("Clients &amp; partners", BRANDS_H2, "From global technology names to local favourites.", cls="sec-head--center")}
+    </div>
+    <div class="marquees reveal">{rows}</div>
   </section>'''
 
 
@@ -416,13 +443,10 @@ HERO_LOGOS = [("xiaomi", "Xiaomi"), ("oppo", "OPPO"), ("netflix", "Netflix"), ("
 
 def hero_visual():
     return f'''<div class="hero__visual" aria-hidden="true">
-        <span class="hero__glow"></span>
         <div class="hero__devices devices">
           <div class="dev-laptop"><div class="dev-laptop__lid"><div class="dev-laptop__screen">{img("tailor-website", "", lazy=False)}</div></div><div class="dev-laptop__base"></div></div>
           <div class="dev-phone"><div class="dev-phone__screen"><video class="hero__video" muted loop playsinline autoplay preload="metadata" poster="assets/img/work/xiaomi-redmi-watch-poster.webp"><source src="assets/video/xiaomi-redmi-watch.mp4" type="video/mp4"></video></div></div>
         </div>
-        <div class="glass hero__chip hero__chip--web float-a"><span class="ico">{I["monitor"]}</span><div><b>Website Design</b><small>Platinum Tailor</small></div></div>
-        <div class="glass hero__chip hero__chip--video float-b"><span class="ico">{I["camcorder"]}</span><div><b>Video Production</b><small>Xiaomi campaign</small></div></div>
       </div>'''
 
 
@@ -434,15 +458,12 @@ def home():
           <p>{s["short"]}</p>
           <span class="svc-card__go">Learn more {ARR}</span>
         </a>''' for s in C.SERVICES)
-    f = PBY[C.FEATURED]
-    tags = "".join(f"<li>{t}</li>" for t in f["tags"])
     return head("OXE Marketing | Digital Marketing Agency in Bangkok",
                 "Multicultural digital marketing agency in Bangkok: website design, social media marketing, video production, photography and digital strategy.",
                 "index.html", schema=org_schema()) + f'''
   <section class="hero">
     <div class="container hero__inner">
       <div class="hero__copy">
-        <span class="hero__pill"><i aria-hidden="true"></i>{C.HERO["eyebrow"]}</span>
         <h1>{C.HERO["title"]}</h1>
         <p class="lead">{C.HERO["text"]}</p>
         <div class="btn-row">
@@ -450,7 +471,7 @@ def home():
           {btn("View Portfolio", "portfolio.html", "outline")}
         </div>
         <div class="hero__trust">
-          <div class="hero__logos">{"".join(f'<img src="assets/img/clients/{f}.webp" alt="{n}" width="40" height="40" loading="lazy">' for f, n in HERO_LOGOS)}</div>
+          <div class="hero__logos">{"".join(f'<img src="assets/img/clients/{f}.webp" alt="{n}" width="40" height="40">' for f, n in HERO_LOGOS)}</div>
           <p>Trusted by <b>Xiaomi, OPPO, Netflix</b> and brands across Thailand</p>
         </div>
       </div>
@@ -474,9 +495,6 @@ def home():
       <div class="why__visual reveal">
         <figure class="why__photo">{img("bts-video-1", "The OXE Marketing crew filming a corporate interview in Bangkok")}</figure>
         <figure class="why__photo2">{img("about-team", "Laptop and camera set up in a Bangkok studio")}</figure>
-        <div class="glass why__chip float-b"><span class="ico">{I["pin2"]}</span><div><b>Bangkok, Thailand</b><small>Multicultural team since 2020</small></div></div>
-        <div class="why__art float-a" aria-hidden="true">{ART["analytics"]}</div>
-        <span class="shape shape--sphere why__sphere" aria-hidden="true"></span>
       </div>
       <div class="why__copy">
         {sec_head("Why OXE", C.WHY["title"], C.WHY["text"])}
@@ -498,31 +516,29 @@ def home():
     </div>
   </section>
 
-  <section class="section section--flush" id="featured">
-    <div class="container">
-      <div class="sec-row">
-        {sec_head("Featured case study", 'Selected <span class="hl">Projects</span>', "From websites to social media, video, and photography, we've helped brands across different industries tell their stories and grow online.")}
-        <a class="link-arrow reveal" href="portfolio.html">View full portfolio {ARR}</a>
-      </div>
-      <article class="feature reveal">
-        <div class="feature__media">{devices(f["cover"], f.get("mobile"), alt="Tailor website designed by OXE Marketing on a laptop and phone")}</div>
-        <div class="feature__body">
-          {eyebrow(f["category"])}
-          <h3>{f["client"]}</h3>
-          <p>{f["summary"]}</p>
-          <dl class="feature__rows">
-            <div><dt>Challenge</dt><dd>{f["challenge"]}</dd></div>
-            <div><dt>Solution</dt><dd>{f["solution"]}</dd></div>
-            <div><dt>Result</dt><dd>{f["outcome"]}</dd></div>
-          </dl>
-          <ul class="tags">{tags}</ul>
-          {btn("View Case Study", "work/" + f["id"] + ".html")}
-        </div>
-      </article>
-    </div>
-  </section>
-{clients_wall()}
+{clients_marquee()}
 {contact_band()}''' + foot()
+
+
+def collage(imgs, alts):
+    """Three-photo collage used as the visual in page heroes."""
+    return '<div class="collage">' + "".join(f'<figure>{img(i, a, lazy=False)}</figure>' for i, a in zip(imgs, alts)) + '</div>'
+
+
+def page_hero(eb, h1, lead, visual="", after="", cls=""):
+    """One hero layout for every inner page: same background, type scale and spacing."""
+    return f'''
+  <section class="page-hero{" page-hero--split" if visual else ""} {cls}">
+    <div class="container page-hero__inner">
+      <div class="page-hero__copy reveal">
+        {eyebrow(eb)}
+        <h1>{h1}</h1>
+        <p class="lead">{lead}</p>
+        {after}
+      </div>
+      {f'<div class="page-hero__visual reveal">{visual}</div>' if visual else ""}
+    </div>
+  </section>'''
 
 
 # ------------------------------------------------------------------ SERVICES
@@ -533,9 +549,9 @@ def service_media(s):
         tiles = ""
         for v, client in s["videos"]:
             webp(v + "-poster")
-            tiles += (f'<figure class="vwall__item"><video muted loop playsinline preload="none" poster="assets/img/work/{v}-poster.webp" '
+            tiles += (f'<figure class="vwall__item"><video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{v}-poster.webp" '
                       f'aria-label="{plain(client)} video by OXE Marketing"><source src="assets/video/{v}.mp4" type="video/mp4"></video>'
-                      f'<figcaption>{client}</figcaption></figure>')
+                      f'</figure>')
         return f'<div class="vwall" data-vwall>{tiles}</div>'
     slides, dots = "", ""
     for i, name in enumerate(s["slides"]):
@@ -554,7 +570,7 @@ def service_media(s):
 
 
 def services():
-    jump = "".join(f'<a href="#{s["key"]}"><b>{s["num"]}</b>{s["title"]}</a>' for s in C.SERVICES)
+    jump = "".join(f'<a href="#{s["key"]}">{s["title"]}</a>' for s in C.SERVICES)
     blocks = ""
     for n, s in enumerate(C.SERVICES):
         what = "".join(f"<li>{I['check']}{x}</li>" for x in s["what"])
@@ -564,10 +580,9 @@ def services():
           {service_media(s)}
         </div>
         <div class="svc-block__body reveal">
-          <b class="svc-block__ghost" aria-hidden="true">{s["num"]}</b>
           <div class="svc-block__head">
-            <span class="svc-block__mark" aria-hidden="true"><span class="float-a">{ART[s["art"]]}</span></span>
-            <div><span class="num">Service {s["num"]}</span><h2>{s["title"]}</h2></div>
+            <span class="svc-block__mark" aria-hidden="true">{ART[s["art"]]}</span>
+            <h2>{s["title"]}</h2>
           </div>
           <p class="lead">{s["intro"]}</p>
           <h3 class="svc-block__label">What we do</h3>
@@ -578,24 +593,13 @@ def services():
           </div>
         </div>
       </article>'''
-    ind = "".join(f'<li class="reveal"><span class="ico">{I[i]}</span>{t}</li>' for i, t in C.INDUSTRIES)
+    ind = "".join(f'<li class="ind-tile reveal">{img(im, t + " industry")}<span>{t}</span></li>' for t, im in C.INDUSTRIES)
     return head("Services | Website Design, Video & Social Media in Bangkok | OXE Marketing",
                 "Website design & development, social media marketing, video production, photography and digital strategy for businesses in Bangkok and across Thailand.",
                 "services.html") + f'''
-  <section class="page-hero">
-    <div class="container page-hero__inner">
-      <div>
-        {sec_head("Our services", 'Turn Your Ideas Into <span class="hl">Impact</span>', "Strategic marketing. Creative content. Measurable results. Five services, one team, planned around your goals.", "h1")}
-        <nav class="jump reveal" aria-label="Services on this page">{jump}</nav>
-      </div>
-      <div class="page-hero__art reveal" aria-hidden="true">
-        <span class="scene__glow"></span>
-        <div class="pa-main float-a">{ART["web"]}</div>
-        <div class="pa-a float-b">{ART["video"]}</div>
-        <div class="pa-b float-c">{ART["social"]}</div>
-      </div>
-    </div>
-  </section>
+{page_hero("Our services", 'Turn your ideas into <span class="hl">impact</span>', "Strategic marketing, creative content and measurable results: five services, one team, planned around your goals.",
+           collage(["shoot-1", "haji-strawberry", "bts-video-1"], ["Rockers Supercars shoot", "Haji Café social media design", "Corporate video shoot"]),
+           f'<nav class="jump" aria-label="Services on this page">{jump}</nav>')}
 
   <section class="section section--flush">
     <div class="container">{blocks}
@@ -605,7 +609,7 @@ def services():
   <section class="section section--tint" id="industries">
     <div class="container">
       {sec_head("Industries", 'Industries We <span class="hl">Worked With</span>', "Experience across local businesses and international brands in Thailand.")}
-      <ul class="industries">{ind}</ul>
+      <ul class="ind-grid">{ind}</ul>
     </div>
   </section>
 {contact_band()}''' + foot()
@@ -618,12 +622,8 @@ def portfolio():
     return head("Portfolio | OXE Marketing Bangkok",
                 "Selected work by OXE Marketing: websites, video production, social media and photography for brands including Xiaomi, OPPO and Rockers Supercars.",
                 "portfolio.html") + f'''
-  <section class="page-hero page-hero--compact">
-    <div class="container">
-      {sec_head("Our work", 'Our <span class="hl">Portfolio</span>', "A collection of projects we're proud to share. Each one tells a story of collaboration, creativity, and results.", "h1")}
-      <div class="filters reveal" role="group" aria-label="Filter projects by category">{fb}</div>
-    </div>
-  </section>
+{page_hero("Our work", 'Our <span class="hl">Portfolio</span>', "A collection of projects we're proud to share. Each one tells a story of collaboration, creativity, and results.",
+           after=f'<div class="filters" role="group" aria-label="Filter projects by category">{fb}</div>')}
 
   <section class="section section--flush">
     <div class="container">
@@ -728,20 +728,8 @@ def about():
     return head("About Us | OXE Marketing, Multicultural Agency in Bangkok",
                 "OXE Marketing is an ASEAN-based multicultural creative and digital agency headquartered in Bangkok, founded in 2020.",
                 "about.html") + f'''
-  <section class="page-hero">
-    <div class="container page-hero__inner about-hero">
-      <div>
-        {sec_head("About us", 'A multicultural team with a <span class="hl">shared vision</span>', C.ABOUT["positioning"], "h1")}
-        <p class="muted reveal">{C.ABOUT["intro"]}</p>
-      </div>
-      <div class="why__visual reveal">
-        <figure class="why__photo">{img("bts-video-2", "OXE Marketing crew on a video shoot in Bangkok", lazy=False)}</figure>
-        <figure class="why__photo2">{img("about-team", "Laptop and camera set up in a Bangkok studio")}</figure>
-        <div class="glass why__chip float-b"><span class="ico">{I["calendar"]}</span><div><b>Founded in 2020</b><small>Headquartered in Bangkok</small></div></div>
-        <span class="shape shape--sphere why__sphere" aria-hidden="true"></span>
-      </div>
-    </div>
-  </section>
+{page_hero("About us", 'A multicultural team with a <span class="hl">shared vision</span>', C.ABOUT["positioning"] + " " + C.ABOUT["intro"],
+           collage(["bts-video-2", "about-team", "cake-strawberry"], ["OXE crew on a video shoot in Bangkok", "Laptop and camera in a Bangkok studio", "Dessert photography by OXE"]))}
 
   <section class="facts-wrap">
     <div class="container"><ul class="facts reveal">{facts}</ul></div>
@@ -794,53 +782,55 @@ def form():
     svc = "".join(f'<option data-key="{keys.get(s, "")}">{s}</option>' for s in C.SERVICE_OPTIONS)
     bud = "".join(f"<option>{b}</option>" for b in C.BUDGETS)
 
-    def field(id_, name, label, typ="text", req=False, ac="", ph="", err="", full=False):
-        return f'''<div class="field{" field--full" if full else ""}">
-              <label for="{id_}">{label}{' <span aria-hidden="true">*</span>' if req else ' <em>(optional)</em>'}</label>
-              <input id="{id_}" name="{name}" type="{typ}"{f' autocomplete="{ac}"' if ac else ""}{f' placeholder="{ph}"' if ph else ""}{" required" if req else ""}{f' aria-describedby="{id_}-err"' if err else ""}>
+    def label(id_, text, req):
+        return f'<label for="{id_}">{text}{"" if req else " <em>Optional</em>"}</label>'
+
+    def field(id_, name, text, typ="text", req=False, ac="", err=""):
+        return f'''<div class="field">
+              {label(id_, text, req)}
+              <input id="{id_}" name="{name}" type="{typ}"{f' autocomplete="{ac}"' if ac else ""}{" required" if req else ""}{f' aria-describedby="{id_}-err"' if err else ""}>
               {f'<span class="error" id="{id_}-err">{err}</span>' if err else ""}
             </div>'''
     return f'''<div class="form-card reveal" id="enquiry">
-        <h2>Tell us about your project</h2>
-        <p class="form-card__intro">Fill out the form and our team will get back to you as soon as possible. Fields marked * are required.</p>
+        <h2>Send us a message</h2>
         <form name="contact" method="POST" action="thank-you.html" data-netlify="true" netlify-honeypot="bot-field" data-contact-form novalidate>
           <input type="hidden" name="form-name" value="contact">
           <p hidden><label>Don't fill this out: <input name="bot-field"></label></p>
           <div class="form-grid">
-            {field("f-name", "name", "Full Name", req=True, ac="name", ph="Your full name", err="Please enter your name.")}
-            {field("f-email", "email", "Email Address", "email", True, "email", "you@company.com", "Please enter a valid email address.")}
-            {field("f-phone", "phone", "Phone Number", "tel", ac="tel", ph="+66")}
-            {field("f-company", "company", "Company", ac="organization", ph="Company name")}
+            {field("f-name", "name", "Name", req=True, ac="name", err="Please enter your name.")}
+            {field("f-email", "email", "Email", "email", True, "email", "Please enter a valid email address.")}
+            {field("f-phone", "phone", "Phone", "tel", ac="tel")}
+            {field("f-company", "company", "Company", ac="organization")}
             <div class="field">
-              <label for="f-service">Service Interested In <span aria-hidden="true">*</span></label>
+              {label("f-service", "Service", True)}
               <select id="f-service" name="service" required aria-describedby="f-service-err">
-                <option value="" selected disabled>Select a service</option>
+                <option value="" selected disabled>Choose one</option>
                 {svc}
               </select>
               <span class="error" id="f-service-err">Please choose a service.</span>
             </div>
             <div class="field">
-              <label for="f-budget">Budget <em>(optional)</em></label>
+              {label("f-budget", "Budget", False)}
               <select id="f-budget" name="budget">
-                <option value="" selected>Select a range</option>
+                <option value="" selected>Choose a range</option>
                 {bud}
               </select>
             </div>
             <div class="field field--full">
-              <label for="f-details">Project Details <span aria-hidden="true">*</span></label>
-              <textarea id="f-details" name="details" rows="5" placeholder="Your goals, timeline and anything else we should know" required aria-describedby="f-details-err"></textarea>
+              {label("f-details", "Project details", True)}
+              <textarea id="f-details" name="details" rows="5" required aria-describedby="f-details-err"></textarea>
               <span class="error" id="f-details-err">Please tell us a little about your project.</span>
             </div>
             <fieldset class="field field--full">
-              <legend>Preferred Contact Method</legend>
-              <div class="radio-row">
-                <label><input type="radio" name="method" value="Email" checked><span>{I["mail2"]}Email</span></label>
-                <label><input type="radio" name="method" value="Phone"><span>{I["phone2"]}Phone</span></label>
-                <label><input type="radio" name="method" value="WhatsApp"><span>{I["whatsapp"]}WhatsApp</span></label>
+              <legend>Reply by</legend>
+              <div class="segmented">
+                <label><input type="radio" name="method" value="Email" checked><span>Email</span></label>
+                <label><input type="radio" name="method" value="Phone"><span>Phone</span></label>
+                <label><input type="radio" name="method" value="WhatsApp"><span>WhatsApp</span></label>
               </div>
             </fieldset>
           </div>
-          <button type="submit" class="btn btn--primary btn--block">Send Message {ARR}</button>
+          <button type="submit" class="btn btn--navy form-submit">Send message {ARR}</button>
           <div class="form-success" role="status" aria-live="polite">Thank you! Your message has been sent. Our team will get back to you shortly.</div>
         </form>
       </div>'''
@@ -855,10 +845,12 @@ def contact():
                 "contact.html", schema=org_schema()) + f'''
   <section class="page-hero contact-hero">
     <div class="container contact-grid">
-      <div class="contact-intro">
-        {sec_head("Get in touch", CONTACT_H1, "Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.", "h1")}
-        <ul class="methods reveal" id="methods">{contact_methods()}</ul>
-        <div class="reveal">{btn(I["whatsapp"] + " Chat on WhatsApp", S["whatsapp"], "whatsapp", arrow=False, ext=True)}</div>
+      <div class="page-hero__copy contact-intro reveal">
+        {eyebrow("Get in touch")}
+        <h1>{CONTACT_H1}</h1>
+        <p class="lead">Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.</p>
+        <div id="methods">{contact_buttons()}</div>
+        <p class="contact-loc">{I["pin2"]} {S["city"]}</p>
       </div>
       {form()}
     </div>

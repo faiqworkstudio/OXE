@@ -21,7 +21,7 @@ SITE = {
 # Mega-menu: short anchor links to the sections of each page (href, label)
 MENU = {
     "index.html": [("index.html#services", "Services"), ("index.html#why", "Why OXE"), ("index.html#work", "Our Works"),
-                   ("index.html#featured", "Case Study"), ("index.html#clients", "Clients"), ("index.html#get-in-touch", "Get in Touch")],
+                   ("index.html#clients", "Clients"), ("index.html#get-in-touch", "Get in Touch")],
     "services.html": [("services.html#web", "Web Design"), ("services.html#social", "Social Media"), ("services.html#video", "Video"),
                       ("services.html#photo", "Photography"), ("services.html#strategy", "Strategy"), ("services.html#industries", "Industries")],
     "portfolio.html": [("portfolio.html", "All Work"), ("portfolio.html?filter=web", "Web Design"), ("portfolio.html?filter=social", "Social Media"),
@@ -79,8 +79,9 @@ SERVICES = [
          deliverables=["Marketing plan &amp; channel mix", "Campaign set-up &amp; optimisation", "Talent &amp; influencer coordination", "Performance reporting"]),
 ]
 
-INDUSTRIES = [("suit", "Tailors"), ("gem2", "Jewelry"), ("dish", "Restaurants"), ("building", "Hospitality"),
-              ("tie", "Professional Services"), ("plane", "Businesses entering Thailand")]
+INDUSTRIES = [("Tailors", "ind-tailor"), ("Jewelry", "ind-jewelry"), ("Restaurants", "ind-restaurant"),
+              ("Hospitality", "ind-hospitality"), ("Professional Services", "bts-video-2"),
+              ("Businesses entering Thailand", "meta-event-registration")]
 
 # ------------------------------------------------------------------ WHY OXE
 WHY = {
@@ -222,7 +223,7 @@ PROJECTS = [
          challenge=None, solution=None, outcome=None, tags=["Social Media", "Graphic Design"],
          services=["Social Media Content", "Graphic Design", "Creator Content"]),
     dict(id="wirever", client="Wirever", title="Product Photography", cat="photo", category="Photography", extra=True,
-         cover="wirever-packaging", gallery=["wirever-lifestyle", "wirever-rgb"], video=None,
+         cover="wirever-packaging", gallery=["wirever-lifestyle", "wirever-desk", "wirever-studio", "wirever-rgb"], video=None,
          summary="Studio and lifestyle photography for cable-management accessories.",
          challenge=None, solution=None, outcome=None, tags=["Photography", "Product"],
          services=["Product Photography", "Lifestyle Photography", "Retouching"]),
