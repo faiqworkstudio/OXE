@@ -479,7 +479,6 @@ def home():
   <section class="hero">
     <div class="container">
       <div class="hero__panel">
-        {book_pill()}
         <h1>Helping businesses build a stronger digital presence in a <span class="hl">connected world</span></h1>
         <p class="lead">{C.HERO["text"]}</p>
         <div class="hero__actions">

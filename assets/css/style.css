@@ -242,7 +242,7 @@ h1 .hl, h2 .hl { font-size: 1.12em; line-height: .9; }
 .hero { padding: var(--s-4) 0 0; background: #fff; }
 .hero__panel { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; padding: var(--s-7) var(--s-5) var(--s-9); border-radius: 28px; background: linear-gradient(180deg, var(--lav-1) 0%, var(--lav-2) 100%); }
 @media (min-width: 768px) { .hero__panel { padding: var(--s-8) var(--s-7) var(--s-9); } }
-.hero h1 { font-size: clamp(2.3rem, 5.6vw, 4.4rem); line-height: 1.08; letter-spacing: -.035em; font-weight: 600; color: var(--ink); max-width: 15em; margin: var(--s-5) 0 var(--s-5); }
+.hero h1 { font-size: clamp(2.3rem, 5.6vw, 4.4rem); line-height: 1.08; letter-spacing: -.035em; font-weight: 600; color: var(--ink); max-width: 15em; margin: 0 0 var(--s-5); }
 .hero .lead { max-width: 560px; margin: 0 auto var(--s-6); font-size: 1.05rem; color: #4b5563; }
 .hero__actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--s-5) var(--s-6); }
 .hero__proof { display: flex; align-items: center; gap: 14px; text-align: left; }
