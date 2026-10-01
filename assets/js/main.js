@@ -168,10 +168,37 @@
       dock.querySelectorAll("a").forEach(function (a) { a.classList.toggle("is-active", !!best && a.getAttribute("data-dock") === best.id); });
     }
   }
+  // Portfolio: the same floating dock, holding the category filters
+  var portSection = document.querySelector("[data-port-section]");
+  var portDock = document.querySelector(".port-dock");
+  if (portDock) {
+    portDock.querySelectorAll("[data-dock-filter]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var f = document.querySelector('.filter-btn[data-filter="' + b.getAttribute("data-dock-filter") + '"]');
+        if (f) f.click();
+      });
+    });
+    document.querySelectorAll(".filter-btn").forEach(function (f) {
+      f.addEventListener("click", function () {
+        portDock.querySelectorAll("[data-dock-filter]").forEach(function (b) {
+          b.classList.toggle("is-active", b.getAttribute("data-dock-filter") === f.getAttribute("data-filter"));
+        });
+      });
+    });
+  }
+  function portFrame() {
+    if (!portSection || !portDock) return;
+    var vh = innerHeight, r = portSection.getBoundingClientRect();
+    var bar = portSection.querySelector(".pbar");
+    var barGone = bar ? bar.getBoundingClientRect().bottom < 80 : true;
+    portDock.classList.toggle("is-visible", barGone && r.bottom > vh * .5);
+    portDock.style.setProperty("--sp", Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - vh))).toFixed(3));
+  }
   var ticking = false;
   function frame() {
     ticking = false;
     svcFrame();
+    portFrame();
     // stacking service cards: hide a card's floating icon once the next card slides over it
     stackCards.forEach(function (c, k) {
       var next = stackCards[k + 1];
@@ -367,7 +394,7 @@
         var gtop = grid.getBoundingClientRect().top;
         if (gtop < 0 || gtop > innerHeight * .6) {
           var bar = document.querySelector(".pbar");
-          window.scrollTo({ top: gtop + scrollY - (bar ? bar.offsetHeight : 0) - 110, behavior: reduced ? "auto" : "smooth" });
+          window.scrollTo({ top: gtop + scrollY - (document.querySelector(".port-dock") ? 96 : (bar ? bar.offsetHeight : 0) + 110), behavior: reduced ? "auto" : "smooth" });
         }
       });
     });
