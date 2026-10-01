@@ -739,7 +739,7 @@ def portfolio():
     counts = {k: (len(C.PROJECTS) if k == "all" else sum(k in p["cat"].split() for p in C.PROJECTS)) for k, _ in C.FILTERS}
     fb = "".join(f'<button class="filter-btn{" is-active" if k == "all" else ""}" type="button" data-filter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{t}<sup>{counts[k]:02d}</sup></button>' for k, t in C.FILTERS)
     grid_projects = PORT
-    pdock = "".join(f'<button type="button" data-dock-filter="{k}"{" class=" + chr(34) + "is-active" + chr(34) if k == "all" else ""}>{t}<sup>{counts[k]:02d}</sup></button>' for k, t in C.FILTERS)
+    pdock = "".join(f'<button type="button" class="filter-btn{" is-active" if k == "all" else ""}" data-filter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{t}<sup>{counts[k]:02d}</sup></button>' for k, t in C.FILTERS)
     first = bento_spans(7)
     cards = "".join(pcard(p, n, extra=n >= 7, span=first[n] if n < 7 else None) for n, p in enumerate(grid_projects))
     f = PBY[SPOTLIGHT]
@@ -782,10 +782,6 @@ def portfolio():
 
   <section class="section section--flush" id="projects" data-port-section>
     <div class="container">
-      <div class="pbar">
-        <h2 class="pbar__title">All <span class="hl">projects</span></h2>
-        <div class="filters" role="group" aria-label="Filter projects by category"><span class="filters__pill" aria-hidden="true"></span>{fb}</div>
-      </div>
       <div class="pbento" data-projects>{cards}
       </div>
       <p class="filter-empty" hidden>No projects in this category yet.</p>
