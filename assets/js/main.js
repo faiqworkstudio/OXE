@@ -143,9 +143,35 @@
   var bar = document.querySelector(".scroll-progress");
   var par = reduced ? [] : Array.prototype.slice.call(document.querySelectorAll(".phero__pic, .badge, .hero__proof .hero__logos"));
   var stackCards = Array.prototype.slice.call(document.querySelectorAll(".scard2"));
+  // Services page: per-block progress (--p), current block, floating dock
+  var svcSection = document.querySelector("[data-svc-section]");
+  var svcBlocks = Array.prototype.slice.call(document.querySelectorAll("[data-svc]"));
+  var dock = document.querySelector(".svc-dock");
+  function svcFrame() {
+    if (!svcSection) return;
+    var vh = innerHeight, best = null, bestD = 1e9;
+    svcBlocks.forEach(function (b) {
+      var r = b.getBoundingClientRect();
+      var p = Math.min(1, Math.max(0, (vh - r.top) / (vh * .75)));
+      b.style.setProperty("--p", p.toFixed(3));
+      if (p > .35) b.classList.add("is-in");
+      var d = Math.abs(r.top + r.height / 2 - vh / 2);
+      if (d < bestD) { bestD = d; best = b; }
+    });
+    var sr = svcSection.getBoundingClientRect();
+    var inView = sr.top < vh * .5 && sr.bottom > vh * .6;
+    svcSection.classList.toggle("is-tracking", inView);
+    svcBlocks.forEach(function (b) { b.classList.toggle("is-current", b === best); });
+    if (dock) {
+      dock.classList.toggle("is-visible", inView);
+      dock.style.setProperty("--sp", Math.min(1, Math.max(0, -sr.top / (sr.height - vh))).toFixed(3));
+      dock.querySelectorAll("a").forEach(function (a) { a.classList.toggle("is-active", !!best && a.getAttribute("data-dock") === best.id); });
+    }
+  }
   var ticking = false;
   function frame() {
     ticking = false;
+    svcFrame();
     // stacking service cards: hide a card's floating icon once the next card slides over it
     stackCards.forEach(function (c, k) {
       var next = stackCards[k + 1];

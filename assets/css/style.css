@@ -689,6 +689,30 @@ a.ctile:hover .ctile__go { transform: rotate(45deg); }
 .ind-tile span { position: absolute; left: 20px; right: 20px; bottom: 18px; z-index: 1; font: 600 clamp(1rem, 1.8vw, 1.3rem)/1.25 var(--font-head); color: #fff; letter-spacing: -.01em; }
 .ind-tile:hover img { transform: scale(1.05); }
 
+/* ---------- Services page: scroll-linked blocks + floating dock ---------- */
+/* --p (0..1) is set per block by main.js as it travels into view */
+@media (prefers-reduced-motion: no-preference) {
+  .svc-block__visual > .slideshow, .svc-block__visual > .vwall { transform: translateY(calc((1 - var(--p, 1)) * 80px)) scale(calc(.86 + var(--p, 1) * .14)) rotate(calc((1 - var(--p, 1)) * -4deg)); transform-origin: 50% 80%; will-change: transform; }
+  .svc-block--rev .svc-block__visual > .slideshow, .svc-block--rev .svc-block__visual > .vwall { transform: translateY(calc((1 - var(--p, 1)) * 80px)) scale(calc(.86 + var(--p, 1) * .14)) rotate(calc((1 - var(--p, 1)) * 4deg)); }
+  .svc-block__mark { transform: rotate(calc((1 - var(--p, 1)) * -18deg)) scale(calc(.7 + var(--p, 1) * .3)); }
+  .svc-block__list li { opacity: 0; transform: translateY(14px) scale(.96); transition: opacity .5s var(--ease), transform .6s var(--ease); }
+  .svc-block.is-in .svc-block__list li { opacity: 1; transform: none; }
+  .svc-block.is-in .svc-block__list li:nth-child(2) { transition-delay: .05s; } .svc-block.is-in .svc-block__list li:nth-child(3) { transition-delay: .1s; }
+  .svc-block.is-in .svc-block__list li:nth-child(4) { transition-delay: .15s; } .svc-block.is-in .svc-block__list li:nth-child(5) { transition-delay: .2s; } .svc-block.is-in .svc-block__list li:nth-child(6) { transition-delay: .25s; }
+}
+.svc-block { transition: opacity .6s var(--ease); }
+.svc-blocks.is-tracking .svc-block:not(.is-current) { opacity: .45; }
+.svc-dock { position: fixed; left: 50%; bottom: 24px; z-index: 80; display: flex; gap: 4px; padding: 6px; border-radius: 999px; background: rgba(15, 43, 80, .92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 20px 40px rgba(15, 43, 80, .25); overflow: hidden; transform: translate(-50%, 140%); opacity: 0; transition: transform .6s var(--ease), opacity .4s; }
+.svc-dock.is-visible { transform: translate(-50%, 0); opacity: 1; }
+.svc-dock__fill { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--blue-soft); transform: scaleX(var(--sp, 0)); transform-origin: left; }
+.svc-dock a { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; color: rgba(255, 255, 255, .65); font: 500 13.5px var(--font-head); white-space: nowrap; transition: background .4s var(--ease), color .3s; }
+.svc-dock a b { font: italic 400 13px var(--font-serif); color: var(--blue-soft); }
+.svc-dock a:hover { color: #fff; }
+.svc-dock a.is-active { background: #fff; color: var(--navy); }
+.svc-dock a.is-active b { color: var(--periwinkle); }
+@media (max-width: 899px) { .svc-dock a span { display: none; } .svc-dock a.is-active span { display: inline; } .svc-dock { bottom: 16px; max-width: calc(100vw - 96px); } }
+@media (prefers-reduced-motion: reduce) { .svc-dock { transition: none; } .svc-block { transition: none; } }
+
 /* ---------- Portfolio page ---------- */
 .pstats { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: var(--s-6); }
 .pstats li { display: inline-flex; align-items: baseline; gap: 8px; padding: 10px 18px; border-radius: 999px; background: #fff; box-shadow: 0 4px 14px rgba(15, 43, 80, .06); font-size: 14px; color: #4b5563; }

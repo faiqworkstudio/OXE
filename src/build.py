@@ -645,13 +645,16 @@ def service_media(s):
           </div>'''
 
 
+DOCK_LABELS = {"web": "Web Design", "social": "Social Media", "video": "Video", "photo": "Photography", "strategy": "Strategy"}
+
+
 def services():
     jump = "".join(f'<a href="#{s["key"]}">{s["title"]}</a>' for s in C.SERVICES)
     blocks = ""
     for n, s in enumerate(C.SERVICES):
         what = "".join(f"<li>{I['check']}{x}</li>" for x in s["what"])
         blocks += f'''
-      <article class="svc-block{" svc-block--rev" if n % 2 else ""}" id="{s["key"]}">
+      <article class="svc-block{" svc-block--rev" if n % 2 else ""}" id="{s["key"]}" data-svc>
         <div class="svc-block__visual reveal">
           {service_media(s)}
         </div>
@@ -669,6 +672,7 @@ def services():
           </div>
         </div>
       </article>'''
+    dock = "".join(f'<a href="#{sv["key"]}" data-dock="{sv["key"]}"><b>{n:02d}</b><span>{DOCK_LABELS.get(sv["key"], plain(sv["title"]))}</span></a>' for n, sv in enumerate(C.SERVICES, 1))
     ind = "".join(f'<li class="ind-tile reveal">{img(im, t + " industry")}<span>{t}</span></li>' for t, im in C.INDUSTRIES)
     return head("Services | Website Design, Video & Social Media in Bangkok | OXE Marketing",
                 "Website design & development, social media marketing, video production, photography and digital strategy for businesses in Bangkok and across Thailand.",
@@ -676,9 +680,13 @@ def services():
 {page_hero("Our services", 'Turn your ideas into <span class="hl">impact</span>', "Strategic marketing, creative content and measurable results: five services, one team, planned around your goals.",
            after=f'<nav class="jump" aria-label="Services on this page">{jump}</nav>', photos=("haji-strawberry", "shoot-1"))}
 
-  <section class="section section--flush">
+  <section class="section section--flush svc-blocks" data-svc-section>
     <div class="container">{blocks}
     </div>
+    <nav class="svc-dock" aria-label="Services on this page">
+      <span class="svc-dock__fill" aria-hidden="true"></span>
+      {dock}
+    </nav>
   </section>
 
   <section class="section section--tint" id="industries">
