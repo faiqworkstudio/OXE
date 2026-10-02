@@ -20,7 +20,7 @@ POSTS = [
         slug="local-seo-bangkok-google-maps",
         title="Local SEO in Bangkok: How to Get Your Business Found on Google Maps in 2026",
         description="A practical guide to local SEO in Bangkok: optimise your Google Business Profile, earn reviews, fix your website and rank on Google Maps.",
-        cat="web", date="2026-09-24", cover="ind-restaurant",
+        cat="web", date="2026-09-24", cover="haji-visit",
         excerpt="Most customers in Bangkok find a café, clinic or tailor the same way: they search on their phone and tap the first result on the map. Here is how to make sure that result is you.",
         body=[
             ("p", "When someone in Bangkok searches for a <em>tailor near Sukhumvit</em>, a <em>brunch café in Ari</em> or a <em>dental clinic in Silom</em>, Google shows a map with three businesses before any regular website. That small box, often called the local pack, is where most local decisions are made. Getting into it is not luck. It is the result of a few clear, repeatable steps."),
@@ -158,7 +158,7 @@ POSTS = [
         slug="short-form-video-guide-thailand",
         title="Short-Form Video in Thailand: A Practical Guide to TikTok, Reels and Shorts for Brands",
         description="How Thai brands can plan, film and edit short-form video for TikTok, Instagram Reels and YouTube Shorts, with hooks, formats and a simple production workflow.",
-        cat="video", date="2026-09-10", cover="xiaomi-bts-rooftop",
+        cat="video", date="2026-09-10", cover="bts-video-2",
         excerpt="Short-form video is now the fastest way for a brand to be discovered. The good news: it rewards ideas and consistency more than big budgets.",
         body=[
             ("p", "Vertical, short videos have become the default way people discover products, restaurants and services. For brands in Thailand, that is an opportunity: a well-planned 20-second video can reach people who have never heard of you. Here is a practical approach that works whether you film on a phone or with a full production team."),

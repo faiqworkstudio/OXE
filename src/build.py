@@ -1101,69 +1101,90 @@ def bmeta(p, cat=True):
     return f'<p class="pc__meta">{c}<span><time datetime="{p["date"]}">{nice_date(p["date"])}</time></span><span>{read_min(p)} min read</span></p>'
 
 
-def bcard(p, h="h3", attrs=""):
-    """Article card: same rounded media + arrow button as the portfolio cards."""
+def split_words(t, start=0):
+    """Wrap each word so headings can rise in word by word (CSS .split)."""
+    out = []
+    for n, w in enumerate(t.split(), start):
+        out.append(f'<span class="w"><span style="--i:{n}">{w}</span></span>')
+    return " ".join(out)
+
+
+def bitem(p, mode="card", attrs=""):
+    """Article teaser. mode 'card' = large card, 'row' = editorial index row (the blog page JS swaps these)."""
     url = f'blog/{p["slug"]}.html'
+    no = POSTS.index(p) + 1
     return f'''
-        <article class="pc bcard reveal" data-category="{p["cat"]}"{attrs}>
-          <a class="pc__media" href="{url}" tabindex="-1" aria-hidden="true">{img(p["cover"], "")}<span class="pc__go" aria-hidden="true">{ARR}</span></a>
-          <div class="pc__body">
+        <article class="bitem is-{mode} reveal" data-category="{p["cat"]}"{attrs}>
+          <a class="bitem__media" href="{url}" tabindex="-1" aria-hidden="true" data-scrub="pass">{img(p["cover"], "")}<span class="pc__go" aria-hidden="true">{ARR}</span></a>
+          <div class="bitem__body">
+            <span class="bitem__no" aria-hidden="true">{no:02d}</span>
             {bmeta(p)}
-            <{h}><a href="{url}">{p["title"]}</a></{h}>
-            <p class="bcard__ex">{p["excerpt"]}</p>
+            <h3><a href="{url}">{p["title"]}</a></h3>
+            <p class="bitem__ex">{p["excerpt"]}</p>
           </div>
+          <span class="bitem__go" aria-hidden="true">{ARR}</span>
         </article>'''
-
-
-BLOG_H1 = 'Insights for brands that want to <span class="hl">grow online</span>'
 
 
 def blog():
     f = POSTS[0]
     counts = {k: (len(POSTS) if k == "all" else sum(p["cat"] == k for p in POSTS)) for k, _ in BLOG_CATS}
-    dock = "".join(f'<button type="button" class="bfilter{" is-active" if k == "all" else ""}" data-bfilter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{t}<sup>{counts[k]:02d}</sup></button>'
-                   for k, t in BLOG_CATS if counts[k])
-    topics = "".join(f'<a href="blog.html?cat={k}">{t}</a>' for k, t in BLOG_CATS[1:] if counts[k])
-    cards = "".join(bcard(p, attrs=" data-feat" if i == 0 else "") for i, p in enumerate(POSTS))
+    topics = "".join(f'<button type="button" class="bfilter{" is-active" if k == "all" else ""}" data-bfilter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{t}<sup>{counts[k]:02d}</sup></button>'
+                     for k, t in BLOG_CATS if counts[k])
+    pills = "".join(f'<a href="blog.html?cat={k}">{t}</a>' for k, t in BLOG_CATS[1:] if counts[k])
+    items = "".join(bitem(p, "card" if i in (1, 2) else "row", ' data-feat hidden' if i == 0 else "") for i, p in enumerate(POSTS))
+    stack = "".join(f'<a class="bstack__card bstack__card--{n}" href="blog/{p["slug"]}.html" tabindex="-1" aria-hidden="true"><span class="bstack__in">{img(p["cover"], "", lazy=False)}<span class="bstack__tag">{CATS[p["cat"]]}</span></span></a>'
+                    for n, p in enumerate(POSTS[:3], 1))
+    words_ = "".join(f"<span>{w}</span><i>✦</i>" for w in TICKER)
     schema = {"@context": "https://schema.org", "@type": "Blog", "name": "OXE Marketing Blog", "url": S["url"] + "/blog",
               "publisher": {"@type": "Organization", "name": "OXE Marketing", "url": S["url"]},
               "blogPost": [{"@type": "BlogPosting", "headline": plain(p["title"]), "url": f'{S["url"]}/blog/{p["slug"]}', "datePublished": p["date"]} for p in POSTS]}
     return head("Blog | Digital Marketing Insights from Bangkok | OXE Marketing",
                 "Practical guides on websites, SEO, social media, video and photography for businesses in Thailand, from the OXE Marketing team in Bangkok.",
                 "blog.html", schema=schema) + f'''
-{page_hero("Blog", BLOG_H1, "Practical guides on websites, social media, video and photography for businesses in Thailand, written by our team in Bangkok.",
-           after=f'<nav class="jump" aria-label="Blog topics">{topics}</nav>', photos=("xiaomi-bts-rooftop", "cake-strawberry-wide"))}
-
-  <section class="section spot-sec">
+  <section class="phero bhero">
     <div class="container">
-      <article class="bfeat reveal">
-        <header class="spot__bar">
-          <span>Latest article</span>
-          <span class="spot__rule" aria-hidden="true"></span>
-          <span>{CATS[f["cat"]]}</span>
-        </header>
-        <div class="bfeat__grid">
-          <a class="pc__media bfeat__media" href="blog/{f["slug"]}.html" tabindex="-1" aria-hidden="true">{img(f["cover"], "", lazy=False)}<span class="pc__go" aria-hidden="true">{ARR}</span></a>
-          <div class="bfeat__copy">
-            {bmeta(f)}
-            <h2><a href="blog/{f["slug"]}.html">{f["title"]}</a></h2>
-            <p>{f["excerpt"]}</p>
-            {btn("Read the article", f'blog/{f["slug"]}.html')}
+      <div class="phero__panel bhero__panel">
+        <span class="phero__glow phero__glow--a" aria-hidden="true"></span>
+        <span class="phero__glow phero__glow--b" aria-hidden="true"></span>
+        <div class="bhero__grid">
+          <div class="bhero__copy">
+            <nav class="phero__crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span aria-hidden="true">/</span><span aria-current="page">Blog</span></nav>
+            <h1 class="split">{split_words("The OXE")} <span class="hl">{split_words("Journal", 2)}</span></h1>
+            <p class="lead">Practical guides on websites, social media, video and photography for businesses in Thailand, written by our team in Bangkok.</p>
+            <nav class="jump" aria-label="Blog topics">{pills}</nav>
           </div>
+          <div class="bstack" data-scrub="leave">{stack}</div>
         </div>
-      </article>
+        <div class="phero__ticker" aria-hidden="true"><div class="phero__track">{words_}{words_}</div></div>
+      </div>
     </div>
   </section>
 
-  <section class="section section--flush" id="articles" data-port-section>
+  <section class="section bspot-sec">
     <div class="container">
-      <div class="bgrid" data-posts>{cards}
+      <a class="bspot" href="blog/{f["slug"]}.html" data-scrub="enter">
+        <div class="bspot__media">{img(f["cover"], "", lazy=False)}</div>
+        <div class="bspot__card">
+          <p class="bspot__label"><span class="bspot__dot" aria-hidden="true"></span>Latest article</p>
+          {bmeta(f)}
+          <h2>{f["title"]}</h2>
+          <p class="bspot__ex">{f["excerpt"]}</p>
+          <span class="bspot__btn">Read the article<span class="btn__arrow" aria-hidden="true">{ARR}</span></span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section section--flush" id="articles">
+    <div class="container">
+      <div class="bbar reveal">
+        <h2>All <span class="hl">articles</span></h2>
+        <div class="btopics" role="group" aria-label="Filter articles by topic">{topics}</div>
+      </div>
+      <div class="blist" data-posts>{items}
       </div>
     </div>
-    <nav class="svc-dock port-dock" aria-label="Filter articles by topic">
-      <span class="svc-dock__fill" aria-hidden="true"></span>
-      {dock}
-    </nav>
   </section>
 {contact_band()}''' + foot()
 
@@ -1172,16 +1193,20 @@ def render_block(kind, v):
     if kind == "p":
         return f"<p>{v}</p>"
     if kind == "h2":
-        return f'<h2 id="{slugify(v)}">{v}</h2>'
+        t = re.sub(r"^[0-9]+[.)] ", "", v)
+        return f'<h2 id="{slugify(t)}">{t}</h2>'
     if kind == "h3":
         return f"<h3>{v}</h3>"
     if kind in ("ul", "ol"):
         return f'<{kind}>' + "".join(f"<li>{x}</li>" for x in v) + f"</{kind}>"
     if kind == "tip":
-        return f'<aside class="atip"><span class="atip__ico" aria-hidden="true">✦</span><p><strong>Tip.</strong> {v}</p></aside>'
+        return f'<aside class="atip reveal"><span class="atip__ico" aria-hidden="true">✦</span><p><strong>Tip.</strong> {v}</p></aside>'
     if kind == "quote":
-        return f"<blockquote><p>{v}</p></blockquote>"
+        return f'<blockquote class="reveal"><p>{v}</p></blockquote>'
     raise ValueError(kind)
+
+
+RING = '<svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19"/><circle class="aprog__bar" cx="22" cy="22" r="19" pathLength="100"/></svg>'
 
 
 def post(p):
@@ -1193,9 +1218,12 @@ def post(p):
             html = html.replace("<ol>", f'<ol style="counter-reset: ol {n_ol}">', 1)
             n_ol += len(v)
         body += html
-    toc = "".join(f'<li><a href="#{slugify(v)}">{re.sub(r"^[0-9]+[.)] ", "", v)}</a></li>' for k, v in p["body"] if k == "h2")
+    heads = [re.sub(r"^[0-9]+[.)] ", "", v) for k, v in p["body"] if k == "h2"]
+    toc = "".join(f'<li><a href="#{slugify(h)}">{h}</a></li>' for h in heads)
     faq = "".join(f'<details class="afaq__item"><summary>{q}<span aria-hidden="true"></span></summary><p>{a}</p></details>' for q, a in p["faq"])
-    rel = [x for x in POSTS if x is not p and x["cat"] == p["cat"]] + [x for x in POSTS if x is not p and x["cat"] != p["cat"]]
+    i = POSTS.index(p)
+    nxt = POSTS[(i + 1) % len(POSTS)]
+    rel = [x for x in POSTS if x is not p and x is not nxt and x["cat"] == p["cat"]] + [x for x in POSTS if x is not p and x is not nxt and x["cat"] != p["cat"]]
     svc = next(s for s in C.SERVICES if s["key"] == CAT_SVC[p["cat"]])
     cover = f'assets/img/work/{p["cover"]}.webp'
     webp(p["cover"])
@@ -1218,10 +1246,10 @@ def post(p):
       <div class="phero__panel">
         <span class="phero__glow phero__glow--a" aria-hidden="true"></span>
         <span class="phero__glow phero__glow--b" aria-hidden="true"></span>
-        <div class="phero__copy reveal">
+        <div class="phero__copy">
           <nav class="phero__crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span aria-hidden="true">/</span><a href="blog.html">Blog</a><span aria-hidden="true">/</span><a href="blog.html?cat={p["cat"]}" aria-current="page">{CATS[p["cat"]]}</a></nav>
-          <h1>{p["title"]}</h1>
-          <p class="lead">{p["excerpt"]}</p>
+          <h1 class="split">{split_words(p["title"])}</h1>
+          <p class="lead ahero__lead">{p["excerpt"]}</p>
           <div class="ahero__meta">
             <span class="ahero__by"><img src="assets/img/favicon.png" alt="" width="36" height="36">{AUTHOR}</span>
             <span><time datetime="{p["date"]}">{nice_date(p["date"])}</time></span>
@@ -1229,46 +1257,65 @@ def post(p):
           </div>
         </div>
       </div>
-      <figure class="acover reveal">{img(p["cover"], plain(p["title"]), lazy=False)}</figure>
+      <figure class="acover" data-scrub="enter">{img(p["cover"], plain(p["title"]), lazy=False)}</figure>
     </div>
   </section>
 
   <section class="section section--flush">
     <div class="container alayout">
-      <aside class="aside">
-        <div class="acta">
-          <span class="acta__mark" aria-hidden="true">{ART[svc["art"]]}</span>
-          <p class="acta__eb">Need a hand?</p>
-          <p class="acta__h">{svc["title"]} by OXE</p>
-          <p>{svc["short"]}</p>
-          <a class="link-arrow" href="services.html#{svc["key"]}">Explore the service {ARR}</a>
+      <aside class="arail">
+        <div class="arail__in">
+          <div class="aprog" data-min="{read_min(p)}" aria-hidden="true">{RING}<span><b data-prog>0%</b> read<small data-left>{read_min(p)} min left</small></span></div>
+          <nav class="atoc" aria-label="In this article">
+            <p class="atoc__label">In this article</p>
+            <ol>{toc}<li><a href="#faq">FAQ</a></li></ol>
+          </nav>
         </div>
-        <nav class="atoc" aria-label="In this article">
-          <p class="atoc__label">In this article</p>
-          <ol>{toc}<li><a href="#faq">FAQ</a></li></ol>
-        </nav>
       </aside>
       <article class="prose" data-article>
         {body}
+        <div class="acta reveal">
+          <span class="acta__mark" aria-hidden="true">{ART[svc["art"]]}</span>
+          <div>
+            <p class="acta__eb">Need a hand with this?</p>
+            <p class="acta__h">{svc["title"]} by OXE</p>
+            <p>{svc["short"]}</p>
+          </div>
+          {btn("Talk to our team", "contact.html?service=" + svc["key"])}
+        </div>
         <section class="afaq" id="faq" aria-labelledby="faq-h">
           <h2 id="faq-h">Frequently asked <span class="hl">questions</span></h2>
           {faq}
         </section>
         <footer class="afoot">
           <span class="ahero__by"><img src="assets/img/favicon.png" alt="" width="36" height="36"><span><b>{AUTHOR}</b><small>Multicultural digital marketing agency in Bangkok</small></span></span>
-          {btn("Talk to our team", "contact.html?service=" + svc["key"])}
+          <a class="link-arrow" href="services.html#{svc["key"]}">Explore {plain(svc["title"])} {ARR}</a>
         </footer>
       </article>
     </div>
   </section>
 
-  <section class="section">
+  <section class="section anext-sec">
+    <div class="container">
+      <a class="anext" href="blog/{nxt["slug"]}.html" data-scrub="enter">
+        <div class="anext__copy">
+          <p class="anext__eb">Up next</p>
+          <p class="anext__cat">{CATS[nxt["cat"]]} · {read_min(nxt)} min read</p>
+          <h2>{nxt["title"]}</h2>
+          <span class="anext__go" aria-hidden="true">{ARR}</span>
+        </div>
+        <div class="anext__media">{img(nxt["cover"], "")}</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section section--flush">
     <div class="container">
       <div class="sec-row">
         {sec_head("Keep reading", 'More <span class="hl">insights</span>')}
         <div class="reveal">{btn("All Articles", "blog.html")}</div>
       </div>
-      <div class="bgrid">{"".join(bcard(x) for x in rel[:3])}
+      <div class="bgrid">{"".join(bitem(x) for x in rel[:3])}
       </div>
     </div>
   </section>
@@ -1283,7 +1330,7 @@ def latest_insights():
         {sec_head("Blog", 'Latest <span class="hl">insights</span>', "Practical guides on websites, social media, video and photography for businesses in Thailand.")}
         <div class="reveal">{btn("All Articles", "blog.html")}</div>
       </div>
-      <div class="bgrid">{"".join(bcard(x) for x in POSTS[:3])}
+      <div class="bgrid">{"".join(bitem(x) for x in POSTS[:3])}
       </div>
     </div>
   </section>'''

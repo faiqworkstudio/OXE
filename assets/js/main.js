@@ -177,11 +177,48 @@
     portDock.classList.toggle("is-visible", r.top < vh * .8 && r.bottom > vh * .5);
     portDock.style.setProperty("--sp", Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - vh))).toFixed(3));
   }
+  // Scroll-scrubbed elements: [data-scrub] gets --p from 0 to 1.
+  //   enter: as it rises into view · leave: as it scrolls away · pass: across its whole trip through the viewport
+  var scrubs = reduced ? [] : Array.prototype.slice.call(document.querySelectorAll("[data-scrub]"));
+  function scrubFrame() {
+    var vh = innerHeight;
+    scrubs.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.bottom < -200 || r.top > vh + 200) return;
+      var m = el.getAttribute("data-scrub"), p;
+      if (m === "enter") p = (vh - r.top) / (vh * .7);
+      else if (m === "leave") p = -r.top / Math.max(1, r.height);
+      else p = (vh - r.top) / (vh + r.height);
+      el.style.setProperty("--p", Math.min(1, Math.max(0, p)).toFixed(3));
+    });
+  }
+  // Article: reading progress ring + current section in the contents
+  var article = document.querySelector("[data-article]");
+  var prog = document.querySelector(".aprog");
+  var progTxt = document.querySelector("[data-prog]"), leftTxt = document.querySelector("[data-left]");
+  var tocLinks = Array.prototype.slice.call(document.querySelectorAll(".atoc a"));
+  var tocHeads = tocLinks.map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); });
+  function articleFrame() {
+    if (!article) return;
+    var vh = innerHeight, r = article.getBoundingClientRect();
+    var rp = Math.min(1, Math.max(0, (vh * .35 - r.top) / Math.max(1, r.height - vh * .5)));
+    if (prog) {
+      prog.style.setProperty("--rp", rp.toFixed(3));
+      progTxt.textContent = Math.round(rp * 100) + "%";
+      var left = Math.ceil(Number(prog.getAttribute("data-min")) * (1 - rp));
+      leftTxt.textContent = rp >= .99 ? "Finished. Thanks for reading" : left + " min left";
+    }
+    var cur = -1;
+    tocHeads.forEach(function (h, k) { if (h && h.getBoundingClientRect().top < vh * .35) cur = k; });
+    tocLinks.forEach(function (a, k) { a.classList.toggle("is-active", k === Math.max(0, cur)); });
+  }
   var ticking = false;
   function frame() {
     ticking = false;
     svcFrame();
     portFrame();
+    scrubFrame();
+    articleFrame();
     // stacking service cards: hide a card's floating icon once the next card slides over it
     stackCards.forEach(function (c, k) {
       var next = stackCards[k + 1];
@@ -390,47 +427,44 @@
     if (initialBtn) initialBtn.click(); else applyFilter();
   }
 
-  /* ---------- Blog: topic filter (floating dock) ---------- */
+  /* ---------- Blog: topic filter ----------
+     The first two matching articles show as large cards, the rest as index rows. */
   var postGrid = document.querySelector("[data-posts]");
   if (postGrid) {
     var bBtns = document.querySelectorAll(".bfilter");
-    var posts = postGrid.querySelectorAll(".bcard");
+    var posts = Array.prototype.slice.call(postGrid.querySelectorAll(".bitem"));
     var setTopic = function (cat, scroll) {
       bBtns.forEach(function (b) {
         var on = b.getAttribute("data-bfilter") === cat;
         b.classList.toggle("is-active", on);
         b.setAttribute("aria-pressed", on ? "true" : "false");
       });
-      posts.forEach(function (c) {
-        // the latest article is already featured above the grid on "All"
+      var vis = posts.filter(function (c) {
+        // the latest article is already featured above the list on "All"
         c.hidden = cat === "all" ? c.hasAttribute("data-feat") : c.getAttribute("data-category") !== cat;
-        if (!c.hidden) c.classList.add("is-visible");
+        return !c.hidden;
+      });
+      vis.forEach(function (c, k) {
+        c.classList.remove("is-card", "is-row", "is-solo");
+        c.classList.add(vis.length === 1 ? "is-solo" : k < 2 ? "is-card" : "is-row");
+        c.classList.remove("is-visible");
+        c.style.setProperty("--d", k * 70 + "ms");
+        requestAnimationFrame(function () { requestAnimationFrame(function () { c.classList.add("is-visible"); }); });
       });
       if (scroll) {
         var top = postGrid.getBoundingClientRect().top;
-        if (top < 0 || top > innerHeight * .6) window.scrollTo({ top: top + scrollY - 110, behavior: reduced ? "auto" : "smooth" });
+        if (top < 0 || top > innerHeight * .7) window.scrollTo({ top: top + scrollY - 200, behavior: reduced ? "auto" : "smooth" });
       }
+      requestAnimationFrame(frame);
     };
     bBtns.forEach(function (b) { b.addEventListener("click", function () { setTopic(b.getAttribute("data-bfilter"), true); }); });
     var cat0 = (new URLSearchParams(location.search).get("cat") || "").replace(/[^a-z]/g, "");
     var hasCat = cat0 && document.querySelector('.bfilter[data-bfilter="' + cat0 + '"]');
-    setTopic(hasCat ? cat0 : "all", false);
     if (hasCat) {
-      var jump = function () { window.scrollTo(0, postGrid.getBoundingClientRect().top + scrollY - 110); };
+      setTopic(cat0, false);
+      var jump = function () { window.scrollTo(0, document.getElementById("articles").getBoundingClientRect().top + scrollY - 100); };
       if (document.readyState === "complete") jump(); else window.addEventListener("load", function () { setTimeout(jump, 0); });
     }
-  }
-
-  /* ---------- Article: highlight the current section in the contents ---------- */
-  var tocLinks = Array.prototype.slice.call(document.querySelectorAll(".atoc a"));
-  if (tocLinks.length && "IntersectionObserver" in window) {
-    var heads = tocLinks.map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); }).filter(Boolean);
-    var tocIO = new IntersectionObserver(function () {
-      var cur = heads[0];
-      heads.forEach(function (h) { if (h.getBoundingClientRect().top < innerHeight * .35) cur = h; });
-      tocLinks.forEach(function (a) { a.classList.toggle("is-active", a.getAttribute("href") === "#" + cur.id); });
-    }, { rootMargin: "0px 0px -60% 0px" });
-    heads.forEach(function (h) { tocIO.observe(h); });
   }
 
   /* ---------- Contact form ----------

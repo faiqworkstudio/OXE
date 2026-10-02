@@ -40,7 +40,7 @@ MENU_META = {
     "services.html": ("What we do", "Five services. One team.", ("art", "web")),
     "portfolio.html": ("Selected work", "Real projects for real brands.", ("mosaic", ["xiaomi-campaign", "haji-strawberry", "shoot-1"])),
     "about.html": ("Who we are", "A multicultural team since 2020.", ("img", "bts-video-2")),
-    "blog.html": ("Insights", "Practical marketing guides from Bangkok.", ("mosaic", ["ind-restaurant", "xiaomi-bts-rooftop", "cake-strawberry-wide"])),
+    "blog.html": ("Insights", "Practical marketing guides from Bangkok.", ("mosaic", ["haji-visit", "bts-video-2", "cake-strawberry-wide"])),
     "contact.html": ("Say hello", "Let's talk about your project.", ("contact", None)),
 }
 
