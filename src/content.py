@@ -28,6 +28,8 @@ MENU = {
                        ("portfolio.html?filter=video", "Video"), ("portfolio.html?filter=photo", "Photography")],
     "about.html": [("about.html#mission", "Mission &amp; Vision"), ("about.html#story", "Our Story"), ("about.html#why-oxe", "Why OXE"),
                    ("about.html#clients", "Clients")],
+    "blog.html": [("blog.html?cat=web", "Websites &amp; SEO"), ("blog.html?cat=social", "Social Media"), ("blog.html?cat=video", "Video"),
+                  ("blog.html?cat=photo", "Photography"), ("blog.html?cat=strategy", "Strategy")],
     "contact.html": [("contact.html#enquiry", "Enquiry Form"), ("contact.html#next", "What Happens Next"), ("contact.html#map", "Find Us")],
 }
 
@@ -38,11 +40,12 @@ MENU_META = {
     "services.html": ("What we do", "Five services. One team.", ("art", "web")),
     "portfolio.html": ("Selected work", "Real projects for real brands.", ("mosaic", ["xiaomi-campaign", "haji-strawberry", "shoot-1"])),
     "about.html": ("Who we are", "A multicultural team since 2020.", ("img", "bts-video-2")),
+    "blog.html": ("Insights", "Practical marketing guides from Bangkok.", ("mosaic", ["ind-restaurant", "xiaomi-bts-rooftop", "cake-strawberry-wide"])),
     "contact.html": ("Say hello", "Let's talk about your project.", ("contact", None)),
 }
 
 NAV = [("index.html", "Home"), ("services.html", "Services"), ("portfolio.html", "Portfolio"),
-       ("about.html", "About Us"), ("contact.html", "Contact")]
+       ("about.html", "About Us"), ("blog.html", "Blog"), ("contact.html", "Contact")]
 
 HERO = {
     "eyebrow": "Digital marketing agency in Bangkok",

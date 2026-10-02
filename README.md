@@ -13,11 +13,13 @@ The site runs on Netlify as it is, and every section maps to an Elementor sectio
 
 | Page | File | Sections |
 |---|---|---|
-| Home | `index.html` | 3D hero, five service cards, Why OXE (real crew photos and four principles), "Our Works" category panel (links to the filtered portfolio), client logo wall, contact band |
+| Home | `index.html` | 3D hero, five service cards, Why OXE (real crew photos and four principles), "Our Works" category panel (links to the filtered portfolio), client logo wall, latest blog articles, contact band |
 | Services | `services.html` | Five service blocks (image slideshow, device mockups or a wall of videos; 3D mark, intro, what we do, CTA), industries we worked with |
 | Portfolio | `portfolio.html` | Category filters (All / Web Design / Social Media / Video / Photography), project cards, View More |
 | Case studies | `work/<project>.html` | One page per project: a media viewer with every image and video of the project, Client / Challenge / Solution / Outcome, services provided, next project |
 | About Us | `about.html` | Positioning, key facts, mission and vision, story, why companies choose OXE (bento grid), client logo wall |
+| Blog | `blog.html` | Latest article, article cards, topic filter in the floating dock (`blog.html?cat=web` links straight to a topic) |
+| Articles | `blog/<slug>.html` | One page per article: hero with date and reading time, cover, sticky contents, tips, FAQ, related service, more articles |
 | Contact | `contact.html` | Contact methods, full enquiry form, map |
 | — | `thank-you.html`, `404.html` | Form fallback and not-found pages |
 
@@ -33,6 +35,7 @@ python3 src/build.py      # regenerates every page, the /work pages and sitemap.
 - **Menu.** Each top-menu item opens a full-width panel of shortcuts to that page's sections, set in `MENU` in `content.py`.
 - **Service visuals.** Each service has `slides` (images; `device:<image>` shows a laptop and phone mockup) or `videos` in `content.py`.
 - **Adding a project.** Put the images (as `.jpg`) in `assets/img/work/` and add an entry to `PROJECTS`. Videos go in `assets/video/<name>.mp4` with a `<name>-poster.jpg`. The build converts images to WebP automatically.
+- **Blog.** Articles live in **`src/blog_posts.py`**: title, meta description, topic, date, cover image, excerpt, body blocks and FAQ. Each article gets `BlogPosting`, `FAQPage` and breadcrumb structured data, is added to the sitemap, and the three newest appear on the home page. Link to OXE services and other articles where relevant, and publish regularly.
 - **Content rule.** Only use facts supplied by OXE. When a Challenge, Solution or Outcome isn't known, leave it as `None` and the page shows a neutral "case study coming soon" note. Don't add results, numbers or testimonials that OXE hasn't supplied.
 - **3D illustrations.** These are in `src/art.py`. All of them share the same materials (white matte, OXE blue, soft shadow), so new ones stay consistent.
 
@@ -70,7 +73,7 @@ python3 src/build.py      # regenerates every page, the /work pages and sitemap.
   - 3D built in CSS and SVG, with no WebGL.
 - **SEO:**
   - unique titles and descriptions, canonical URLs and Open Graph;
-  - `ProfessionalService` and `BreadcrumbList` structured data;
+  - `ProfessionalService`, `BreadcrumbList`, `Blog`, `BlogPosting` and `FAQPage` structured data;
   - `sitemap.xml` and `robots.txt`.
 
 ## WordPress / Elementor mapping

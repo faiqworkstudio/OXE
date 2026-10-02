@@ -12,6 +12,8 @@ from PIL import Image
 from icons import I
 from art import ART, DEFS
 import content as C, hashlib
+from blog_posts import POSTS, BLOG_CATS, AUTHOR
+from datetime import date as _date
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMG_DIR = os.path.join(ROOT, "assets/img/work")
@@ -86,7 +88,7 @@ def devices(screen, phone=None, alt=""):
 
 
 # ------------------------------------------------------------------ layout
-def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=False):
+def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=False, og_type="website"):
     nav = mega_nav(page)
     canon = S["url"] + "/" + ("" if page == "index.html" else page.replace(".html", ""))
     ld = f'\n  <script type="application/ld+json">{json.dumps(schema, ensure_ascii=False)}</script>' if schema else ""
@@ -100,7 +102,7 @@ def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=F
   <meta name="description" content="{desc}">{chr(10) + '  <meta name="robots" content="noindex">' if noindex else ""}
   <meta name="theme-color" content="#ffffff">
   <link rel="canonical" href="{canon}">
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="{og_type}">
   <meta property="og:site_name" content="OXE Marketing">
   <meta property="og:title" content="{title}">
   <meta property="og:description" content="{desc}">
@@ -166,7 +168,7 @@ def mega_nav(page):
     Phones & tablets: each item is an accordion that drops down its section links."""
     out = ""
     for n, (h, t) in enumerate(C.NAV, 1):
-        cur = CUR if h == page or (page.startswith("work/") and h == "portfolio.html") else ""
+        cur = CUR if h == page or (page.startswith("work/") and h == "portfolio.html") or (page.startswith("blog/") and h == "blog.html") else ""
         eb, intro, _ = C.MENU_META[h]
         pid = "menu-" + h.split(".")[0]
         links = "".join(f'<li><a href="{href}"><span class="mega__num">{i:02d}</span><span class="mega__label">{label}</span>{ARR}</a></li>'
@@ -577,6 +579,7 @@ def home():
   </section>
 
 {clients_wall()}
+{latest_insights()}
 {contact_band()}''' + foot()
 
 
@@ -1069,6 +1072,223 @@ def simple(page, title, h1, text):
 ''' + foot()
 
 
+# ------------------------------------------------------------------ BLOG
+CATS = dict(BLOG_CATS)
+POSTS.sort(key=lambda p: p["date"], reverse=True)
+CAT_SVC = {"web": "web", "social": "social", "video": "video", "photo": "photo", "strategy": "strategy"}
+
+
+def nice_date(iso):
+    return _date.fromisoformat(iso).strftime("%-d %b %Y")
+
+
+def words(p):
+    txt = " ".join(" ".join(b[1]) if isinstance(b[1], list) else b[1] for b in p["body"])
+    txt += " ".join(q + " " + a for q, a in p["faq"])
+    return len(plain(txt).split())
+
+
+def read_min(p):
+    return max(3, round(words(p) / 220))
+
+
+def slugify(t):
+    return re.sub(r"[^a-z0-9]+", "-", plain(t).lower()).strip("-")
+
+
+def bmeta(p, cat=True):
+    c = f'<span class="pc__cat">{CATS[p["cat"]]}</span>' if cat else ""
+    return f'<p class="pc__meta">{c}<span><time datetime="{p["date"]}">{nice_date(p["date"])}</time></span><span>{read_min(p)} min read</span></p>'
+
+
+def bcard(p, h="h3", attrs=""):
+    """Article card: same rounded media + arrow button as the portfolio cards."""
+    url = f'blog/{p["slug"]}.html'
+    return f'''
+        <article class="pc bcard reveal" data-category="{p["cat"]}"{attrs}>
+          <a class="pc__media" href="{url}" tabindex="-1" aria-hidden="true">{img(p["cover"], "")}<span class="pc__go" aria-hidden="true">{ARR}</span></a>
+          <div class="pc__body">
+            {bmeta(p)}
+            <{h}><a href="{url}">{p["title"]}</a></{h}>
+            <p class="bcard__ex">{p["excerpt"]}</p>
+          </div>
+        </article>'''
+
+
+BLOG_H1 = 'Insights for brands that want to <span class="hl">grow online</span>'
+
+
+def blog():
+    f = POSTS[0]
+    counts = {k: (len(POSTS) if k == "all" else sum(p["cat"] == k for p in POSTS)) for k, _ in BLOG_CATS}
+    dock = "".join(f'<button type="button" class="bfilter{" is-active" if k == "all" else ""}" data-bfilter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{t}<sup>{counts[k]:02d}</sup></button>'
+                   for k, t in BLOG_CATS if counts[k])
+    topics = "".join(f'<a href="blog.html?cat={k}">{t}</a>' for k, t in BLOG_CATS[1:] if counts[k])
+    cards = "".join(bcard(p, attrs=" data-feat" if i == 0 else "") for i, p in enumerate(POSTS))
+    schema = {"@context": "https://schema.org", "@type": "Blog", "name": "OXE Marketing Blog", "url": S["url"] + "/blog",
+              "publisher": {"@type": "Organization", "name": "OXE Marketing", "url": S["url"]},
+              "blogPost": [{"@type": "BlogPosting", "headline": plain(p["title"]), "url": f'{S["url"]}/blog/{p["slug"]}', "datePublished": p["date"]} for p in POSTS]}
+    return head("Blog | Digital Marketing Insights from Bangkok | OXE Marketing",
+                "Practical guides on websites, SEO, social media, video and photography for businesses in Thailand, from the OXE Marketing team in Bangkok.",
+                "blog.html", schema=schema) + f'''
+{page_hero("Blog", BLOG_H1, "Practical guides on websites, social media, video and photography for businesses in Thailand, written by our team in Bangkok.",
+           after=f'<nav class="jump" aria-label="Blog topics">{topics}</nav>', photos=("xiaomi-bts-rooftop", "cake-strawberry-wide"))}
+
+  <section class="section spot-sec">
+    <div class="container">
+      <article class="bfeat reveal">
+        <header class="spot__bar">
+          <span>Latest article</span>
+          <span class="spot__rule" aria-hidden="true"></span>
+          <span>{CATS[f["cat"]]}</span>
+        </header>
+        <div class="bfeat__grid">
+          <a class="pc__media bfeat__media" href="blog/{f["slug"]}.html" tabindex="-1" aria-hidden="true">{img(f["cover"], "", lazy=False)}<span class="pc__go" aria-hidden="true">{ARR}</span></a>
+          <div class="bfeat__copy">
+            {bmeta(f)}
+            <h2><a href="blog/{f["slug"]}.html">{f["title"]}</a></h2>
+            <p>{f["excerpt"]}</p>
+            {btn("Read the article", f'blog/{f["slug"]}.html')}
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section section--flush" id="articles" data-port-section>
+    <div class="container">
+      <div class="bgrid" data-posts>{cards}
+      </div>
+    </div>
+    <nav class="svc-dock port-dock" aria-label="Filter articles by topic">
+      <span class="svc-dock__fill" aria-hidden="true"></span>
+      {dock}
+    </nav>
+  </section>
+{contact_band()}''' + foot()
+
+
+def render_block(kind, v):
+    if kind == "p":
+        return f"<p>{v}</p>"
+    if kind == "h2":
+        return f'<h2 id="{slugify(v)}">{v}</h2>'
+    if kind == "h3":
+        return f"<h3>{v}</h3>"
+    if kind in ("ul", "ol"):
+        return f'<{kind}>' + "".join(f"<li>{x}</li>" for x in v) + f"</{kind}>"
+    if kind == "tip":
+        return f'<aside class="atip"><span class="atip__ico" aria-hidden="true">✦</span><p><strong>Tip.</strong> {v}</p></aside>'
+    if kind == "quote":
+        return f"<blockquote><p>{v}</p></blockquote>"
+    raise ValueError(kind)
+
+
+def post(p):
+    url = f'{S["url"]}/blog/{p["slug"]}'
+    body, n_ol = "", 0
+    for k, v in p["body"]:
+        html = render_block(k, v)
+        if k == "ol" and p.get("count_ol"):   # numbered points continue across sections (e.g. a 12-point checklist)
+            html = html.replace("<ol>", f'<ol style="counter-reset: ol {n_ol}">', 1)
+            n_ol += len(v)
+        body += html
+    toc = "".join(f'<li><a href="#{slugify(v)}">{re.sub(r"^[0-9]+[.)] ", "", v)}</a></li>' for k, v in p["body"] if k == "h2")
+    faq = "".join(f'<details class="afaq__item"><summary>{q}<span aria-hidden="true"></span></summary><p>{a}</p></details>' for q, a in p["faq"])
+    rel = [x for x in POSTS if x is not p and x["cat"] == p["cat"]] + [x for x in POSTS if x is not p and x["cat"] != p["cat"]]
+    svc = next(s for s in C.SERVICES if s["key"] == CAT_SVC[p["cat"]])
+    cover = f'assets/img/work/{p["cover"]}.webp'
+    webp(p["cover"])
+    schema = [
+        {"@context": "https://schema.org", "@type": "BlogPosting", "headline": plain(p["title"]), "description": p["description"],
+         "image": f'{S["url"]}/{cover}', "datePublished": p["date"], "dateModified": p["date"], "inLanguage": "en",
+         "wordCount": words(p), "articleSection": CATS[p["cat"]], "mainEntityOfPage": url,
+         "author": {"@type": "Organization", "name": AUTHOR, "url": S["url"]},
+         "publisher": {"@type": "Organization", "name": "OXE Marketing", "logo": {"@type": "ImageObject", "url": S["url"] + "/assets/img/favicon.png"}}},
+        {"@context": "https://schema.org", "@type": "FAQPage",
+         "mainEntity": [{"@type": "Question", "name": plain(q), "acceptedAnswer": {"@type": "Answer", "text": plain(a)}} for q, a in p["faq"]]},
+        {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": S["url"] + "/"},
+            {"@type": "ListItem", "position": 2, "name": "Blog", "item": S["url"] + "/blog"},
+            {"@type": "ListItem", "position": 3, "name": plain(p["title"]), "item": url}]},
+    ]
+    return head(f'{plain(p["title"])} | OXE Marketing', p["description"], f'blog/{p["slug"]}.html', og=cover, schema=schema, og_type="article") + f'''
+  <section class="phero ahero">
+    <div class="container">
+      <div class="phero__panel">
+        <span class="phero__glow phero__glow--a" aria-hidden="true"></span>
+        <span class="phero__glow phero__glow--b" aria-hidden="true"></span>
+        <div class="phero__copy reveal">
+          <nav class="phero__crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span aria-hidden="true">/</span><a href="blog.html">Blog</a><span aria-hidden="true">/</span><a href="blog.html?cat={p["cat"]}" aria-current="page">{CATS[p["cat"]]}</a></nav>
+          <h1>{p["title"]}</h1>
+          <p class="lead">{p["excerpt"]}</p>
+          <div class="ahero__meta">
+            <span class="ahero__by"><img src="assets/img/favicon.png" alt="" width="36" height="36">{AUTHOR}</span>
+            <span><time datetime="{p["date"]}">{nice_date(p["date"])}</time></span>
+            <span>{read_min(p)} min read</span>
+          </div>
+        </div>
+      </div>
+      <figure class="acover reveal">{img(p["cover"], plain(p["title"]), lazy=False)}</figure>
+    </div>
+  </section>
+
+  <section class="section section--flush">
+    <div class="container alayout">
+      <aside class="aside">
+        <div class="acta">
+          <span class="acta__mark" aria-hidden="true">{ART[svc["art"]]}</span>
+          <p class="acta__eb">Need a hand?</p>
+          <p class="acta__h">{svc["title"]} by OXE</p>
+          <p>{svc["short"]}</p>
+          <a class="link-arrow" href="services.html#{svc["key"]}">Explore the service {ARR}</a>
+        </div>
+        <nav class="atoc" aria-label="In this article">
+          <p class="atoc__label">In this article</p>
+          <ol>{toc}<li><a href="#faq">FAQ</a></li></ol>
+        </nav>
+      </aside>
+      <article class="prose" data-article>
+        {body}
+        <section class="afaq" id="faq" aria-labelledby="faq-h">
+          <h2 id="faq-h">Frequently asked <span class="hl">questions</span></h2>
+          {faq}
+        </section>
+        <footer class="afoot">
+          <span class="ahero__by"><img src="assets/img/favicon.png" alt="" width="36" height="36"><span><b>{AUTHOR}</b><small>Multicultural digital marketing agency in Bangkok</small></span></span>
+          {btn("Talk to our team", "contact.html?service=" + svc["key"])}
+        </footer>
+      </article>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="sec-row">
+        {sec_head("Keep reading", 'More <span class="hl">insights</span>')}
+        <div class="reveal">{btn("All Articles", "blog.html")}</div>
+      </div>
+      <div class="bgrid">{"".join(bcard(x) for x in rel[:3])}
+      </div>
+    </div>
+  </section>
+{contact_band()}''' + foot()
+
+
+def latest_insights():
+    return f'''
+  <section class="section" id="insights">
+    <div class="container">
+      <div class="sec-row">
+        {sec_head("Blog", 'Latest <span class="hl">insights</span>', "Practical guides on websites, social media, video and photography for businesses in Thailand.")}
+        <div class="reveal">{btn("All Articles", "blog.html")}</div>
+      </div>
+      <div class="bgrid">{"".join(bcard(x) for x in POSTS[:3])}
+      </div>
+    </div>
+  </section>'''
+
+
 # ------------------------------------------------------------------ write
 REL = re.compile(r'(\s(?:href|src|poster)=")(?!https?:|mailto:|tel:|#|data:|/)([^"]*)"')
 
@@ -1091,11 +1311,13 @@ def sitemap(paths):
 
 
 if __name__ == "__main__":
-    pages = {"index.html": home, "services.html": services, "portfolio.html": portfolio, "about.html": about, "contact.html": contact}
+    pages = {"index.html": home, "services.html": services, "portfolio.html": portfolio, "about.html": about, "blog.html": blog, "contact.html": contact}
     for name, fn in pages.items():
         write(name, fn())
     for p in C.PROJECTS:
         write(f'work/{p["id"]}.html', case(p))
+    for p in POSTS:
+        write(f'blog/{p["slug"]}.html', post(p))
     write("thank-you.html", simple("thank-you.html", "Thank You", "Thank you! Message received.", "Our team will get back to you as soon as possible. Need a faster reply? Message us on WhatsApp."))
     write("404.html", simple("404.html", "Page Not Found", "Sorry, we couldn't find that page.", "The page may have moved. Head back home or explore our work."))
-    sitemap(list(pages) + [f'work/{p["id"]}.html' for p in PORT])
+    sitemap(list(pages) + [f'work/{p["id"]}.html' for p in PORT] + [f'blog/{p["slug"]}.html' for p in POSTS])

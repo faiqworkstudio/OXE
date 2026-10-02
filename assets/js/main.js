@@ -390,6 +390,49 @@
     if (initialBtn) initialBtn.click(); else applyFilter();
   }
 
+  /* ---------- Blog: topic filter (floating dock) ---------- */
+  var postGrid = document.querySelector("[data-posts]");
+  if (postGrid) {
+    var bBtns = document.querySelectorAll(".bfilter");
+    var posts = postGrid.querySelectorAll(".bcard");
+    var setTopic = function (cat, scroll) {
+      bBtns.forEach(function (b) {
+        var on = b.getAttribute("data-bfilter") === cat;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      posts.forEach(function (c) {
+        // the latest article is already featured above the grid on "All"
+        c.hidden = cat === "all" ? c.hasAttribute("data-feat") : c.getAttribute("data-category") !== cat;
+        if (!c.hidden) c.classList.add("is-visible");
+      });
+      if (scroll) {
+        var top = postGrid.getBoundingClientRect().top;
+        if (top < 0 || top > innerHeight * .6) window.scrollTo({ top: top + scrollY - 110, behavior: reduced ? "auto" : "smooth" });
+      }
+    };
+    bBtns.forEach(function (b) { b.addEventListener("click", function () { setTopic(b.getAttribute("data-bfilter"), true); }); });
+    var cat0 = (new URLSearchParams(location.search).get("cat") || "").replace(/[^a-z]/g, "");
+    var hasCat = cat0 && document.querySelector('.bfilter[data-bfilter="' + cat0 + '"]');
+    setTopic(hasCat ? cat0 : "all", false);
+    if (hasCat) {
+      var jump = function () { window.scrollTo(0, postGrid.getBoundingClientRect().top + scrollY - 110); };
+      if (document.readyState === "complete") jump(); else window.addEventListener("load", function () { setTimeout(jump, 0); });
+    }
+  }
+
+  /* ---------- Article: highlight the current section in the contents ---------- */
+  var tocLinks = Array.prototype.slice.call(document.querySelectorAll(".atoc a"));
+  if (tocLinks.length && "IntersectionObserver" in window) {
+    var heads = tocLinks.map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); }).filter(Boolean);
+    var tocIO = new IntersectionObserver(function () {
+      var cur = heads[0];
+      heads.forEach(function (h) { if (h.getBoundingClientRect().top < innerHeight * .35) cur = h; });
+      tocLinks.forEach(function (a) { a.classList.toggle("is-active", a.getAttribute("href") === "#" + cur.id); });
+    }, { rootMargin: "0px 0px -60% 0px" });
+    heads.forEach(function (h) { tocIO.observe(h); });
+  }
+
   /* ---------- Contact form ----------
      Pre-selects the service from ?service=web|social|video|photo|strategy,
      validates, then submits to Netlify Forms via AJAX.
