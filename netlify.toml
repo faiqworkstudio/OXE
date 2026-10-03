@@ -1,7 +1,11 @@
-# Static site — no build step. Netlify publishes the repository root.
+# Netlify rebuilds the pages from /content on every change (including edits made in /admin),
+# then publishes the repository root.
 [build]
   publish = "."
-  command = ""
+  command = "python3 -m pip install -q -r requirements.txt && python3 src/build.py"
+
+[build.environment]
+  PYTHON_VERSION = "3.11"
 
 [[headers]]
   for = "/*"
@@ -44,3 +48,16 @@
   to = "/404.html"
   status = 404
   force = true
+
+[[redirects]]
+  from = "/content/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+# The admin panel must always load fresh
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+    X-Robots-Tag = "noindex"

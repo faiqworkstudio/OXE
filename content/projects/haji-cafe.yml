@@ -1,0 +1,36 @@
+id: haji-cafe
+order: 50
+client: Haji Café
+title: Café Social Media & Photography
+filters:
+- social
+- photo
+category: Social Media
+display: photo
+cover: /assets/img/work/haji-strawberry.jpg
+mobile: ''
+gallery:
+- /assets/img/work/haji-made-with-love.jpg
+- /assets/img/work/haji-your-choice.jpg
+- /assets/img/work/cake-strawberry-wide.jpg
+- /assets/img/work/haji-matcha.jpg
+- /assets/img/work/haji-menu.jpg
+- /assets/img/work/haji-chocolate.jpg
+- /assets/img/work/haji-visit.jpg
+- /assets/img/work/cake-chocolate.jpg
+video: /assets/video/haji-cafe.mp4
+video_poster: /assets/img/work/haji-cafe-poster.jpg
+summary: Branded social media graphics, menu design, dessert photography and video for a Bangkok café.
+challenge: ''
+solution: ''
+outcome: ''
+tags:
+- Social Media
+- Photography
+- Graphic Design
+services:
+- Social Media Content
+- Graphic Design
+- Menu Design
+- Food Photography
+- Video

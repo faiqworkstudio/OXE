@@ -1,0 +1,31 @@
+id: vincenzo-russo
+order: 40
+client: Vincenzo Russo
+title: Personal Brand & Blog Website
+filters:
+- web
+category: Website Design
+display: website
+cover: /assets/img/work/vincenzo-russo-site.jpg
+mobile: /assets/img/work/vincenzo-russo-site-mobile.jpg
+gallery:
+- /assets/img/work/vincenzo-russo-site.jpg
+- /assets/img/work/vincenzo-russo-site-mobile.jpg
+video: ''
+video_poster: ''
+summary: A modern blog website reflecting his personal brand and expertise in gemstones and fine jewellery.
+challenge: Create a professional online presence where visitors can explore his insights, stories, and industry knowledge while reinforcing his credibility as a trusted voice in gems and jewels.
+solution: A clean, elegant design with responsive performance across all devices and a content-focused structure that makes it easy to publish and discover articles, built with SEO, fast loading speeds, and a user-friendly experience in mind.
+outcome: A platform that can grow alongside his brand and audience.
+tags:
+- Web Design
+- Blog
+- SEO
+services:
+- Website Design & Development
+- UI/UX Design
+- Responsive Development
+- Blog & Content Management
+- SEO-Friendly Website Structure
+- Performance Optimization
+- Brand-Focused Visual Design

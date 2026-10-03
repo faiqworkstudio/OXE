@@ -1,0 +1,29 @@
+id: dh-foods
+order: 100
+client: Dh Foods
+title: Sauce Photography & Social Content
+filters:
+- social
+- photo
+category: Photography
+display: photo
+cover: /assets/img/work/dh-table.jpg
+mobile: ''
+gallery:
+- /assets/img/work/dh-honey-bbq.jpg
+- /assets/img/work/dh-grill.jpg
+- /assets/img/work/dh-sauce.jpg
+- /assets/img/work/dh-nhatrang.jpg
+video: ''
+video_poster: ''
+summary: Product photography and social media creatives for a sauce and marinade range.
+challenge: ''
+solution: ''
+outcome: ''
+tags:
+- Photography
+- Social Media
+services:
+- Product Photography
+- Social Media Content
+- Graphic Design

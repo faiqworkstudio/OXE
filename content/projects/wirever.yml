@@ -1,0 +1,28 @@
+id: wirever
+order: 120
+client: Wirever
+title: Product Photography
+filters:
+- photo
+category: Photography
+display: photo
+cover: /assets/img/work/wirever-packaging.jpg
+mobile: ''
+gallery:
+- /assets/img/work/wirever-lifestyle.jpg
+- /assets/img/work/wirever-desk.jpg
+- /assets/img/work/wirever-studio.jpg
+- /assets/img/work/wirever-rgb.jpg
+video: ''
+video_poster: ''
+summary: Studio and lifestyle photography for cable-management accessories.
+challenge: ''
+solution: ''
+outcome: ''
+tags:
+- Photography
+- Product
+services:
+- Product Photography
+- Lifestyle Photography
+- Retouching

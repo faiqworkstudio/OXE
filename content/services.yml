@@ -1,0 +1,162 @@
+services:
+- key: web
+  num: '01'
+  art: web
+  title: Website Design & Development
+  short: Modern, responsive websites that look great, perform well, and convert visitors into customers.
+  intro: Modern, responsive websites that build credibility and turn visitors into enquiries, optimised for mobile devices and search engines, and easy for your team to update.
+  what:
+  - Business websites
+  - Landing pages
+  - Mobile responsive design
+  - SEO foundations
+  - Contact forms
+  - Booking integrations
+  deliverables:
+  - Custom website design
+  - Responsive build on WordPress / Elementor
+  - Contact & booking forms
+  - SEO-friendly structure
+  - Google Analytics set-up
+  - Launch support
+  image: /assets/img/work/tailor-website.jpg
+  slides:
+  - image: /assets/img/work/tailor-website.jpg
+    mockup: true
+  - image: /assets/img/work/vincenzo-russo-site.jpg
+    mockup: true
+  videos: []
+- key: social
+  num: '02'
+  art: social
+  title: Social Media Marketing
+  short: Strategic campaigns that increase visibility, engage audiences, and drive business growth.
+  intro: Strategic social media that keeps your brand visible and relevant across Facebook, Instagram, TikTok and LinkedIn, from content planning to publishing.
+  what:
+  - Content creation
+  - Social media strategy
+  - Monthly management
+  - Photography
+  - Short-form videos
+  deliverables:
+  - Content strategy & calendar
+  - Designed posts & stories
+  - Short-form video
+  - Photography
+  - Meta advertising
+  - Monthly management & reporting
+  image: /assets/img/work/haji-strawberry.jpg
+  slides:
+  - image: /assets/img/work/haji-strawberry.jpg
+    mockup: false
+  - image: /assets/img/work/gaia-huge.jpg
+    mockup: false
+  - image: /assets/img/work/dh-honey-bbq.jpg
+    mockup: false
+  - image: /assets/img/work/haji-made-with-love.jpg
+    mockup: false
+  - image: /assets/img/work/gaiatribe-day.jpg
+    mockup: false
+  - image: /assets/img/work/wearable-breathing.jpg
+    mockup: false
+  videos: []
+- key: video
+  num: '03'
+  art: video
+  title: Video Production
+  short: Engaging videos that tell your story and bring your brand to life, from commercials to social media content.
+  intro: 'High-quality video that captures attention and tells your story, managed end to end: concept, storyboard, filming, editing and colour grading.'
+  what:
+  - Promotional videos
+  - Product videos
+  - Brand storytelling
+  - Event coverage
+  - Corporate videos
+  deliverables:
+  - Creative concept & storyboard
+  - Filming (incl. drone where needed)
+  - Editing & motion graphics
+  - Colour grading
+  - Cut-downs for social media
+  image: /assets/img/work/bts-video-2.jpg
+  videos:
+  - video: /assets/video/rockers-supercars.mp4
+    client: Rockers Supercars
+  - video: /assets/video/xiaomi-redmi-watch.mp4
+    client: Xiaomi
+  - video: /assets/video/wine-connection.mp4
+    client: Wine Connection
+  - video: /assets/video/haji-cafe.mp4
+    client: Haji Café
+  slides: []
+- key: photo
+  num: '04'
+  art: photo
+  title: Photography
+  short: High-quality photography for brands, products, events, and more.
+  intro: Commercial photography that makes your products, food, spaces and people look their best across your website, social media and print.
+  what:
+  - Product photography
+  - Food & beverage
+  - Events
+  - Real estate & interiors
+  - Lifestyle & portraits
+  deliverables:
+  - Shot list & styling plan
+  - On-location or studio shoot
+  - Professional retouching
+  - Web- and social-ready files
+  image: /assets/img/work/cake-strawberry-wide.jpg
+  slides:
+  - image: /assets/img/work/cake-strawberry-wide.jpg
+    mockup: false
+  - image: /assets/img/work/wirever-packaging.jpg
+    mockup: false
+  - image: /assets/img/work/dh-table.jpg
+    mockup: false
+  - image: /assets/img/work/shoot-1.jpg
+    mockup: false
+  - image: /assets/img/work/wirever-lifestyle.jpg
+    mockup: false
+  - image: /assets/img/work/cake-chocolate.jpg
+    mockup: false
+  videos: []
+- key: strategy
+  num: '05'
+  art: strategy
+  title: Digital Strategy
+  short: Customised marketing plans that combine creativity, data, and industry insights for measurable growth.
+  intro: Customised marketing plans that combine creativity, data and industry insight, including advertising, influencer marketing, SEO and campaign management.
+  what:
+  - Marketing strategy
+  - Advertising (Meta)
+  - Influencer & talent sourcing
+  - SEO
+  - Press releases & blogging
+  deliverables:
+  - Marketing plan & channel mix
+  - Campaign set-up & optimisation
+  - Talent & influencer coordination
+  - Performance reporting
+  image: /assets/img/work/social-insights.jpg
+  slides:
+  - image: /assets/img/work/social-insights.jpg
+    mockup: false
+  - image: /assets/img/work/influencer-talent.jpg
+    mockup: false
+  - image: /assets/img/work/event-stage.jpg
+    mockup: false
+  videos: []
+industries:
+- name: Tailors
+  image: /assets/img/work/ind-tailor.jpg
+- name: Jewelry
+  image: /assets/img/work/ind-jewelry.jpg
+- name: Restaurants
+  image: /assets/img/work/ind-restaurant.jpg
+- name: Hospitality
+  image: /assets/img/work/ind-hospitality.jpg
+- name: Professional Services
+  image: /assets/img/work/bts-video-2.jpg
+- name: Businesses entering Thailand
+  image: /assets/img/work/meta-event-registration.jpg

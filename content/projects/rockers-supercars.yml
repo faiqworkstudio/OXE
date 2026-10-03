@@ -1,0 +1,32 @@
+id: rockers-supercars
+order: 30
+client: Rockers Supercars
+title: Supercar Promotional Video
+filters:
+- video
+- photo
+category: Video Production
+display: photo
+cover: /assets/img/work/shoot-1.jpg
+mobile: ''
+gallery:
+- /assets/img/work/shoot-2.jpg
+video: /assets/video/rockers-supercars.mp4
+video_poster: /assets/img/work/rockers-supercars-poster.jpg
+summary: Promotional video content capturing the excitement, luxury, and performance of an exclusive supercar collection.
+challenge: Create visually striking content that resonates with automotive enthusiasts while elevating the brand's presence across digital platforms.
+solution: From pre-production planning to filming and post-production editing, each vehicle was showcased through cinematic visuals, dynamic camera movements, and attention to detail, with premium storytelling and polished editing.
+outcome: Videos optimised for social media, websites, and digital marketing campaigns that reflect the prestige and energy of the Rockers Supercars brand.
+tags:
+- Video Production
+- Drone
+- Automotive
+services:
+- Commercial Video Production
+- Cinematic Automotive Videography
+- Creative Concept Development
+- Drone Footage
+- Professional Editing & Color Grading
+- Social Media Video Content
+- Promotional Brand Videos
+- Multi-Platform Content Delivery

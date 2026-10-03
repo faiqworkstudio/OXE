@@ -1,0 +1,26 @@
+id: wine-connection
+order: 130
+client: Wine Connection
+title: Restaurant Promo Video
+filters:
+- video
+category: Video Production
+display: photo
+cover: /assets/img/work/wine-connection-poster.jpg
+mobile: ''
+gallery:
+- /assets/img/work/wine-connection-still-3.jpg
+- /assets/img/work/wine-connection-still-9.jpg
+video: /assets/video/wine-connection.mp4
+video_poster: /assets/img/work/wine-connection-poster.jpg
+summary: A short, social-first promotional video of food, drinks, and atmosphere.
+challenge: ''
+solution: ''
+outcome: ''
+tags:
+- Video Production
+- Food & Beverage
+services:
+- Video Production
+- Editing
+- Social Media Video

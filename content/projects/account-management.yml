@@ -1,0 +1,24 @@
+id: account-management
+order: 160
+client: Social Media Account Management
+title: Page Management & Insights
+filters:
+- social
+category: Social Media
+display: photo
+cover: /assets/img/work/social-insights.jpg
+mobile: ''
+gallery: []
+video: ''
+video_poster: ''
+summary: Managing brand pages and tracking growth and engagement insights across Facebook and Instagram.
+challenge: ''
+solution: ''
+outcome: ''
+tags:
+- Social Media
+- Analytics
+services:
+- Account Management
+- Content Publishing
+- Insights & Reporting

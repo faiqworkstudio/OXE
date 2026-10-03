@@ -1,0 +1,30 @@
+id: anthony-bespoke-tailor
+order: 90
+client: Anthony Bespoke Tailor
+title: Website Design & Development
+filters:
+- web
+category: Website Design
+display: photo
+cover: ''
+mobile: ''
+gallery: []
+video: ''
+video_poster: ''
+summary: A premium website showcasing the brand's services, tailoring process, and portfolio, with enquiry and appointment booking.
+challenge: Create a sophisticated online presence that showcases the brand's services, tailoring process, and portfolio while providing a seamless experience for prospective clients.
+solution: A custom, luxury-inspired design with intuitive navigation and a fully responsive layout, built for performance, security, and scalability, with strategically placed calls-to-action, an enquiry and appointment booking system, service pages, and an SEO-friendly structure.
+outcome: A professional digital platform that strengthens the brand's credibility and makes it easier for clients to connect with Anthony Bespoke Tailor.
+tags:
+- Web Design
+- Booking
+- UI/UX
+services:
+- Custom Website Design
+- Website Development
+- UI/UX Design
+- Responsive Development
+- SEO-Friendly Website Structure
+- Performance Optimization
+- Contact & Appointment Integration
+- Ongoing Website Support & Maintenance

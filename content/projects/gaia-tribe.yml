@@ -1,0 +1,28 @@
+id: gaia-tribe
+order: 110
+client: Gaia Tribe
+title: Instagram Campaign
+filters:
+- social
+category: Social Media
+display: photo
+cover: /assets/img/work/gaia-huge.jpg
+mobile: ''
+gallery:
+- /assets/img/work/gaiatribe-day.jpg
+- /assets/img/work/gaia-beach.jpg
+- /assets/img/work/gaia-review.jpg
+- /assets/img/work/gaia-flavours.jpg
+video: ''
+video_poster: ''
+summary: Campaign graphics and creator content for a plant-based nutrition brand.
+challenge: ''
+solution: ''
+outcome: ''
+tags:
+- Social Media
+- Graphic Design
+services:
+- Social Media Content
+- Graphic Design
+- Creator Content

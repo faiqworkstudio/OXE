@@ -1,0 +1,23 @@
+id: event-management
+order: 140
+client: AiOcean & Meta Events
+title: Event Project Management
+filters: []
+category: Project Management
+display: photo
+cover: /assets/img/work/event-stage.jpg
+mobile: ''
+gallery:
+- /assets/img/work/meta-event-registration.jpg
+video: ''
+video_poster: ''
+summary: Project management for technology events in Bangkok, including an AiOcean stage event and a Meta event registration desk.
+challenge: ''
+solution: ''
+outcome: ''
+tags:
+- Project Management
+- Events
+services:
+- Project Management
+- Event Coordination

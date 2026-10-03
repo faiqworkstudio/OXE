@@ -1,0 +1,29 @@
+id: tailor-website
+order: 10
+client: Platinum Tailor
+title: Website Design & Development
+filters:
+- web
+category: Website Design
+display: website
+cover: /assets/img/work/tailor-website.jpg
+mobile: /assets/img/work/tailor-website-mobile.jpg
+gallery:
+- /assets/img/work/tailor-website.jpg
+- /assets/img/work/tailor-website-mobile.jpg
+video: ''
+video_poster: ''
+summary: A professional website that showcases craftsmanship and makes it easy for customers to book appointments.
+challenge: Limited digital presence and few channels for online enquiries.
+solution: Designed a professional website to establish a stronger online presence and showcase their craftsmanship.
+outcome: Improved credibility and gave customers an easier way to discover the business online and book appointments.
+tags:
+- Web Design
+- UI/UX
+- Booking Integration
+services:
+- Website Design
+- UI/UX Design
+- Responsive Development
+- Booking Integration
+- SEO-Friendly Structure

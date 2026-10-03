@@ -1,0 +1,313 @@
+# OXE Marketing admin panel (Decap CMS) — https://decapcms.org/docs/
+# Log in at https://www.oxemarketingth.com/admin with a GitHub account that can edit the repository.
+# Every "Publish" saves a commit to GitHub; Netlify then rebuilds the site (about 1–2 minutes).
+
+backend:
+  name: github
+  repo: faiqworkstudio/OXE
+  branch: claude/website-design-requirements-89zc90   # the branch Netlify publishes
+  commit_messages:
+    create: "Admin: add {{collection}} “{{slug}}”"
+    update: "Admin: update {{collection}} “{{slug}}”"
+    delete: "Admin: delete {{collection}} “{{slug}}”"
+    uploadMedia: "Admin: upload {{path}}"
+    deleteMedia: "Admin: delete {{path}}"
+
+# Editing on your own computer: run `npx decap-server` in the repo, then open http://localhost:8080/admin/
+local_backend: true
+
+site_url: https://www.oxemarketingth.com
+display_url: https://www.oxemarketingth.com
+logo_url: /assets/img/oxe-wordmark.png
+
+# Photos you upload go here; the site converts them to fast WebP automatically
+media_folder: assets/img/work
+public_folder: /assets/img/work
+
+slug:
+  encoding: ascii
+  clean_accents: true
+  sanitize_replacement: "-"
+
+collections:
+
+  # ------------------------------------------------------------------ BLOG
+  - name: blog
+    label: Blog
+    label_singular: Article
+    description: "Articles on the Blog page. The newest three also appear on the home page. Untick “Draft” to publish."
+    folder: content/blog
+    extension: md
+    format: frontmatter
+    create: true
+    slug: "{{slug}}"
+    summary: "{{title}} · {{date}}"
+    sortable_fields: [date, title, category]
+    view_filters:
+      - { label: "Websites & SEO", field: category, pattern: web }
+      - { label: "Social Media", field: category, pattern: social }
+      - { label: "Video", field: category, pattern: video }
+      - { label: "Photography", field: category, pattern: photo }
+      - { label: "Strategy", field: category, pattern: strategy }
+      - { label: "Drafts", field: draft, pattern: true }
+    preview_path: "blog/{{slug}}.html"
+    fields:
+      - { label: Title, name: title, widget: string, hint: "The article headline (also used for Google). Around 50–70 characters works best." }
+      - { label: Meta description, name: description, widget: text, hint: "Shown in Google results under the title. Aim for 140–160 characters." }
+      - label: Topic
+        name: category
+        widget: select
+        options:
+          - { label: "Websites & SEO", value: web }
+          - { label: "Social Media", value: social }
+          - { label: "Video", value: video }
+          - { label: "Photography", value: photo }
+          - { label: "Strategy", value: strategy }
+      - { label: Publish date, name: date, widget: datetime, format: "YYYY-MM-DD", date_format: "D MMM YYYY", time_format: false, default: "{{now}}" }
+      - { label: Cover image, name: cover, widget: image, hint: "Landscape photo, at least 1200px wide. JPG or PNG." }
+      - { label: Short summary, name: excerpt, widget: text, hint: "One or two sentences shown on the article cards and under the headline." }
+      - { label: Draft, name: draft, widget: boolean, default: true, hint: "Drafts are saved but not shown on the website." }
+      - label: Article
+        name: body
+        widget: markdown
+        buttons: [bold, italic, link, heading-two, heading-three, quote, bulleted-list, numbered-list]
+        editor_components: []
+        hint: "Use “Heading 2” for each main section (they build the contents list). A quote that starts with **Tip.** becomes a highlighted tip box."
+      - label: FAQ
+        name: faq
+        widget: list
+        required: false
+        summary: "{{fields.question}}"
+        hint: "Questions and answers shown at the end of the article (and to Google)."
+        fields:
+          - { label: Question, name: question, widget: string }
+          - { label: Answer, name: answer, widget: text }
+
+  # ------------------------------------------------------------------ PORTFOLIO
+  - name: projects
+    label: Portfolio projects
+    label_singular: Project
+    description: "Each project gets a card on the Portfolio page and its own case-study page. Lower “Order” numbers appear first."
+    folder: content/projects
+    extension: yml
+    format: yaml
+    create: true
+    identifier_field: client
+    editor: { preview: false }
+    slug: "{{fields.id}}"
+    summary: "{{order}} · {{client}}: {{title}}"
+    sortable_fields: [order, client]
+    preview_path: "work/{{fields.id}}.html"
+    fields:
+      - { label: Page address, name: id, widget: string, pattern: ['^[a-z0-9]+(-[a-z0-9]+)*$', "Lowercase letters, numbers and dashes only, e.g. haji-cafe"], hint: "Becomes the page link: oxemarketingth.com/work/your-address. Don't change it after publishing." }
+      - { label: Order, name: order, widget: number, value_type: int, default: 200, hint: "Position on the Portfolio page: 10 shows first, 20 second, and so on." }
+      - { label: Client, name: client, widget: string }
+      - { label: Project title, name: title, widget: string }
+      - label: Portfolio filters
+        name: filters
+        widget: select
+        multiple: true
+        required: false
+        options:
+          - { label: "Web Design", value: web }
+          - { label: "Social Media", value: social }
+          - { label: "Video", value: video }
+          - { label: "Photography", value: photo }
+        hint: "Which filter buttons show this project."
+      - { label: Category label, name: category, widget: string, hint: "Shown on the card, e.g. Video Production" }
+      - label: Cover style
+        name: display
+        widget: select
+        default: photo
+        options:
+          - { label: "Photo (fills the card)", value: photo }
+          - { label: "Logo on a white card", value: logo }
+          - { label: "Website on a laptop + phone", value: website }
+      - { label: Cover image, name: cover, widget: image, required: false, hint: "Photo, logo or desktop website screenshot, depending on the cover style." }
+      - { label: Phone screenshot, name: mobile, widget: image, required: false, hint: "Only for the “Website” cover style: a tall mobile screenshot." }
+      - label: Gallery
+        name: gallery
+        widget: list
+        required: false
+        field: { label: Image, name: image, widget: image }
+        hint: "More images shown on the case-study page."
+      - { label: Video (MP4), name: video, widget: file, required: false, media_folder: /assets/video, public_folder: /assets/video, hint: "Optional. Keep it short and under 20 MB." }
+      - { label: Video cover image, name: video_poster, widget: image, required: false, hint: "A still frame shown before the video plays. Needed when you add a video." }
+      - { label: Summary, name: summary, widget: text }
+      - { label: Challenge, name: challenge, widget: text, required: false, hint: "Leave empty if not known: the page shows “case study coming soon”." }
+      - { label: Solution, name: solution, widget: text, required: false }
+      - { label: Outcome, name: outcome, widget: text, required: false, hint: "Only real results supplied by the client. No invented numbers." }
+      - { label: Tags, name: tags, widget: list, required: false, field: { label: Item, name: item, widget: string } }
+      - { label: Services provided, name: services, widget: list, required: false, field: { label: Item, name: item, widget: string } }
+
+  # ------------------------------------------------------------------ PAGES & SETTINGS
+  - name: pages
+    label: Pages
+    editor: { preview: false }
+    description: "Text on the main pages. Wrap words in *asterisks* in a heading to show them in the italic serif accent."
+    files:
+
+      - label: Home page
+        name: home
+        file: content/home.yml
+        preview_path: "index.html"
+        fields:
+          - { label: Hero heading, name: hero_title, widget: string, hint: "Wrap words in *asterisks* for the italic accent." }
+          - { label: Hero text, name: hero_text, widget: text }
+          - { label: Trust line (bold), name: proof_title, widget: string }
+          - { label: Trust line (small), name: proof_text, widget: string }
+          - { label: Intro heading, name: intro_title, widget: string }
+          - { label: Intro text, name: intro_text, widget: text }
+          - { label: Services heading, name: services_title, widget: string }
+          - { label: Services text, name: services_text, widget: text }
+          - { label: Why OXE heading, name: why_title, widget: string }
+          - { label: Why OXE text, name: why_text, widget: text }
+          - label: Why OXE principles
+            name: principles
+            widget: list
+            summary: "{{fields.title}}"
+            fields: &iconfields
+              - label: Icon
+                name: icon
+                widget: select
+                options: [bulb, results, shield, people, layers, sliders, award2, chat, calendar, handshake2, target2, growth, heart, globe, strategy, web, video, camera, social, megaphone, users, eye, thumb]
+              - { label: Title, name: title, widget: string }
+              - { label: Text, name: text, widget: text }
+          - { label: Our Works heading, name: works_title, widget: string }
+          - { label: Our Works text, name: works_text, widget: text }
+          - label: Our Works rows
+            name: works
+            widget: list
+            allow_add: false
+            summary: "{{fields.title}}"
+            fields:
+              - { label: Portfolio filter, name: filter, widget: select, options: [web, social, video, photo] }
+              - { label: Title, name: title, widget: string }
+              - { label: Image, name: image, widget: image }
+          - { label: Blog section heading, name: insights_title, widget: string }
+          - { label: Blog section text, name: insights_text, widget: text }
+
+      - label: About page
+        name: about
+        file: content/about.yml
+        preview_path: "about.html"
+        fields:
+          - { label: Heading, name: title, widget: string, hint: "Wrap words in *asterisks* for the italic accent." }
+          - { label: Positioning line, name: positioning, widget: text }
+          - { label: Intro, name: intro, widget: text }
+          - { label: Our story, name: story, widget: list, field: { label: Paragraph, name: paragraph, widget: text } }
+          - { label: Mission, name: mission, widget: text }
+          - { label: Vision, name: vision, widget: text }
+          - label: Key facts
+            name: facts
+            widget: list
+            summary: "{{fields.value}} {{fields.label}}"
+            fields:
+              - { label: Value, name: value, widget: string }
+              - { label: Label, name: label, widget: string }
+          - { label: Why companies choose OXE, name: choose, widget: list, summary: "{{fields.title}}", fields: *iconfields }
+
+      - label: Page headers
+        name: page_headers
+        file: content/pages.yml
+        fields:
+          - label: Services page
+            name: services
+            widget: object
+            fields: [{ label: Heading, name: title, widget: string }, { label: Intro, name: intro, widget: text }]
+          - label: Portfolio page
+            name: portfolio
+            widget: object
+            fields: [{ label: Heading, name: title, widget: string }, { label: Intro, name: intro, widget: text }]
+          - label: Blog page
+            name: blog
+            widget: object
+            fields: [{ label: Heading, name: title, widget: string }, { label: Intro, name: intro, widget: text }]
+          - label: Contact page
+            name: contact
+            widget: object
+            fields: [{ label: Heading, name: title, widget: string }, { label: Intro, name: intro, widget: text }]
+          - label: “Get in touch” section (bottom of every page)
+            name: contact_band
+            widget: object
+            fields: [{ label: Heading, name: title, widget: string }, { label: Text, name: text, widget: text }]
+
+      - label: Services
+        name: services
+        file: content/services.yml
+        preview_path: "services.html"
+        fields:
+          - label: Services
+            name: services
+            widget: list
+            allow_add: false
+            summary: "{{fields.title}}"
+            fields:
+              - { name: key, widget: hidden }
+              - { name: num, widget: hidden }
+              - { name: art, widget: hidden }
+              - { label: Title, name: title, widget: string }
+              - { label: Short description, name: short, widget: text, hint: "Used on the home page cards." }
+              - { label: Introduction, name: intro, widget: text, hint: "Used on the Services page." }
+              - { label: What we do, name: what, widget: list, field: { label: Item, name: item, widget: string } }
+              - { label: Deliverables, name: deliverables, widget: list, field: { label: Item, name: item, widget: string } }
+              - { label: Card image, name: image, widget: image }
+              - label: Slideshow images
+                name: slides
+                widget: list
+                required: false
+                summary: "{{fields.image}}"
+                hint: "Leave empty when this service shows videos instead."
+                fields:
+                  - { label: Image, name: image, widget: image }
+                  - { label: Show as a website on laptop + phone, name: mockup, widget: boolean, default: false }
+              - label: Videos
+                name: videos
+                widget: list
+                required: false
+                summary: "{{fields.client}}"
+                fields:
+                  - { label: Video (MP4), name: video, widget: file, media_folder: /assets/video, public_folder: /assets/video }
+                  - { label: Client, name: client, widget: string }
+          - label: Industries we worked with
+            name: industries
+            widget: list
+            summary: "{{fields.name}}"
+            fields:
+              - { label: Industry, name: name, widget: string }
+              - { label: Image, name: image, widget: image }
+
+      - label: Client logos
+        name: clients
+        file: content/clients.yml
+        fields:
+          - label: Clients
+            name: clients
+            widget: list
+            summary: "{{fields.name}}"
+            hint: "Shown on the home and About pages. The first three also appear in the home hero. Drag to reorder."
+            fields:
+              - { label: Logo, name: logo, widget: image, media_folder: /assets/img/clients, public_folder: /assets/img/clients, hint: "Square PNG (transparent background is fine) or JPG." }
+              - { label: Brand name, name: name, widget: string, required: false }
+
+      - label: Contact details & settings
+        name: settings
+        file: content/settings.yml
+        fields:
+          - { label: Email, name: email, widget: string }
+          - { label: Phone (as shown), name: phone, widget: string, hint: "e.g. +66 82 448 0050" }
+          - { label: WhatsApp number, name: whatsapp_number, widget: string, hint: "Country code + number, digits only, e.g. 66824480050" }
+          - { label: WhatsApp greeting, name: whatsapp_message, widget: string, hint: "Pre-filled message when someone taps WhatsApp." }
+          - { label: City, name: city, widget: string }
+          - { label: Founded, name: founded, widget: string }
+          - label: Social media links
+            name: social
+            widget: object
+            hint: "Full profile URLs. Leave empty to hide an icon."
+            fields:
+              - { label: Facebook, name: facebook, widget: string, required: false }
+              - { label: Instagram, name: instagram, widget: string, required: false }
+              - { label: TikTok, name: tiktok, widget: string, required: false }
+              - { label: LinkedIn, name: linkedin, widget: string, required: false }
+          - { label: Contact form services, name: form_services, widget: list, field: { label: Item, name: item, widget: string } }
+          - { label: Contact form budgets, name: form_budgets, widget: list, field: { label: Item, name: item, widget: string }, hint: "Price ranges people can pick in the enquiry form." }

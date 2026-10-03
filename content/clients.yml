@@ -1,0 +1,47 @@
+clients:
+- logo: /assets/img/clients/xiaomi.webp
+  name: Xiaomi
+- logo: /assets/img/clients/oppo.webp
+  name: OPPO
+- logo: /assets/img/clients/netflix.webp
+  name: Netflix
+- logo: /assets/img/clients/minor-international.webp
+  name: Minor International
+- logo: /assets/img/clients/the-continent.webp
+  name: The Continent
+- logo: /assets/img/clients/rockers.webp
+  name: Rockers Supercars
+- logo: /assets/img/clients/stratton.webp
+  name: Stratton Gems & Jewels
+- logo: /assets/img/clients/dh-foods.webp
+  name: Dh Foods
+- logo: /assets/img/clients/wirever.webp
+  name: Wirever
+- logo: /assets/img/clients/michael-tailors.webp
+  name: Michael Tailors
+- logo: /assets/img/clients/russos.webp
+  name: Russo's Gemstones
+- logo: /assets/img/clients/lalisa.webp
+  name: Lalisa
+- logo: /assets/img/clients/alchemi-botanics.webp
+  name: Alchemi Botanics
+- logo: /assets/img/clients/commonzcent.webp
+  name: Commonzcent
+- logo: /assets/img/clients/nakhon-thai.webp
+  name: Nakhon Thai
+- logo: /assets/img/clients/shoeswedo.webp
+  name: Shoeswedo
+- logo: /assets/img/clients/bmb.webp
+  name: BMB Bangkok Morocco
+- logo: /assets/img/clients/client-wolf.webp
+  name: ''
+- logo: /assets/img/clients/client-brush.webp
+  name: ''
+- logo: /assets/img/clients/client-gown.webp
+  name: ''
+- logo: /assets/img/clients/client-star.webp
+  name: ''
+- logo: /assets/img/clients/client-figure.webp
+  name: ''
+- logo: /assets/img/clients/client-y.webp
+  name: ''

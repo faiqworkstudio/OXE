@@ -1,479 +1,74 @@
-"""Blog articles. Edit here, then run:  python3 src/build.py
+"""Blog articles: one Markdown file per article in content/blog/<slug>.md.
 
-Each post: slug, title, description (meta, ~155 chars), category key, date (ISO),
-cover image (assets/img/work/<name>.jpg), excerpt, body blocks and FAQ.
+Edit them in the admin panel (/admin → Blog) or by hand. Each file has a header
+(title, description, category, date, cover, excerpt, draft, faq) and a Markdown body:
 
-Body blocks: ("p", html) · ("h2", text) · ("h3", text) · ("ul", [html, ...]) ·
-("ol", [html, ...]) · ("tip", html) · ("quote", html)
+    ## Section heading        (each one appears in the article's contents list)
+    ### Sub-heading
+    - bullet list             1. numbered list (start at 4. to continue numbering)
+    **bold**  *italic*  [link text](services.html#web)
+    > **Tip.** A quote that starts with "Tip." becomes a highlighted tip box.
+    > Any other quote becomes a large pull quote.
 
 Content rule: practical, accurate advice. No invented statistics, prices or
 client results. Link to OXE services where relevant.
 """
+import os, re, html
+import markdown
+from content import DATA, fmt, asset, load
 
 BLOG_CATS = [("all", "All"), ("web", "Websites & SEO"), ("social", "Social Media"), ("video", "Video"),
              ("photo", "Photography"), ("strategy", "Strategy")]
 
 AUTHOR = "OXE Marketing Team"
 
-POSTS = [
-    dict(
-        slug="local-seo-bangkok-google-maps",
-        title="Local SEO in Bangkok: How to Get Your Business Found on Google Maps in 2026",
-        description="A practical guide to local SEO in Bangkok: optimise your Google Business Profile, earn reviews, fix your website and rank on Google Maps.",
-        cat="web", date="2026-09-24", cover="haji-visit",
-        excerpt="Most customers in Bangkok find a café, clinic or tailor the same way: they search on their phone and tap the first result on the map. Here is how to make sure that result is you.",
-        body=[
-            ("p", "When someone in Bangkok searches for a <em>tailor near Sukhumvit</em>, a <em>brunch café in Ari</em> or a <em>dental clinic in Silom</em>, Google shows a map with three businesses before any regular website. That small box, often called the local pack, is where most local decisions are made. Getting into it is not luck. It is the result of a few clear, repeatable steps."),
-            ("h2", "1. Claim and complete your Google Business Profile"),
-            ("p", "Your Google Business Profile is the single most important local SEO asset you own. If you have not claimed it, do that first. Then fill in every field, not just the basics."),
-            ("ul", [
-                "<strong>Primary category:</strong> choose the most specific option (for example <em>Tailor</em> rather than <em>Clothing store</em>). Add secondary categories only if they are genuinely true.",
-                "<strong>Name, address and phone:</strong> use exactly the same details everywhere online, including your website, Facebook page and LINE Official Account.",
-                "<strong>Opening hours:</strong> keep them accurate, and add special hours for public holidays such as Songkran.",
-                "<strong>Services and products:</strong> list them with short descriptions. These help Google understand what you offer.",
-                "<strong>Description:</strong> write it in plain language, in English and Thai if you serve both audiences.",
-            ]),
-            ("h2", "2. Photos are not optional"),
-            ("p", "Profiles with real, recent photos look trustworthy and get more clicks. Upload your storefront (so people recognise it on arrival), the interior, your team at work and your best products or dishes. Professional photography makes a visible difference here, because your profile sits right next to your competitors' in the same list."),
-            ("tip", "Add new photos every month. A steady stream of fresh content signals that the business is active."),
-            ("h2", "3. Reviews: ask, then reply to every one"),
-            ("p", "Reviews influence both your ranking and whether someone chooses you. The simplest system is to ask at the moment customers are happiest: when they collect an order, finish a meal or receive a finished project. A small card or LINE message with a direct review link removes friction."),
-            ("p", "Reply to every review, good or bad, in the language it was written in. A calm, helpful reply to a negative review often builds more trust than a dozen five-star ratings."),
-            ("h2", "4. Your website still matters for local rankings"),
-            ("p", "Google cross-checks your profile against your website. A fast, mobile-friendly site that clearly states what you do and where you are strengthens your local visibility. Make sure your site includes:"),
-            ("ul", [
-                "Your business name, full address and phone number on every page (usually in the footer).",
-                "A dedicated page for each core service, with the area you serve in the heading, for example <em>Bespoke Suits in Bangkok</em>.",
-                "An embedded Google Map on your contact page.",
-                "Clear click-to-call and WhatsApp or LINE buttons for mobile visitors.",
-                "Fast loading on mobile data, with compressed images and no heavy pop-ups.",
-            ]),
-            ("h2", "5. Build consistent local citations"),
-            ("p", "Citations are mentions of your business details on other websites: directories, maps, booking platforms and local listings. Consistency matters more than volume. If your old address or phone number is still listed somewhere, update it."),
-            ("h2", "6. Serve both Thai and international searchers"),
-            ("p", "Bangkok is multilingual. Many customers search in Thai, while expats and visitors search in English or other languages. If you serve both, create pages in both languages rather than relying on automatic translation. It helps people, and it helps search engines match you to the right searches."),
-            ("h2", "7. Target the searches your customers actually make"),
-            ("p", "Local searches tend to follow a few patterns: a service plus an area (<em>suit tailor Sukhumvit</em>), a service plus <em>near me</em>, or a specific need (<em>restaurant with private room Thonglor</em>). Write down twenty searches a customer might use to find you, then check that your profile categories, service list and website pages genuinely answer them."),
-            ("ul", [
-                "Use neighbourhood and landmark names naturally in your page copy, such as the BTS or MRT station nearest to you.",
-                "Create content around the details people filter by: parking, opening late, vegetarian options, English-speaking staff, same-day service.",
-                "Avoid stuffing keywords into your business name on Google. It breaks the guidelines and can get a profile suspended.",
-            ]),
-            ("h2", "Common local SEO mistakes we see in Bangkok"),
-            ("ul", [
-                "<strong>Duplicate profiles</strong> created by former staff or old agencies, splitting your reviews and confusing Google.",
-                "<strong>A pin in the wrong place</strong>, especially inside large malls and condominium buildings. Check it on the map yourself.",
-                "<strong>Different phone numbers</strong> on the profile, the website and social pages.",
-                "<strong>A website that is not mobile-friendly</strong>, so visitors who tap through from the map leave within seconds.",
-                "<strong>No photos from the last year</strong>, which makes a busy business look closed.",
-            ]),
-            ("quote", "The businesses that win on Google Maps are rarely the biggest. They are the ones that keep their information accurate, their photos fresh and their reviews answered."),
-            ("h2", "How your website and profile work together"),
-            ("p", "Think of your Google Business Profile as the shop sign and your website as the shop itself. The profile wins the click; the website wins the enquiry. If your site is slow or unclear, the effort you put into ranking is wasted. Our <a href=\"blog/business-website-checklist-2026.html\">12-point website checklist</a> is a good place to check yours, and our <a href=\"services.html#web\">website design team</a> builds fast, search-ready sites for Bangkok businesses."),
-            ("h2", "A simple monthly local SEO routine"),
-            ("ol", [
-                "Post one update or offer on your Google Business Profile.",
-                "Upload new photos.",
-                "Ask recent customers for reviews and reply to all new ones.",
-                "Check that your hours and contact details are still correct.",
-                "Review which search terms bring people to your profile, and update your service pages to match.",
-            ]),
-            ("p", "Local SEO is not a one-off project. It is a habit. Businesses that spend a little time on it every month steadily pull ahead of competitors who set up a profile once and forget about it."),
-        ],
-        faq=[
-            ("How long does local SEO take to work?", "Small improvements, such as completing your profile and adding photos, can show results within weeks. Ranking consistently in the map pack for competitive searches usually takes a few months of steady work."),
-            ("Do I need a website if I have a Google Business Profile?", "Yes. Your profile and website support each other. The website gives Google more information about your business and gives customers somewhere to learn more and contact you."),
-            ("Should I write my profile in Thai or English?", "If your customers use both languages, include both. Write naturally for each audience rather than translating word for word."),
-            ("Can I rank in an area where I don't have an address?", "Google mainly shows businesses close to the searcher. Service-area businesses can define the areas they cover, but a physical location still has the strongest local signal. A good website with pages for the areas you serve helps you appear in regular search results."),
-        ],
-    ),
-    dict(
-        slug="line-oa-facebook-instagram-thailand",
-        title="LINE OA, Facebook or Instagram? Choosing the Right Channels for Your Thai Business",
-        description="Which social channels should a Thai business use? Compare LINE Official Account, Facebook, Instagram and TikTok and build a simple, effective channel mix.",
-        cat="social", date="2026-09-17", cover="haji-made-with-love",
-        excerpt="You do not need to be everywhere. You need to be where your customers already are, and to use each channel for what it does best.",
-        body=[
-            ("p", "Many Thai businesses try to post the same content on every platform and quickly burn out. A better approach is to give each channel a clear job. Here is how the main platforms work together, and how to decide where to focus."),
-            ("h2", "LINE Official Account: your customer relationship channel"),
-            ("p", "LINE is part of everyday life in Thailand, which makes a LINE Official Account (LINE OA) one of the most direct ways to stay in touch with customers. It works best for people who already know you."),
-            ("ul", [
-                "Booking confirmations, reminders and quick questions.",
-                "Broadcast messages for new menus, collections or promotions.",
-                "Digital membership and loyalty cards.",
-                "Rich menus that link to your website, map and booking page.",
-            ]),
-            ("tip", "Treat LINE broadcasts like a private newsletter: fewer, more useful messages. Too many and people mute or block you."),
-            ("h2", "Facebook: community, events and ads"),
-            ("p", "Facebook remains a core channel for many Thai audiences, especially for local communities, events and paid advertising. Meta's ad platform lets you target by location, age and interests, which makes it powerful for promoting launches and offers in specific areas of Bangkok."),
-            ("h2", "Instagram: your visual shop window"),
-            ("p", "For food, fashion, beauty, hospitality and lifestyle brands, Instagram is where people judge your brand before they visit. Your grid works like a portfolio, so consistent photography and design matter. Reels extend your reach beyond existing followers."),
-            ("h2", "TikTok: discovery and short-form video"),
-            ("p", "TikTok is built for discovery: people see content from accounts they do not follow yet. For brands willing to make authentic, entertaining short videos, it can introduce you to entirely new audiences. With TikTok Shop available in Thailand, it can also be a direct sales channel for products."),
-            ("h2", "YouTube and LinkedIn: the specialists"),
-            ("p", "YouTube is the place for longer content people actively search for: product reviews, tutorials, property tours and brand films. LinkedIn matters if you sell to other businesses, recruit professionals or want to build credibility with international partners entering Thailand. Neither needs daily posting, but both reward well-produced, useful content."),
-            ("h2", "Comparing the channels at a glance"),
-            ("ul", [
-                "<strong>LINE OA:</strong> best for repeat customers, bookings and service. Content: short, useful messages, coupons, reminders.",
-                "<strong>Facebook:</strong> best for local reach and paid ads. Content: updates, events, albums, ads and community replies.",
-                "<strong>Instagram:</strong> best for brand image. Content: strong photography, carousels, Reels and Stories.",
-                "<strong>TikTok:</strong> best for discovery and product sales. Content: native, entertaining vertical video and live streams.",
-                "<strong>YouTube:</strong> best for search and depth. Content: tutorials, reviews and brand films.",
-                "<strong>LinkedIn:</strong> best for B2B and hiring. Content: insights, case studies and company news.",
-            ]),
-            ("h2", "How to choose: three questions"),
-            ("ol", [
-                "<strong>Where does your customer already spend time?</strong> Ask your existing customers, and look at where your competitors get real engagement.",
-                "<strong>What can you sustain?</strong> Two channels done well beat five done badly.",
-                "<strong>What is the job?</strong> Discovery (TikTok, Reels), trust and inspiration (Instagram), community and ads (Facebook) or relationship and repeat business (LINE OA)?",
-            ]),
-            ("h2", "A simple channel mix that works for most local businesses"),
-            ("ul", [
-                "<strong>Instagram + Reels</strong> for brand image and discovery.",
-                "<strong>Facebook</strong> for paid promotion and local community.",
-                "<strong>LINE OA</strong> to turn first-time customers into regulars.",
-                "<strong>Your website</strong> as the hub that everything links back to, where people book, enquire or buy.",
-            ]),
-            ("h2", "Connect the channels so customers flow between them"),
-            ("p", "The real power comes from linking channels together rather than running them separately. A TikTok video introduces your brand, the profile link sends people to Instagram or your website, an ad on Facebook reminds them of an offer, and a LINE OA follow keeps them coming back after the first visit."),
-            ("ol", [
-                "Add your LINE OA QR code at the counter, on receipts and on packaging.",
-                "Put LINE, WhatsApp and booking links in every social profile.",
-                "Offer a small welcome reward for following on LINE, so first-time buyers become contacts you can reach again.",
-                "Retarget website and video viewers with Meta ads.",
-            ]),
-            ("tip", "Each month, review where your enquiries and bookings actually came from. Move effort towards the channels that bring customers, not just likes."),
-            ("h2", "Content is the fuel"),
-            ("p", "Whichever channels you choose, they all run on content. Good <a href=\"services.html#photo\">photography</a> and <a href=\"services.html#video\">short-form video</a> can be reused across every platform, which is why planning one well-organised shoot is usually more efficient than producing content channel by channel. Our guide to <a href=\"blog/short-form-video-guide-thailand.html\">short-form video in Thailand</a> covers how to plan that content in batches."),
-            ("p", "Whatever mix you choose, consistency beats volume. A clear content plan, recognisable design and a regular posting rhythm will do more for your business than chasing every new feature. If you would rather hand it to a team, our <a href=\"services.html#social\">social media marketing service</a> plans, creates and manages content across these channels."),
-        ],
-        faq=[
-            ("Is LINE OA free?", "LINE Official Account has a free tier with a monthly message limit and paid plans for higher volumes. Check LINE's current plans, as pricing and limits change."),
-            ("How often should a small business post?", "Choose a rhythm you can keep, such as three good posts a week on your main channel. Consistency matters more than frequency."),
-            ("Should I post in Thai or English?", "Match your audience. Many Bangkok businesses post bilingual captions, or alternate languages depending on the content."),
-            ("Do I need to be on TikTok?", "Only if your customers are there and you can make native, entertaining video consistently. For many product and food brands it is now an important discovery channel; for some professional services, it is optional."),
-        ],
-    ),
-    dict(
-        slug="short-form-video-guide-thailand",
-        title="Short-Form Video in Thailand: A Practical Guide to TikTok, Reels and Shorts for Brands",
-        description="How Thai brands can plan, film and edit short-form video for TikTok, Instagram Reels and YouTube Shorts, with hooks, formats and a simple production workflow.",
-        cat="video", date="2026-09-10", cover="bts-video-2",
-        excerpt="Short-form video is now the fastest way for a brand to be discovered. The good news: it rewards ideas and consistency more than big budgets.",
-        body=[
-            ("p", "Vertical, short videos have become the default way people discover products, restaurants and services. For brands in Thailand, that is an opportunity: a well-planned 20-second video can reach people who have never heard of you. Here is a practical approach that works whether you film on a phone or with a full production team."),
-            ("h2", "The first two seconds decide everything"),
-            ("p", "Viewers decide almost instantly whether to keep watching. Open with movement, a surprising visual or a clear promise. Avoid slow logo intros."),
-            ("ul", [
-                "Start with the result: the finished dish, the fitted suit, the product in action.",
-                "Ask a question your customer is already thinking.",
-                "Use on-screen text so the video works with the sound off.",
-            ]),
-            ("h2", "Formats that work for businesses"),
-            ("h3", "Behind the scenes"),
-            ("p", "Show how things are made: the kitchen during service, the tailor's fitting process, the team preparing a shoot. People trust what they can see."),
-            ("h3", "Before and after"),
-            ("p", "Transformations are naturally satisfying to watch, from interiors and haircuts to product setups."),
-            ("h3", "Product in real life"),
-            ("p", "Show the product being used in a real situation rather than on a white background. For a smartwatch, that might be a morning run; for a sauce, a family dinner."),
-            ("h3", "Answer a common question"),
-            ("p", "Turn the questions your staff hear every day into short, helpful videos. They also make great content for your website and LINE OA."),
-            ("h2", "Plan in batches, not one by one"),
-            ("p", "The brands that post consistently plan and film several videos in one session. A simple monthly workflow:"),
-            ("ol", [
-                "List ten ideas based on customer questions, products and upcoming events.",
-                "Write a one-line hook and a short shot list for each.",
-                "Film everything in one or two sessions, with good light and clean sound.",
-                "Edit in batches, add captions and schedule posts across the month.",
-            ]),
-            ("tip", "Film more than you need: extra clips become cut-downs, stories and ads later."),
-            ("h2", "Phone or professional production?"),
-            ("p", "Both have a place. Phone-filmed, authentic videos are ideal for regular social posting. Professionally produced video, with planned shots, lighting, talent and colour grading, is worth it for product launches, brand films and paid campaigns where quality directly affects perception. Many brands combine the two: one professional shoot that produces a hero video plus dozens of short cut-downs."),
-            ("h2", "Make it work with the sound off"),
-            ("p", "Many people scroll on public transport, at work or late at night with the sound off. Burned-in captions, clear on-screen text and visual storytelling make sure your message lands either way. In Thailand, consider bilingual captions if you are reaching both Thai and international viewers."),
-            ("h2", "Simple production basics that lift quality"),
-            ("ul", [
-                "<strong>Light:</strong> face a window or use a soft light; avoid strong light from behind.",
-                "<strong>Sound:</strong> a small clip-on microphone is the cheapest big upgrade for talking videos.",
-                "<strong>Stability:</strong> use a tripod or gimbal unless the shaky handheld look is intentional.",
-                "<strong>Framing:</strong> shoot vertically (9:16) and keep key details away from the edges where app buttons sit.",
-                "<strong>Pace:</strong> cut out pauses; a new shot every one to three seconds keeps attention.",
-            ]),
-            ("h2", "Trends: use them, don't chase them"),
-            ("p", "Trending sounds and formats can boost reach, but they move fast and do not always fit a brand. Use a trend when it naturally suits your product and voice, and adapt it rather than copying it. Your evergreen content, such as how-tos, behind the scenes and product demos, will keep working long after a trend has faded."),
-            ("quote", "The best-performing brand videos rarely look like ads. They look like something a viewer would have chosen to watch anyway."),
-            ("h2", "Measure what matters"),
-            ("p", "Views are only the beginning. Look at how long people watch, how many share or save, and, most importantly, whether the video drives profile visits, messages, bookings or sales."),
-            ("ul", [
-                "<strong>Watch time and completion:</strong> tells you whether the hook and pacing work.",
-                "<strong>Shares and saves:</strong> show the content is genuinely valuable.",
-                "<strong>Profile visits, link clicks and messages:</strong> connect content to business results.",
-            ]),
-            ("p", "Review your top and bottom five videos each month and look for patterns in hooks, topics and length. Then make more of what works. If you need help with a launch or campaign, see our <a href=\"services.html#video\">video production service</a>, or read how to turn video into sales with <a href=\"blog/live-selling-thailand-guide.html\">live selling</a>."),
-        ],
-        faq=[
-            ("How long should a short-form video be?", "Most perform well between 15 and 45 seconds. Make it as short as the idea allows, and keep the pace up."),
-            ("Can I use the same video on TikTok, Reels and Shorts?", "Yes, with small adjustments. Remove watermarks, check that text is not covered by each app's interface, and adapt captions to each audience."),
-            ("Do I need professional video production?", "Not for everything. Use professional production for launches, ads and brand films, and phone content for regular posting."),
-            ("How often should a brand post short videos?", "Consistency matters more than volume. Two to four good videos a week is a realistic target for many businesses, especially when they are planned and filmed in batches."),
-        ],
-    ),
-    dict(
-        slug="live-selling-thailand-guide",
-        title="Live Selling in Thailand: How to Plan a Live Commerce Campaign That Converts",
-        description="A step-by-step guide to live selling in Thailand: platforms, presenters, scripts, offers and the production checklist behind successful live commerce.",
-        cat="social", date="2026-09-03", cover="gaiatribe-day",
-        excerpt="Live selling has become a familiar way to shop in Thailand. Done well, it combines entertainment, trust and urgency in a way few other channels can.",
-        body=[
-            ("p", "From fashion and beauty to jewellery and food, many Thai brands now sell through live streams on Facebook, TikTok and shopping platforms. Viewers ask questions, see products up close and buy without leaving the app. But a successful live is not just pressing <em>Go live</em>. It is planned like a small TV show."),
-            ("h2", "1. Choose the right platform"),
-            ("p", "Go where your audience already watches. TikTok Live suits discovery and younger audiences, Facebook Live works well for established communities, and marketplace live features connect directly to product listings and checkout."),
-            ("h2", "2. The presenter is the product's voice"),
-            ("p", "Viewers buy from people they like and trust. A good presenter knows the products, speaks naturally, reads comments and keeps energy high. For many brands, working with the right presenter, influencer or on-screen talent is the single biggest factor in a live's success."),
-            ("ul", [
-                "Match the presenter's style and audience to your brand.",
-                "Brief them on product details, offers and common questions.",
-                "Rehearse key moments: product reveals, offers and calls to action.",
-            ]),
-            ("h2", "3. Script the structure, not every word"),
-            ("p", "A loose run sheet keeps the live on track while leaving room for real conversation:"),
-            ("ol", [
-                "<strong>Warm-up:</strong> welcome viewers and tease what is coming.",
-                "<strong>Hero products:</strong> show, explain and demonstrate.",
-                "<strong>Offer moments:</strong> limited-time deals at planned intervals.",
-                "<strong>Q&amp;A:</strong> answer comments by name.",
-                "<strong>Close:</strong> recap the offers and how to buy.",
-            ]),
-            ("h2", "4. Production quality builds trust"),
-            ("p", "You do not need a TV studio, but viewers notice poor light, bad sound and a shaky camera. A simple, reliable setup makes products look their best:"),
-            ("ul", [
-                "Soft, even lighting, plus a close-up light for detail products such as jewellery.",
-                "A dedicated microphone for the presenter.",
-                "A stable camera and a second angle for close-ups.",
-                "A strong, tested internet connection.",
-                "A team member managing comments, stock and orders behind the scenes.",
-            ]),
-            ("tip", "Do a private test stream before every major live to check sound, light and connection."),
-            ("h2", "5. Promote before, follow up after"),
-            ("p", "Announce the live in advance on your social channels and LINE OA, with the date, time and a teaser of the offers. Afterwards, cut highlights into short videos, follow up with customers who asked questions, and review which products and moments drove the most sales."),
-            ("h2", "6. Design offers that reward watching live"),
-            ("p", "People stay on a live stream when they expect something they cannot get later. Plan your offers before the session, and make them simple to understand in a few seconds."),
-            ("ul", [
-                "Limited quantities or time-boxed prices announced at set moments.",
-                "Bundles that are only available during the live.",
-                "Small gifts for the first orders, or for viewers who comment and share.",
-                "Exclusive previews of new products before they go on general sale.",
-            ]),
-            ("p", "Make sure stock, pricing and checkout are ready in advance. Nothing kills momentum like a sold-out link or a discount code that does not work."),
-            ("h2", "7. Prepare the team behind the camera"),
-            ("p", "A smooth live usually has more people off-screen than on it. Assign clear roles before you start:"),
-            ("ul", [
-                "<strong>Presenter:</strong> leads the show and talks to viewers.",
-                "<strong>Producer:</strong> keeps time, cues offers and products, and watches the stream quality.",
-                "<strong>Moderator:</strong> answers comments, pins key messages and flags good questions to the presenter.",
-                "<strong>Order support:</strong> handles stock, payments and follow-up messages.",
-            ]),
-            ("h2", "Measure and improve"),
-            ("p", "Track peak and average viewers, comments, clicks and, above all, orders. Each live teaches you something about timing, products and presenters, so treat every session as a test you can improve on."),
-            ("ol", [
-                "Note the minute-by-minute moments when viewers and orders peaked.",
-                "Compare days and times to find your audience's best slot.",
-                "Keep a list of questions viewers asked, and answer them in your product pages and short videos.",
-                "Run a regular schedule so your audience knows when to tune in.",
-            ]),
-            ("p", "Live commerce works best as part of a wider plan, alongside <a href=\"blog/short-form-video-guide-thailand.html\">short-form video</a> that builds awareness and a <a href=\"blog/line-oa-facebook-instagram-thailand.html\">LINE OA</a> that brings buyers back. OXE helps brands with <a href=\"services.html#social\">social media campaigns</a>, influencer and presenter sourcing, and <a href=\"services.html#video\">video production</a> for live and recorded content."),
-        ],
-        faq=[
-            ("How long should a live selling session be?", "Many brands run sessions of 45 to 90 minutes, which gives time for viewers to join. The right length depends on your audience and product range."),
-            ("Do I need an influencer for live selling?", "Not always, but an experienced presenter with an engaged audience can make a big difference, especially for new brands."),
-            ("What products work best for live selling?", "Products that benefit from demonstration and close-ups, such as fashion, beauty, jewellery, food and gadgets, tend to perform well."),
-            ("How often should a brand go live?", "A regular, predictable schedule works better than occasional big events. Many brands start with one session a week and increase frequency once they find a time slot that works."),
-        ],
-    ),
-    dict(
-        slug="multicultural-marketing-thailand",
-        title="Marketing to Thai and International Customers at Once: A Multicultural Playbook",
-        description="How Bangkok businesses can market to Thai, expat and tourist audiences at the same time, from language and channels to visuals and customer experience.",
-        cat="strategy", date="2026-08-27", cover="meta-event-registration",
-        excerpt="Bangkok is one of the most international cities in Asia. Brands that speak naturally to both local and international customers have a clear advantage.",
-        body=[
-            ("p", "A restaurant on Sukhumvit, a tailor near a tourist hotel or a clinic serving expat families may have customers from dozens of countries alongside Thai regulars. Speaking to all of them without sounding generic is a real skill. Here is a practical playbook."),
-            ("h2", "Start with audience segments, not languages"),
-            ("p", "Before translating anything, define who you are talking to. Typical segments in Bangkok include:"),
-            ("ul", [
-                "<strong>Thai locals</strong>: regular customers who value convenience, trust and community.",
-                "<strong>Long-term expats</strong>: residents who want reliable, English-friendly services.",
-                "<strong>Tourists and short-stay visitors</strong>: discovering you through maps, reviews and social media.",
-                "<strong>Foreign businesses entering Thailand</strong>: looking for local partners who understand both sides.",
-            ]),
-            ("p", "Each group discovers you differently, cares about different things and uses different channels."),
-            ("h2", "Translate meaning, not words"),
-            ("p", "Direct translation often sounds unnatural. Good multilingual marketing adapts the message: tone, humour, cultural references and even which benefits come first. A promotion that works for Thai customers during a local festival may need a different angle for visitors."),
-            ("tip", "Have a native speaker review every important page and campaign in each language before it goes live."),
-            ("h2", "Choose channels per audience"),
-            ("ul", [
-                "Thai customers: LINE OA, Facebook, TikTok and Instagram.",
-                "Expats: Google Search and Maps, Instagram, Facebook groups and your website.",
-                "Tourists: Google Maps, reviews, Instagram and travel platforms.",
-                "International businesses: LinkedIn, your website and referrals.",
-            ]),
-            ("h2", "Visuals that travel well"),
-            ("p", "Strong photography and video communicate across languages. Show real people, real places and real products. Authentic visuals of your team and space build trust with every audience at once."),
-            ("h2", "Make the website bilingual properly"),
-            ("p", "If you serve more than one language group, give each its own version of key pages, with a clear language switcher. This helps visitors and search engines, and avoids awkward machine translation on your most important pages."),
-            ("h2", "Consistency across the whole experience"),
-            ("p", "Marketing only works if the experience matches. Make sure your booking forms, menus, signage, staff greetings and follow-up messages support the languages you promote. Nothing undermines a polished English campaign faster than a confusing Thai-only checkout."),
-            ("h2", "Respect cultural moments and sensitivities"),
-            ("p", "Thailand's calendar is full of moments that matter to local customers, such as Songkran, Loy Krathong and Chinese New Year, while international residents also mark their own holidays. Campaigns around these moments can feel warm and relevant, but they need care. Understand what each occasion means, use imagery respectfully, and be especially thoughtful around the monarchy, religion and national symbols."),
-            ("tip", "Build a shared marketing calendar that lists both Thai and international occasions relevant to your customers, with campaign ideas planned weeks in advance."),
-            ("h2", "Build a team that reflects your audience"),
-            ("p", "The simplest way to avoid cultural blind spots is to involve people from the cultures you are speaking to. Diverse teams notice when a joke will not land, when a colour carries the wrong meaning, or when a message sounds too formal or too casual. That is the idea behind OXE: a <a href=\"about.html\">multicultural team in Bangkok</a> that helps local businesses reach international customers, and international brands connect with Thai audiences."),
-            ("h2", "Measure each audience separately"),
-            ("p", "If you report everything as one number, you will not know which audience is growing. Use separate campaigns, landing pages or tracking links for each language group, and look at enquiries, bookings and sales by segment. You may find one audience is far more profitable than expected, and deserves more attention."),
-            ("h2", "A quick multicultural checklist"),
-            ("ol", [
-                "Define your main audience segments.",
-                "Decide which languages each key page and campaign needs.",
-                "Adapt messages culturally, not just linguistically.",
-                "Choose the right channels for each segment.",
-                "Invest in visuals that speak for themselves.",
-                "Check the full customer journey in every language you offer.",
-                "Plan campaigns around both Thai and international occasions.",
-                "Track results separately for each audience.",
-            ]),
-            ("p", "Done well, multicultural marketing is not more work; it is smarter work, because every piece of content is aimed at someone specific. If you would like help building a plan, our <a href=\"services.html#strategy\">digital strategy service</a> starts with exactly these questions."),
-        ],
-        faq=[
-            ("Do I need my whole website in two languages?", "Start with the pages that matter most: home, services, pricing or menu, and contact. Expand as you see demand."),
-            ("Is automatic translation good enough?", "It can help for internal drafts, but customer-facing marketing should be written or reviewed by fluent speakers."),
-            ("Which language should be the default?", "Use the language of your largest customer group, and make switching languages easy and visible."),
-            ("Should I run separate social accounts for each language?", "Usually not at first. One account with bilingual captions is easier to grow. Separate accounts make sense when audiences and content become very different, such as a Thai consumer page and an English B2B page."),
-        ],
-    ),
-    dict(
-        slug="business-website-checklist-2026",
-        title="Does Your Business Website Still Work in 2026? A 12-Point Checklist",
-        description="A 12-point website checklist for 2026: mobile speed, AI search readiness, conversion, PDPA consent, accessibility and content for Thai businesses.",
-        cat="web", date="2026-08-20", cover="tailor-website", count_ol=True,
-        excerpt="Search, devices and customer expectations keep changing. Use this checklist to see whether your website is still doing its job, or quietly losing you enquiries.",
-        body=[
-            ("p", "A website that looked great three years ago can still be losing you customers today. Search engines now summarise answers with AI, almost everyone browses on a phone, and visitors expect to book or message you in seconds. Work through these twelve points to find quick wins."),
-            ("h2", "Speed and mobile"),
-            ("ol", [
-                "<strong>It loads fast on mobile data.</strong> Test on your own phone outside of Wi-Fi. Large images and heavy scripts are the usual culprits.",
-                "<strong>It is easy to use with one thumb.</strong> Buttons are large enough, text is readable without zooming and menus are simple.",
-                "<strong>Contact is one tap away.</strong> Click-to-call, WhatsApp or LINE and a short form are visible on every page.",
-            ]),
-            ("h2", "Search and AI visibility"),
-            ("ol", [
-                "<strong>Each service has its own page.</strong> Clear headings and helpful content make it easier for search engines, and AI summaries, to understand and recommend you.",
-                "<strong>You answer real questions.</strong> FAQs, guides and blog articles that answer what customers actually ask are valuable for both search and trust.",
-                "<strong>Basic technical SEO is in place.</strong> Unique page titles and descriptions, a sitemap, structured data and fast, secure (HTTPS) pages.",
-            ]),
-            ("tip", "Write for people first. Clear, specific, well-structured answers are exactly what both search engines and AI assistants look for."),
-            ("h2", "Trust and conversion"),
-            ("ol", [
-                "<strong>You show real work.</strong> Case studies, photos of your team and space, client logos and genuine reviews.",
-                "<strong>The next step is obvious.</strong> Every page ends with a clear call to action: book, enquire, call or visit.",
-                "<strong>Forms are short.</strong> Ask only for what you need to reply. Every extra field loses people.",
-            ]),
-            ("h2", "Compliance and accessibility"),
-            ("ol", [
-                "<strong>PDPA is respected.</strong> Thailand's Personal Data Protection Act applies when you collect personal data. Explain how you use it, and ask for consent where required, for example for marketing cookies.",
-                "<strong>It is accessible.</strong> Good colour contrast, readable fonts, alt text on images and a site that works with a keyboard help everyone, including people using assistive technology.",
-            ]),
-            ("h2", "Maintenance"),
-            ("ol", [
-                "<strong>You can update it yourself.</strong> A modern CMS lets your team change text, photos and offers without calling a developer every time.",
-            ]),
-            ("h2", "Getting ready for AI search"),
-            ("p", "More people now get answers from AI assistants and AI summaries at the top of search results. These tools draw on websites that explain things clearly. There is no secret trick, but a few habits help:"),
-            ("ul", [
-                "State plainly who you are, what you offer, where you operate and who you serve, near the top of key pages.",
-                "Use descriptive headings and short paragraphs, so each section answers one question.",
-                "Keep facts consistent across your website, Google Business Profile and social pages.",
-                "Add structured data (schema) for your organisation, services, articles and FAQs.",
-                "Publish original, experience-based content, such as real projects and practical guides, rather than generic text.",
-            ]),
-            ("h2", "Quick wins you can do this week"),
-            ("ul", [
-                "Compress and resize your largest images.",
-                "Add a WhatsApp or LINE button that is visible on mobile.",
-                "Rewrite your homepage headline so it says exactly what you do and where.",
-                "Remove unnecessary fields from your contact form.",
-                "Check every page title and meta description is unique.",
-            ]),
-            ("h2", "What to do next"),
-            ("p", "If you ticked fewer than nine of the twelve points, your website is probably costing you enquiries. Start with speed, mobile usability and clear calls to action: they usually deliver the fastest improvement. Then build out service pages and helpful content for long-term visibility, and connect your site to your <a href=\"blog/local-seo-bangkok-google-maps.html\">Google Business Profile</a>."),
-            ("p", "If the list feels like a lot, that is what our <a href=\"services.html#web\">website design and development team</a> does every day: fast, mobile-first sites that are easy to update and built to be found. You can see examples in our <a href=\"portfolio.html?filter=web\">web design portfolio</a>."),
-        ],
-        faq=[
-            ("How often should a business website be redesigned?", "There is no fixed rule, but many businesses refresh their design every few years and improve content continuously. If your site fails several points above, it is worth reviewing now."),
-            ("Does a website need a blog?", "A blog is one of the best ways to answer customer questions and build search visibility, as long as you publish genuinely helpful content regularly."),
-            ("How fast should my website load?", "As fast as possible on a normal mobile connection. As a practical goal, the main content should appear within about two to three seconds. Google's PageSpeed Insights is a free way to test it."),
-            ("What is PDPA and does it affect my website?", "The PDPA is Thailand's data protection law. If your website collects personal data, such as through contact forms or tracking cookies, it applies. Consult a legal professional for advice on your specific situation."),
-        ],
-    ),
-    dict(
-        slug="product-photography-that-sells",
-        title="Product Photography That Sells: A Practical Brief for Food and Retail Brands",
-        description="How food and retail brands can plan product photography that sells online: shot lists, styling, lighting, formats for e-commerce and social media.",
-        cat="photo", date="2026-08-13", cover="cake-strawberry-wide",
-        excerpt="Online, your photos are your shop window. Great product photography is planned long before the camera comes out.",
-        body=[
-            ("p", "Whether you sell sauces, desserts, accessories or gadgets, customers judge your product by its photos first. The difference between average and great product images is rarely the camera. It is planning, styling and knowing exactly where each image will be used."),
-            ("h2", "Start with where the photos will live"),
-            ("p", "List every place your images will appear: website product pages, marketplace listings, Instagram posts and stories, ads, menus and packaging. Each has different shapes and needs."),
-            ("ul", [
-                "<strong>E-commerce and marketplaces:</strong> clean, consistent images on plain backgrounds, plus detail shots.",
-                "<strong>Social media:</strong> lifestyle images with context, in square and vertical formats.",
-                "<strong>Ads:</strong> bold, simple compositions with room for text.",
-                "<strong>Menus and print:</strong> high-resolution files with consistent lighting.",
-            ]),
-            ("h2", "Write a shot list"),
-            ("p", "A shot list keeps the shoot efficient and makes sure nothing is missed. For each product, plan:"),
-            ("ol", [
-                "A hero shot that shows the product at its best.",
-                "Detail shots of texture, materials or ingredients.",
-                "Scale shots that show size in context.",
-                "Lifestyle shots of the product being used or enjoyed.",
-                "Variants such as colours, flavours or sizes.",
-            ]),
-            ("h2", "Styling: tell a small story"),
-            ("p", "Props, surfaces and colours should support the product, not compete with it. For food, think about freshness and texture: a drizzle of sauce, a fork just lifted, crumbs on the plate. For retail, show the lifestyle your customer aspires to."),
-            ("tip", "Keep a consistent colour palette and style across all images. Consistency is what makes a brand look professional online."),
-            ("h2", "Light makes the product"),
-            ("p", "Soft, directional light reveals texture and shape. Food often looks best with natural-looking side light, while reflective products such as jewellery and electronics need careful control to avoid harsh reflections. This is where professional equipment and experience make the biggest difference."),
-            ("h2", "Plan for video too"),
-            ("p", "If you are setting up a shoot, capture short video clips at the same time: pouring, unboxing, close-up turns. They are invaluable for Reels, TikTok and ads, and cost far less to capture while everything is already set up."),
-            ("h2", "Food photography: keep it fresh"),
-            ("p", "Food changes quickly under lights. Ice cream melts, herbs wilt and sauces lose their shine within minutes. Professional food shoots work with the kitchen to plate each dish just before it is photographed, use stand-ins while lighting is set up, and capture the hero moment fast. Small details make a big difference: steam, condensation on a cold drink, a clean plate edge."),
-            ("h2", "Retail and e-commerce: consistency sells"),
-            ("p", "On a product page or marketplace, customers compare your images side by side with competitors. Use the same background, angle, lighting and crop for every product in a range so the catalogue looks professional. Show what customers worry about: texture, fit, size, the inside of a bag, the back of a watch."),
-            ("ul", [
-                "Shoot every product from the same set of angles.",
-                "Include at least one image with a person or familiar object for scale.",
-                "Show the packaging if it is part of the experience, especially for gifts.",
-                "Keep colours accurate to reduce returns and disappointed customers.",
-            ]),
-            ("h2", "Retouching and delivery"),
-            ("p", "Final images should be colour-corrected, cleaned up and exported in the right sizes for each platform. Ask for web-optimised versions for fast-loading pages as well as high-resolution files for print."),
-            ("tip", "Name image files descriptively, such as <em>strawberry-cheesecake-bangkok-bakery.jpg</em>, and add alt text on your website. It helps accessibility and image search."),
-            ("h2", "A shoot-day checklist"),
-            ("ol", [
-                "Confirm the shot list and the final use of every image.",
-                "Prepare products: clean, ironed, labelled and in the right quantities.",
-                "Gather props and surfaces that match your brand colours.",
-                "Agree who approves images on the day.",
-                "Plan video clips to capture on the same set.",
-            ]),
-            ("p", "Great product images keep working for years across your website, social media, ads and print. See examples of our food and product work in the <a href=\"portfolio.html?filter=photo\">photography portfolio</a>, or find out more about our <a href=\"services.html#photo\">photography service</a>. If you are also planning a launch campaign, our guide to <a href=\"blog/short-form-video-guide-thailand.html\">short-form video</a> shows how to capture video on the same shoot."),
-        ],
-        faq=[
-            ("How many photos does each product need?", "For online stores, plan at least a hero shot, a few angles or details, and one lifestyle image per product."),
-            ("Can I photograph products with my phone?", "Phones work for quick social content. For your website, marketplaces and ads, professional photography usually gives more consistent, higher-quality results."),
-            ("Should I shoot video at the same time?", "Yes. Capturing short clips during a photo shoot is efficient and gives you content for social media and ads."),
-            ("White background or lifestyle photos?", "Both. Clean white or plain backgrounds work best for product listings and comparison, while lifestyle images build desire on social media and in ads."),
-        ],
-    ),
-]
+
+def _slugify(t):
+    return re.sub(r"[^a-z0-9]+", "-", re.sub(r"<[^>]+>", "", t).lower()).strip("-")
+
+
+def render(md_text):
+    """Markdown -> article HTML, plus the list of section headings for the contents."""
+    out = markdown.markdown(md_text, extensions=["sane_lists"], output_format="html")
+    heads = []
+
+    def h2(m):
+        t = re.sub(r"^[0-9]+[.)] ", "", m.group(1).strip())
+        heads.append(t)
+        return f'<h2 id="{_slugify(html.unescape(t))}">{t}</h2>'
+    out = re.sub(r"<h2>(.*?)</h2>", h2, out, flags=re.S)
+
+    def quote(m):
+        inner = m.group(1).strip()
+        tip = re.match(r"<p><strong>Tip[.:]?</strong>:?\s*(.*)</p>$", inner, flags=re.S)
+        if tip:
+            return f'<aside class="atip reveal"><span class="atip__ico" aria-hidden="true">✦</span><p><strong>Tip.</strong> {tip.group(1).strip()}</p></aside>'
+        return f'<blockquote class="reveal">{inner}</blockquote>'
+    out = re.sub(r"<blockquote>(.*?)</blockquote>", quote, out, flags=re.S)
+    # numbered lists that continue across sections (<ol start="4">) keep their count
+    out = re.sub(r'<ol start="(\d+)">', lambda m: f'<ol style="counter-reset: ol {int(m.group(1)) - 1}">', out)
+    return out, heads
+
+
+def _post(path):
+    raw = open(path, encoding="utf-8").read()
+    m = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)$", raw, flags=re.S)
+    front = __import__("yaml").safe_load(m.group(1)) if m else {}
+    body = m.group(2) if m else raw
+    body_html, heads = render(body)
+    return dict(
+        slug=os.path.splitext(os.path.basename(path))[0],
+        title=fmt(front["title"]), description=fmt(front.get("description") or ""),
+        cat=front.get("category") or "web", date=str(front["date"])[:10],
+        cover=asset(front.get("cover")), excerpt=fmt(front.get("excerpt") or ""),
+        draft=bool(front.get("draft")),
+        faq=[(fmt(x["question"]), fmt(x["answer"])) for x in front.get("faq") or [] if x.get("question")],
+        body_html=body_html, heads=heads,
+        text=re.sub(r"<[^>]+>", " ", body_html),
+    )
+
+
+_dir = os.path.join(DATA, "blog")
+POSTS = [_post(os.path.join(_dir, f)) for f in sorted(os.listdir(_dir)) if f.endswith(".md")]
+POSTS = [p for p in POSTS if not p["draft"]]
+POSTS.sort(key=lambda p: p["date"], reverse=True)

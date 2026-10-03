@@ -38,22 +38,51 @@ def ver(path):
 
 
 # ------------------------------------------------------------------ helpers
-def webp(name):
-    """Return the .webp path for a work image, converting from .jpg on first use."""
-    src = os.path.join(IMG_DIR, name + ".jpg")
-    dst = os.path.join(IMG_DIR, name + ".webp")
-    if not os.path.exists(dst) or os.path.getmtime(dst) < os.path.getmtime(src):
-        im = Image.open(src).convert("RGB")
-        if im.width > 1600:
-            im = im.resize((1600, round(im.height * 1600 / im.width)), Image.LANCZOS)
-        im.save(dst, "WEBP", quality=80, method=6)
+IMG_EXT = (".jpg", ".jpeg", ".png", ".webp", ".JPG", ".JPEG", ".PNG", ".WEBP")
+
+
+def source(folder, name):
+    """Uploaded file for an image name, whatever its extension (None if missing)."""
+    for ext in IMG_EXT:
+        f = os.path.join(folder, name + ext)
+        if os.path.exists(f) and not f.endswith(".webp"):
+            return f
+    return None
+
+
+def webp(name, folder=IMG_DIR, max_w=1600, alpha=False):
+    """Return the .webp path for an image, converting from any uploaded format on first use."""
+    dst = os.path.join(folder, name + ".webp")
+    src = source(folder, name)
+    if not src and not os.path.exists(dst):
+        print(f"WARNING: image '{name}' not found in {os.path.relpath(folder, ROOT)}")
+        return None
+    if src and (not os.path.exists(dst) or os.path.getmtime(dst) < os.path.getmtime(src)):
+        im = Image.open(src)
+        im = im.convert("RGBA") if alpha and im.mode in ("RGBA", "LA", "P") else im.convert("RGB")
+        if im.width > max_w:
+            im = im.resize((max_w, round(im.height * max_w / im.width)), Image.LANCZOS)
+        im.save(dst, "WEBP", quality=90 if alpha else 80, method=6)
     return dst
 
 
 def img(name, alt="", cls="", lazy=True, sizes=""):
-    w, h = Image.open(webp(name)).size
+    path = webp(name) if name else None
+    if not path:
+        return ""
+    w, h = Image.open(path).size
     return (f'<img src="assets/img/work/{name}.webp" alt="{alt}" width="{w}" height="{h}"'
             f'{f" class={chr(34)}{cls}{chr(34)}" if cls else ""}{" loading=" + chr(34) + "lazy" + chr(34) if lazy else ""} decoding="async">')
+
+
+def poster(v):
+    return C.POSTERS.get(v, v + "-poster")
+
+
+def logo_file(f):
+    """Client logo (any format; transparent PNGs stay transparent) -> (width, height) of its .webp."""
+    dst = webp(f, os.path.join(ROOT, "assets/img/clients"), max_w=600, alpha=True)
+    return Image.open(dst).size if dst else (200, 200)
 
 
 def plain(t):
@@ -267,8 +296,8 @@ def contact_band():
     <div class="container">
       <div class="contact-band__inner reveal">
         <div class="contact-band__copy">
-          <h2>Let's create something <span class="hl">great together</span></h2>
-          <p>Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.</p>
+          <h2>{C.PAGES["contact_band"]["title"]}</h2>
+          <p>{C.PAGES["contact_band"]["text"]}</p>
           {btn("Book a Consultation", "contact.html")}
         </div>
         <div class="contact-band__card">
@@ -289,7 +318,7 @@ def logo_img(p):
     alt = plain(p["client"]) + " logo"
     if p["cover"].startswith("logo:"):
         f = p["cover"][5:]
-        w, h = Image.open(os.path.join(ROOT, "assets/img/clients", f + ".webp")).size
+        w, h = logo_file(f)
         return f'<img src="assets/img/clients/{f}.webp" alt="{alt}" width="{w}" height="{h}" loading="lazy">'
     return img(p["cover"], alt)
 
@@ -305,8 +334,8 @@ def project_media(p, big=False):
         return f'<div class="media-placeholder" role="img" aria-label="{plain(p["client"])}">{ART["web"]}<span>{p["client"]}</span></div>'
     if p.get("video") and not big:
         v = p["video"]
-        webp(v + "-poster")
-        return (f'<video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{v}-poster.webp" aria-label="{alt}">'
+        webp(poster(v))
+        return (f'<video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{poster(v)}.webp" aria-label="{alt}">'
                 f'<source src="assets/video/{v}.mp4" type="video/mp4"></video>')
     return img(p["cover"], alt, lazy=not big)
 
@@ -359,9 +388,9 @@ def viewer(p):
         active = " is-active" if n == 0 else ""
         hidden = "" if n == 0 else ' aria-hidden="true"'
         if kind == "video":
-            webp(name + "-poster")
-            body = f'<video controls muted loop playsinline{" autoplay" if n == 0 else ""} preload="{"metadata" if n == 0 else "none"}" poster="assets/img/work/{name}-poster.webp"><source src="assets/video/{name}.mp4" type="video/mp4">Your browser does not support video.</video>'
-            th = f'<img src="assets/img/work/{name}-poster.webp" alt="" loading="lazy"><span class="play" aria-hidden="true"></span>'
+            webp(poster(name))
+            body = f'<video controls muted loop playsinline{" autoplay" if n == 0 else ""} preload="{"metadata" if n == 0 else "none"}" poster="assets/img/work/{poster(name)}.webp"><source src="assets/video/{name}.mp4" type="video/mp4">Your browser does not support video.</video>'
+            th = f'<img src="assets/img/work/{poster(name)}.webp" alt="" loading="lazy"><span class="play" aria-hidden="true"></span>'
             label = f"Play the {who} video"
         elif kind == "device":
             body = f'<div class="viewer__device">{devices(name, p.get("mobile"), alt=who + " website on laptop and phone")}</div>'
@@ -389,7 +418,7 @@ def clients_wall(tint=False):
     """Logo wall: bordered grid with a feature panel in the middle."""
     cells = ""
     for f, name in C.CLIENTS:
-        w, h = Image.open(os.path.join(ROOT, "assets/img/clients", f + ".webp")).size
+        w, h = logo_file(f)
         kind = "wide" if w / h > 1.6 else "badge"
         cells += f'<li class="logo-cell logo-cell--{kind}"><img src="assets/img/clients/{f}.webp" alt="{plain(name) if name else ""}" width="{w}" height="{h}" loading="lazy" decoding="async"></li>'
     # pad the grid to a multiple of 6 (and so of 2 and 3) so no cell is left open
@@ -415,7 +444,7 @@ BRANDS_H2 = "Brands we've <span class=\"hl\">worked with</span>"
 def clients_marquee():
     """Home: two rows of client logos scrolling in opposite directions."""
     def tile(f, name):
-        w, h = Image.open(os.path.join(ROOT, "assets/img/clients", f + ".webp")).size
+        w, h = logo_file(f)
         return f'<li><img src="assets/img/clients/{f}.webp" alt="{plain(name) if name else ""}" width="{w}" height="{h}" loading="lazy"></li>'
     half = (len(C.CLIENTS) + 1) // 2
     rows = ""
@@ -451,8 +480,8 @@ def works_list():
             </a></li>'''
         if key in WORK_VIDEO:
             v = WORK_VIDEO[key]
-            webp(v + "-poster")
-            media = f'<video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{v}-poster.webp"><source src="assets/video/{v}.mp4" type="video/mp4"></video>'
+            webp(poster(v))
+            media = f'<video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{poster(v)}.webp"><source src="assets/video/{v}.mp4" type="video/mp4"></video>'
         else:
             media = img(cover, "")
         stage += f'<figure class="wstage{on}" data-i="{i}" aria-hidden="true">{media}<figcaption>{title}</figcaption></figure>'
@@ -475,9 +504,6 @@ def org_schema():
             "address": {"@type": "PostalAddress", "addressLocality": "Bangkok", "addressCountry": "TH"},
             "areaServed": "Thailand", "description": C.HERO["text"],
             "knowsAbout": ["Website design", "Social media marketing", "Video production", "Photography", "Digital strategy"]}
-
-
-HERO_LOGOS = [("xiaomi", "Xiaomi"), ("oppo", "OPPO"), ("netflix", "Netflix"), ("rockers", "Rockers"), ("michael-tailors", "Michael Tailors")]
 
 
 def badge(cls=""):
@@ -514,21 +540,21 @@ def home():
   <section class="hero">
     <div class="container">
       <div class="hero__panel">
-        <h1>Helping businesses build a stronger digital presence in a <span class="hl">connected world</span></h1>
+        <h1>{C.HOME["hero_title"]}</h1>
         <p class="lead">{C.HERO["text"]}</p>
         <div class="hero__actions">
           {btn("Book a Consultation", "contact.html")}
           <div class="hero__proof">
-            <div class="hero__logos">{"".join(f'<img src="assets/img/clients/{f}.webp" alt="{n}" width="48" height="48">' for f, n in HERO_LOGOS[:3])}</div>
-            <p><b>Trusted by 20+ brands</b><span>Xiaomi, OPPO, Netflix &amp; more</span></p>
+            <div class="hero__logos">{"".join(f'<img src="assets/img/clients/{f}.webp" alt="{n or ""}" width="48" height="48">' for f, n in C.CLIENTS[:3])}</div>
+            <p><b>{C.HOME["proof_title"]}</b><span>{C.HOME["proof_text"]}</span></p>
           </div>
         </div>
         {badge()}
       </div>
       <div class="intro">
         <div class="intro__copy reveal">
-          <h2>Websites, video and social content that help businesses <span class="hl">grow online</span></h2>
-          <p>More than just an agency: we are a multicultural team in Bangkok, creating the websites, visual content and campaigns that bring businesses more visibility and more enquiries.</p>
+          <h2>{C.HOME["intro_title"]}</h2>
+          <p>{C.HOME["intro_text"]}</p>
         </div>
         <div class="intro__cards">
           <a class="icard reveal" href="work/tailor-website.html">{img("ind-tailor", "Platinum Tailor website by OXE Marketing")}<span class="icard__go">{ARR}</span><span class="icard__label">Website Design</span></a>
@@ -541,7 +567,7 @@ def home():
   <section class="section" id="services">
     <div class="container">
       <div class="sec-row">
-        {sec_head("What we do", 'Our <span class="hl">Services</span>', "We offer a full range of digital marketing services to help your brand grow, engage your audience, and achieve real results.")}
+        {sec_head("What we do", C.HOME["services_title"], C.HOME["services_text"])}
         <div class="reveal">{btn("All Services", "services.html")}</div>
       </div>
       <div class="svc-stack">{cards}
@@ -569,8 +595,8 @@ def home():
     <div class="container">
       <div class="works">
         <div class="works__head reveal">
-          <h2 class="works__title">Our <span class="hl">Works</span></h2>
-          <p class="works__lede">Websites, campaigns and visual content we've created with brands across Thailand.</p>
+          <h2 class="works__title">{C.HOME["works_title"]}</h2>
+          <p class="works__lede">{C.HOME["works_text"]}</p>
           {btn("View Portfolio", "portfolio.html")}
         </div>
         {works_list()}
@@ -627,15 +653,15 @@ def service_media(s):
     if s.get("videos"):
         tiles = ""
         for v, client in s["videos"]:
-            webp(v + "-poster")
-            tiles += (f'<figure class="vwall__item"><video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{v}-poster.webp" '
+            webp(poster(v))
+            tiles += (f'<figure class="vwall__item"><video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{poster(v)}.webp" '
                       f'aria-label="{plain(client)} video by OXE Marketing"><source src="assets/video/{v}.mp4" type="video/mp4"></video>'
                       f'</figure>')
         return f'<div class="vwall" data-vwall>{tiles}</div>'
     slides, dots = "", ""
     for i, name in enumerate(s["slides"]):
         if name.startswith("device:"):
-            p = next(p for p in C.PROJECTS if p["cover"] == name[7:])
+            p = next((p for p in C.PROJECTS if p["cover"] == name[7:]), {"cover": name[7:], "client": title})
             inner = f'<div class="slide__devices">{devices(p["cover"], p.get("mobile"), alt=plain(p["client"]) + " website by OXE Marketing")}</div>'
         else:
             inner = img(name, f"{title} by OXE Marketing, image {i + 1}")
@@ -680,7 +706,7 @@ def services():
     return head("Services | Website Design, Video & Social Media in Bangkok | OXE Marketing",
                 "Website design & development, social media marketing, video production, photography and digital strategy for businesses in Bangkok and across Thailand.",
                 "services.html") + f'''
-{page_hero("Our services", 'Turn your ideas into <span class="hl">impact</span>', "Strategic marketing, creative content and measurable results: five services, one team, planned around your goals.",
+{page_hero("Our services", C.PAGES["services"]["title"], C.PAGES["services"]["intro"],
            after=f'<nav class="jump" aria-label="Services on this page">{jump}</nav>', photos=("haji-strawberry", "shoot-1"))}
 
   <section class="section section--flush svc-blocks" data-svc-section>
@@ -735,9 +761,6 @@ def pcard(p, n, extra=False, span=None):
         </article>'''
 
 
-PORT_H1 = "Work we're <span class=\"hl\">proud of</span>"
-
-
 def portfolio():
     counts = {k: (len(C.PROJECTS) if k == "all" else sum(k in p["cat"].split() for p in C.PROJECTS)) for k, _ in C.FILTERS}
     fb = "".join(f'<button class="filter-btn{" is-active" if k == "all" else ""}" type="button" data-filter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{t}<sup>{counts[k]:02d}</sup></button>' for k, t in C.FILTERS)
@@ -746,13 +769,13 @@ def portfolio():
     first = bento_spans(7)
     cards = "".join(pcard(p, n, extra=n >= 7, span=first[n] if n < 7 else None) for n, p in enumerate(grid_projects))
     f = PBY[SPOTLIGHT]
-    webp(f["video"] + "-poster")
+    webp(poster(f["video"]))
     disciplines = len(C.FILTERS) - 1
     stats = f'<ul class="pstats"><li><b>{len(C.PROJECTS)}</b>projects</li><li><b>{disciplines}</b>disciplines</li><li><b>20+</b>brands</li></ul>'
     return head("Portfolio | OXE Marketing Bangkok",
                 "Selected work by OXE Marketing: websites, video production, social media and photography for brands including Xiaomi, OPPO and Rockers Supercars.",
                 "portfolio.html") + f'''
-{page_hero("Portfolio", PORT_H1, "A collection of projects we're proud to share. Each one tells a story of collaboration, creativity, and results.", after=stats, photos=("xiaomi-campaign", "cake-strawberry-wide"))}
+{page_hero("Portfolio", C.PAGES["portfolio"]["title"], C.PAGES["portfolio"]["intro"], after=stats, photos=("xiaomi-campaign", "cake-strawberry-wide"))}
 
   <section class="section spot-sec">
     <div class="container">
@@ -776,7 +799,7 @@ def portfolio():
             <a class="link-arrow" href="work/{f["id"]}.html">View case study {ARR}</a>
           </div>
           <a class="spot__media" href="work/{f["id"]}.html" aria-label="{plain(f["client"])} case study">
-            <video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{f["video"]}-poster.webp"><source src="assets/video/{f["video"]}.mp4" type="video/mp4"></video>
+            <video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{poster(f["video"])}.webp"><source src="assets/video/{f["video"]}.mp4" type="video/mp4"></video>
           </a>
         </div>
       </article>
@@ -890,7 +913,7 @@ def about():
     return head("About Us | OXE Marketing, Multicultural Agency in Bangkok",
                 "OXE Marketing is an ASEAN-based multicultural creative and digital agency headquartered in Bangkok, founded in 2020.",
                 "about.html") + f'''
-{page_hero("About us", 'A multicultural team with a <span class="hl">shared vision</span>', C.ABOUT["positioning"],
+{page_hero("About us", C.ABOUT["title"], C.ABOUT["positioning"],
            photos=("bts-video-2", "wirever-lifestyle"))}
 
   <section class="facts-wrap">
@@ -1000,9 +1023,6 @@ def form():
       </div>'''
 
 
-CONTACT_H1 = "Let's create something <span class=\"hl\">great together</span>"
-
-
 NEXT_STEPS = [("We read your message", "Tell us about your business and goals. The more detail, the better."),
               ("We have a short call", "We learn about your business, audience and timeline, and answer your questions."),
               ("You get a clear proposal", "Scope, timeline and budget, so you know exactly what you're getting.")]
@@ -1013,7 +1033,7 @@ def contact():
     return head("Contact OXE Marketing | Digital Marketing Agency Bangkok",
                 f"Contact OXE Marketing in Bangkok: email {S['email']}, call {S['phone_display']} or message us on WhatsApp to discuss your project.",
                 "contact.html", schema=org_schema()) + f'''
-{page_hero("Contact", CONTACT_H1, "Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.", photos=("bts-video-1", "ind-hospitality"))}
+{page_hero("Contact", C.PAGES["contact"]["title"], C.PAGES["contact"]["intro"], photos=("bts-video-1", "ind-hospitality"))}
 
   <section class="section">
     <div class="container cgrid">
@@ -1083,8 +1103,7 @@ def nice_date(iso):
 
 
 def words(p):
-    txt = " ".join(" ".join(b[1]) if isinstance(b[1], list) else b[1] for b in p["body"])
-    txt += " ".join(q + " " + a for q, a in p["faq"])
+    txt = p["text"] + " " + " ".join(q + " " + a for q, a in p["faq"])
     return len(plain(txt).split())
 
 
@@ -1106,6 +1125,20 @@ def split_words(t, start=0):
     out = []
     for n, w in enumerate(t.split(), start):
         out.append(f'<span class="w"><span style="--i:{n}">{w}</span></span>')
+    return " ".join(out)
+
+
+def split_html(h):
+    """split_words for a heading that may contain the <span class="hl"> highlight."""
+    out, n = [], 0
+    for part in re.split(r'(<span class="hl">.*?</span>)', h):
+        m = re.match(r'<span class="hl">(.*?)</span>$', part)
+        txt = m.group(1) if m else part
+        if not txt.strip():
+            continue
+        words_ = split_words(txt, n)
+        n += len(txt.split())
+        out.append(f'<span class="hl">{words_}</span>' if m else words_)
     return " ".join(out)
 
 
@@ -1150,8 +1183,8 @@ def blog():
         <div class="bhero__grid">
           <div class="bhero__copy">
             <nav class="phero__crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span aria-hidden="true">/</span><span aria-current="page">Blog</span></nav>
-            <h1 class="split">{split_words("The OXE")} <span class="hl">{split_words("Journal", 2)}</span></h1>
-            <p class="lead">Practical guides on websites, social media, video and photography for businesses in Thailand, written by our team in Bangkok.</p>
+            <h1 class="split">{split_html(C.PAGES["blog"]["title"])}</h1>
+            <p class="lead">{C.PAGES["blog"]["intro"]}</p>
             <nav class="jump" aria-label="Blog topics">{pills}</nav>
           </div>
           <div class="bstack" data-scrub="leave">{stack}</div>
@@ -1189,42 +1222,18 @@ def blog():
 {contact_band()}''' + foot()
 
 
-def render_block(kind, v):
-    if kind == "p":
-        return f"<p>{v}</p>"
-    if kind == "h2":
-        t = re.sub(r"^[0-9]+[.)] ", "", v)
-        return f'<h2 id="{slugify(t)}">{t}</h2>'
-    if kind == "h3":
-        return f"<h3>{v}</h3>"
-    if kind in ("ul", "ol"):
-        return f'<{kind}>' + "".join(f"<li>{x}</li>" for x in v) + f"</{kind}>"
-    if kind == "tip":
-        return f'<aside class="atip reveal"><span class="atip__ico" aria-hidden="true">✦</span><p><strong>Tip.</strong> {v}</p></aside>'
-    if kind == "quote":
-        return f'<blockquote class="reveal"><p>{v}</p></blockquote>'
-    raise ValueError(kind)
-
-
 RING = '<svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19"/><circle class="aprog__bar" cx="22" cy="22" r="19" pathLength="100"/></svg>'
 
 
 def post(p):
     url = f'{S["url"]}/blog/{p["slug"]}'
-    body, n_ol = "", 0
-    for k, v in p["body"]:
-        html = render_block(k, v)
-        if k == "ol" and p.get("count_ol"):   # numbered points continue across sections (e.g. a 12-point checklist)
-            html = html.replace("<ol>", f'<ol style="counter-reset: ol {n_ol}">', 1)
-            n_ol += len(v)
-        body += html
-    heads = [re.sub(r"^[0-9]+[.)] ", "", v) for k, v in p["body"] if k == "h2"]
+    body, heads = p["body_html"], p["heads"]
     toc = "".join(f'<li><a href="#{slugify(h)}">{h}</a></li>' for h in heads)
     faq = "".join(f'<details class="afaq__item"><summary>{q}<span aria-hidden="true"></span></summary><p>{a}</p></details>' for q, a in p["faq"])
     i = POSTS.index(p)
     nxt = POSTS[(i + 1) % len(POSTS)]
     rel = [x for x in POSTS if x is not p and x is not nxt and x["cat"] == p["cat"]] + [x for x in POSTS if x is not p and x is not nxt and x["cat"] != p["cat"]]
-    svc = next(s for s in C.SERVICES if s["key"] == CAT_SVC[p["cat"]])
+    svc = next((s for s in C.SERVICES if s["key"] == CAT_SVC.get(p["cat"])), C.SERVICES[0])
     cover = f'assets/img/work/{p["cover"]}.webp'
     webp(p["cover"])
     schema = [
@@ -1327,7 +1336,7 @@ def latest_insights():
   <section class="section" id="insights">
     <div class="container">
       <div class="sec-row">
-        {sec_head("Blog", 'Latest <span class="hl">insights</span>', "Practical guides on websites, social media, video and photography for businesses in Thailand.")}
+        {sec_head("Blog", C.HOME["insights_title"], C.HOME["insights_text"])}
         <div class="reveal">{btn("All Articles", "blog.html")}</div>
       </div>
       <div class="bgrid">{"".join(bitem(x) for x in POSTS[:3])}

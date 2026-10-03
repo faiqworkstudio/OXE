@@ -1,0 +1,25 @@
+id: corporate-video
+order: 170
+client: Studio Interview Production
+title: Corporate Interview Video
+filters:
+- video
+category: Video Production
+display: photo
+cover: /assets/img/work/bts-video-2.jpg
+mobile: ''
+gallery:
+- /assets/img/work/bts-video-1.jpg
+video: ''
+video_poster: ''
+summary: A multi-camera interview shoot with professional lighting and direction.
+challenge: ''
+solution: ''
+outcome: ''
+tags:
+- Corporate Video
+services:
+- Corporate Video
+- Multi-Camera Filming
+- Lighting & Sound
+- Editing

@@ -1,0 +1,39 @@
+id: xiaomi-redmi-watch
+order: 20
+client: Xiaomi
+title: Redmi Watch 2 Lite Campaign
+filters:
+- video
+category: Video Production
+display: photo
+cover: /assets/img/work/xiaomi-campaign.jpg
+mobile: ''
+gallery:
+- /assets/img/work/xiaomi-watch-wrist.jpg
+- /assets/img/work/xiaomi-bts-rooftop.jpg
+- /assets/img/work/xiaomi-bts-set.jpg
+- /assets/img/work/xiaomi-bts-pool.jpg
+- /assets/img/work/xiaomi-tiktok.jpg
+- /assets/img/work/wearable-breathing.jpg
+- /assets/img/work/wearable-waterproof.jpg
+video: /assets/video/xiaomi-redmi-watch.mp4
+video_poster: /assets/img/work/xiaomi-redmi-watch-poster.jpg
+summary: End-to-end promotional video production for the Redmi Watch 2 Lite, from concept to final edit.
+challenge: Create engaging, lifestyle-driven content that showcased the smartwatch's key features while appealing to Xiaomi's target audience across digital and social media platforms.
+solution: 'OXE managed every stage: creative concept, storyboard, production planning, talent sourcing, location coordination, filming and post-production, combining cinematic visuals with product-focused storytelling to highlight the watch''s design, fitness capabilities and everyday functionality.'
+outcome: 'Content optimised for multiple digital channels: a polished, high-quality campaign aligned with Xiaomi''s global brand standards.'
+tags:
+- Video Production
+- Campaign
+- Talent Casting
+services:
+- Creative Concept Development
+- Storyboard Creation
+- Full Video Production
+- Model & Talent Casting
+- Production Planning & Coordination
+- Professional Cinematography
+- Product Lifestyle Filming
+- Video Editing & Motion Graphics
+- Color Grading
+- Social Media Content Optimization
