@@ -1,8 +1,23 @@
+sec_seo:
+  seo_title: Services | Website Design, Video & Social Media in Bangkok | OXE Marketing
+  seo_description: Website design & development, social media marketing, video production, photography and digital strategy for businesses in Bangkok and across Thailand.
+sec_hero:
+  eyebrow: Our services
+  title: Turn your ideas into *impact*
+  intro: 'Strategic marketing, creative content and measurable results: five services, one team, planned around your goals.'
+  photos:
+  - /assets/img/work/haji-strawberry.jpg
+  - /assets/img/work/shoot-1.jpg
+sec_labels:
+  what_label: What we do
+  book_button: Book a Consultation
+  work_button: See related work
 services:
 - key: web
   num: '01'
   art: web
   title: Website Design & Development
+  short_name: Web Design
   short: Modern, responsive websites that look great, perform well, and convert visitors into customers.
   intro: Modern, responsive websites that build credibility and turn visitors into enquiries, optimised for mobile devices and search engines, and easy for your team to update.
   what:
@@ -30,6 +45,7 @@ services:
   num: '02'
   art: social
   title: Social Media Marketing
+  short_name: Social Media
   short: Strategic campaigns that increase visibility, engage audiences, and drive business growth.
   intro: Strategic social media that keeps your brand visible and relevant across Facebook, Instagram, TikTok and LinkedIn, from content planning to publishing.
   what:
@@ -64,6 +80,7 @@ services:
   num: '03'
   art: video
   title: Video Production
+  short_name: Video
   short: Engaging videos that tell your story and bring your brand to life, from commercials to social media content.
   intro: 'High-quality video that captures attention and tells your story, managed end to end: concept, storyboard, filming, editing and colour grading.'
   what:
@@ -93,6 +110,7 @@ services:
   num: '04'
   art: photo
   title: Photography
+  short_name: Photography
   short: High-quality photography for brands, products, events, and more.
   intro: Commercial photography that makes your products, food, spaces and people look their best across your website, social media and print.
   what:
@@ -125,6 +143,7 @@ services:
   num: '05'
   art: strategy
   title: Digital Strategy
+  short_name: Strategy
   short: Customised marketing plans that combine creativity, data, and industry insights for measurable growth.
   intro: Customised marketing plans that combine creativity, data and industry insight, including advertising, influencer marketing, SEO and campaign management.
   what:
@@ -147,16 +166,20 @@ services:
   - image: /assets/img/work/event-stage.jpg
     mockup: false
   videos: []
-industries:
-- name: Tailors
-  image: /assets/img/work/ind-tailor.jpg
-- name: Jewelry
-  image: /assets/img/work/ind-jewelry.jpg
-- name: Restaurants
-  image: /assets/img/work/ind-restaurant.jpg
-- name: Hospitality
-  image: /assets/img/work/ind-hospitality.jpg
-- name: Professional Services
-  image: /assets/img/work/bts-video-2.jpg
-- name: Businesses entering Thailand
-  image: /assets/img/work/meta-event-registration.jpg
+sec_industries:
+  industries_eyebrow: Industries
+  industries_title: Industries We *Worked With*
+  industries_text: Experience across local businesses and international brands in Thailand.
+  industries:
+  - name: Tailors
+    image: /assets/img/work/ind-tailor.jpg
+  - name: Jewelry
+    image: /assets/img/work/ind-jewelry.jpg
+  - name: Restaurants
+    image: /assets/img/work/ind-restaurant.jpg
+  - name: Hospitality
+    image: /assets/img/work/ind-hospitality.jpg
+  - name: Professional Services
+    image: /assets/img/work/bts-video-2.jpg
+  - name: Businesses entering Thailand
+    image: /assets/img/work/meta-event-registration.jpg

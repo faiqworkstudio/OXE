@@ -10,8 +10,12 @@ Text conventions in /content:
 Content rule: only facts supplied by OXE. Leave a case-study field empty when it
 isn't known; the page then shows a neutral placeholder.
 """
-import os, re, html
+import os, re, sys, html
 from urllib.parse import quote, unquote
+
+# PyYAML and Markdown are bundled in src/vendor, so the site builds even where
+# pip is unavailable. An installed copy (pip install -r requirements.txt) is used first.
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "vendor"))
 import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -61,68 +65,87 @@ SITE = {
 SERVICE_OPTIONS = [fmt(x) for x in _settings["form_services"]]
 BUDGETS = [fmt(x) for x in _settings["form_budgets"]]
 
-# Mega-menu: short anchor links to the sections of each page (href, label)
-MENU = {
-    "index.html": [("index.html#services", "Services"), ("index.html#why", "Why OXE"), ("index.html#work", "Our Works"),
-                   ("index.html#clients", "Clients"), ("index.html#get-in-touch", "Get in Touch")],
-    "services.html": [("services.html#web", "Web Design"), ("services.html#social", "Social Media"), ("services.html#video", "Video"),
-                      ("services.html#photo", "Photography"), ("services.html#strategy", "Strategy"), ("services.html#industries", "Industries")],
-    "portfolio.html": [("portfolio.html", "All Work"), ("portfolio.html?filter=web", "Web Design"), ("portfolio.html?filter=social", "Social Media"),
-                       ("portfolio.html?filter=video", "Video"), ("portfolio.html?filter=photo", "Photography")],
-    "about.html": [("about.html#mission", "Mission &amp; Vision"), ("about.html#story", "Our Story"), ("about.html#why-oxe", "Why OXE"),
-                   ("about.html#clients", "Clients")],
-    "blog.html": [("blog.html?cat=web", "Websites &amp; SEO"), ("blog.html?cat=social", "Social Media"), ("blog.html?cat=video", "Video"),
-                  ("blog.html?cat=photo", "Photography"), ("blog.html?cat=strategy", "Strategy")],
-    "contact.html": [("contact.html#enquiry", "Enquiry Form"), ("contact.html#next", "What Happens Next"), ("contact.html#map", "Find Us")],
-}
+IMG_KEY = re.compile(r"(image|photo|logo|video|poster)s?$")
 
+
+def deep(v, key=""):
+    """Prepare a content file for the templates: text -> safe HTML (with *highlight*),
+    image/video fields -> file names, links escaped. Lists and groups are handled recursively."""
+    if isinstance(v, dict):
+        return {k: deep(x, k) for k, x in v.items()}
+    if isinstance(v, list):
+        return [deep(x, key) for x in v]
+    if isinstance(v, str):
+        if IMG_KEY.search(key):
+            return asset(v)
+        if key in ("link", "page", "featured_project", "panel", "icon", "filter", "key", "num", "art"):
+            return html.escape(v.strip(), quote=True)
+        return fmt(v)
+    return v
+
+
+# One content file per page (content/<name>.yml), edited in the admin under "Pages"
+def flatten(d):
+    """Sections (sec_hero, sec_seo, ...) only group fields in the admin; templates see one flat set of fields."""
+    out = {}
+    for k, v in d.items():
+        if k.startswith("sec_") and isinstance(v, dict):
+            out.update(v)
+        else:
+            out[k] = v
+    return out
+
+
+P = {n: flatten(deep(load(n + ".yml"))) for n in ("site", "home", "services", "portfolio", "about", "blog-page", "contact")}
+SITE_TEXT = P["site"]
+
+# ------------------------------------------------------------------ MENU (content/site.yml)
+NAV = [(m["page"], m["label"]) for m in SITE_TEXT["menu"]]
+MENU = {m["page"]: [(l["link"], l["label"]) for l in m.get("links") or []] for m in SITE_TEXT["menu"]}
 # Mega-menu panel for each page: (eyebrow, one-line intro, visual)
 # visual: ("img", image) | ("art", 3D art key) | ("mosaic", [images]) | ("contact", None)
-MENU_META = {
-    "index.html": ("Start here", "Websites, content &amp; strategy from Bangkok.", ("img", "about-team")),
-    "services.html": ("What we do", "Five services. One team.", ("art", "web")),
-    "portfolio.html": ("Selected work", "Real projects for real brands.", ("mosaic", ["xiaomi-campaign", "haji-strawberry", "shoot-1"])),
-    "about.html": ("Who we are", "A multicultural team since 2020.", ("img", "bts-video-2")),
-    "blog.html": ("Insights", "Practical marketing guides from Bangkok.", ("mosaic", ["haji-visit", "bts-video-2", "cake-strawberry-wide"])),
-    "contact.html": ("Say hello", "Let's talk about your project.", ("contact", None)),
-}
 
-NAV = [("index.html", "Home"), ("services.html", "Services"), ("portfolio.html", "Portfolio"),
-       ("about.html", "About Us"), ("blog.html", "Blog"), ("contact.html", "Contact")]
 
-_home = load("home.yml")
-HOME = {k: fmt(v) for k, v in _home.items() if isinstance(v, str)}
+def _visual(m):
+    kind, imgs = m.get("panel") or "img", [x for x in m.get("images") or [] if x]
+    if kind == "contact":
+        return ("contact", None)
+    if kind == "art" or not imgs:
+        return ("art", "web")
+    if kind == "mosaic" and len(imgs) > 1:
+        return ("mosaic", imgs[:3])
+    return ("img", imgs[0])
+
+
+MENU_META = {m["page"]: (m.get("eyebrow") or "", m.get("intro") or "", _visual(m)) for m in SITE_TEXT["menu"]}
+
+# ------------------------------------------------------------------ HOME
+HOME = P["home"]
 HERO = {"text": HOME["hero_text"]}
 WHY = {"title": HOME["why_title"], "text": HOME["why_text"],
-       "principles": [(x["icon"], fmt(x["title"]), fmt(x["text"])) for x in _home["principles"]]}
-# Home "Our Works": (portfolio filter key, title, image)
-WORK_CATEGORIES = [(x["filter"], fmt(x["title"]), asset(x["image"])) for x in _home["works"]]
+       "principles": [(x["icon"], x["title"], x["text"]) for x in HOME["principles"]]}
+# Home "Our Works": (portfolio filter key, title, image, optional video)
+WORK_CATEGORIES = [(x["filter"], x["title"], x["image"], x.get("video")) for x in HOME["works"]]
 
-PAGES = {k: {f: fmt(v) for f, v in d.items()} for k, d in load("pages.yml").items()}
-
-_about = load("about.yml")
-ABOUT = {
-    "title": fmt(_about["title"]),
-    "positioning": fmt(_about["positioning"]), "intro": fmt(_about["intro"]),
-    "story": [fmt(x) for x in _about["story"]],
-    "mission": fmt(_about["mission"]), "vision": fmt(_about["vision"]),
-    "facts": [(fmt(x["value"]), fmt(x["label"])) for x in _about["facts"]],
-    "choose": [(x["icon"], fmt(x["title"]), fmt(x["text"])) for x in _about["choose"]],
-}
+# ------------------------------------------------------------------ ABOUT
+_about = P["about"]
+ABOUT = dict(_about,
+             facts=[(x["value"], x["label"]) for x in _about["facts"]],
+             choose=[(x["icon"], x["title"], x["text"]) for x in _about["choose"]])
 
 # ------------------------------------------------------------------ SERVICES
-_svc = load("services.yml")
+SERVICES_PAGE = P["services"]
 SERVICES = []
-for s in _svc["services"]:
-    d = dict(key=s["key"], num=s["num"], art=s["art"], img=asset(s["image"]), title=fmt(s["title"]),
-             short=fmt(s["short"]), intro=fmt(s["intro"]),
-             what=[fmt(x) for x in s.get("what") or []], deliverables=[fmt(x) for x in s.get("deliverables") or []])
+for s in SERVICES_PAGE["services"]:
+    d = dict(key=s["key"], num=s["num"], art=s["art"], img=s["image"], title=s["title"],
+             short_name=s.get("short_name") or re.sub(r"<[^>]+>", "", s["title"]),
+             short=s["short"], intro=s["intro"], what=s.get("what") or [], deliverables=s.get("deliverables") or [])
     if s.get("videos"):
-        d["videos"] = [(asset(v["video"]), fmt(v.get("client") or "")) for v in s["videos"]]
+        d["videos"] = [(v["video"], v.get("client") or "") for v in s["videos"] if v.get("video")]
     else:
-        d["slides"] = [("device:" if x.get("mockup") else "") + asset(x["image"]) for x in s.get("slides") or []]
+        d["slides"] = [("device:" if x.get("mockup") else "") + x["image"] for x in s.get("slides") or [] if x.get("image")]
     SERVICES.append(d)
-INDUSTRIES = [(fmt(x["name"]), asset(x["image"])) for x in _svc["industries"]]
+INDUSTRIES = [(x["name"], x["image"]) for x in SERVICES_PAGE["industries"]]
 
 # ------------------------------------------------------------------ PORTFOLIO
 # cat: space-separated filter keys (web social video photo)

@@ -1,0 +1,23 @@
+sec_seo:
+  seo_title: Portfolio | OXE Marketing Bangkok
+  seo_description: 'Selected work by OXE Marketing: websites, video production, social media and photography for brands including Xiaomi, OPPO and Rockers Supercars.'
+sec_hero:
+  eyebrow: Portfolio
+  title: Work we're *proud of*
+  intro: A collection of projects we're proud to share. Each one tells a story of collaboration, creativity, and results.
+  photos:
+  - /assets/img/work/xiaomi-campaign.jpg
+  - /assets/img/work/cake-strawberry-wide.jpg
+  stats_projects: projects
+  stats_disciplines: disciplines
+  stats_brands_value: 20+
+  stats_brands: brands
+sec_featured:
+  featured_label: Featured project
+  featured_project: xiaomi-redmi-watch
+  featured_logo: /assets/img/clients/xiaomi.webp
+  featured_scope: Concept to final edit
+  featured_link: View case study
+sec_grid:
+  more_button: View More Projects
+  empty_text: No projects in this category yet.

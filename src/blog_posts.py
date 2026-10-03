@@ -15,6 +15,7 @@ client results. Link to OXE services where relevant.
 """
 import os, re, html
 import markdown
+from markdown.extensions.sane_lists import SaneListExtension
 from content import DATA, fmt, asset, load
 
 BLOG_CATS = [("all", "All"), ("web", "Websites & SEO"), ("social", "Social Media"), ("video", "Video"),
@@ -29,7 +30,7 @@ def _slugify(t):
 
 def render(md_text):
     """Markdown -> article HTML, plus the list of section headings for the contents."""
-    out = markdown.markdown(md_text, extensions=["sane_lists"], output_format="html")
+    out = markdown.markdown(md_text, extensions=[SaneListExtension()], output_format="html")
     heads = []
 
     def h2(m):

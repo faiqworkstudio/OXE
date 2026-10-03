@@ -29,16 +29,21 @@ Go to **https://www.oxemarketingth.com/admin** and log in. Everything is edited 
 
 | In the admin panel | What you can change |
 |---|---|
-| **Blog** | Write, edit, schedule (as a draft) and publish articles: title, Google description, topic, date, cover photo, the article itself, and FAQ |
-| **Portfolio projects** | Add or edit projects: client, title, filters, cover (photo, logo or website mockup), gallery, video, case study text, services, order on the page |
-| **Pages → Home page** | Hero heading and text, trust line, intro, section headings, Why OXE principles, Our Works rows |
-| **Pages → About page** | Heading, story, mission, vision, key facts, "why choose OXE" |
-| **Pages → Page headers** | Heading and intro of the Services, Portfolio, Blog and Contact pages, and the "Get in touch" section on every page |
-| **Pages → Services** | Each service's text, lists, card image, slideshow images or videos; industries |
+| **Pages → Home** | SEO title and description; hero; intro and picture cards; section headings and buttons; Why OXE photos and principles; Our Works rows; blog section |
+| **Pages → Services** | SEO; hero and photos; the five services (titles, texts, lists, card image, slideshow images or videos); industries |
+| **Pages → Portfolio** | SEO; hero, photos and stats labels; which project is featured (pick from a list); grid labels |
+| **Pages → About** | SEO; hero, photos and key facts; mission and vision; story text and photos; the eight "why choose OXE" cards |
+| **Pages → Blog page** | SEO; hero; list labels; labels shown on every article (author, contents, help box, FAQ, up next) |
+| **Pages → Contact** | SEO; hero and photos; every enquiry form label and message; contact tiles; "what happens next" steps; map location |
+| **Pages → Menu, footer & shared sections** | Header button; top menu labels, panel texts, images and links; moving words under page headings; badge text; "Get in touch" section; client logos section; footer; case-study labels; thank-you and "page not found" pages |
 | **Pages → Client logos** | Add, remove, rename and reorder logos |
-| **Pages → Contact details & settings** | Email, phone, WhatsApp, city, social media links, contact-form options |
+| **Pages → Contact details & settings** | Email, phone, WhatsApp, city, social links, contact form key, form options |
+| **Blog articles** | Write, edit, save as draft and publish articles: title, Google description, topic, date, cover, article, FAQ |
+| **Portfolio projects** | Add or edit projects: client, title, filters, cover (photo, logo or website mockup), gallery, video, case study, services, order |
 
-**How it works.** Click **Publish** and the change is saved to GitHub. Vercel rebuilds the site automatically, and the change is live in about 1–2 minutes.
+Every page form is split into sections (SEO, hero, and so on); click a section to open it. Fields check their content as you type: SEO title and description lengths, email, WhatsApp number, social links and page addresses. Lists with a fixed design, such as the two home picture cards or the eight About cards, can be edited but not added to or removed from, so the layout can't break. **View Live** on each page opens it on the website.
+
+**How it works.** Click **Publish** and the change is saved to GitHub. Vercel rebuilds the site automatically, and the change is live in about 1–2 minutes. If a build ever fails, Vercel keeps the previous version of the site online, and the error shows on GitHub under **Actions → Site build**.
 
 **Tips**
 - In headings, wrap words in `*asterisks*` to show them in the italic serif accent, e.g. `Our *Services*`.
@@ -80,7 +85,13 @@ Enquiries then arrive in that inbox. Until a key is set, the form opens the visi
 
 ## For developers
 
-- **Content files.** All content lives in `content/`, in YAML for pages, settings, services, clients and projects, and Markdown for blog posts. `src/content.py` and `src/blog_posts.py` load them; `src/build.py` holds the page templates.
+- **Content files.** All content lives in `content/`:
+  - one YAML file per page (`home`, `services`, `portfolio`, `about`, `blog-page`, `contact`), plus `site` (menu, footer and shared sections), `clients` and `settings`;
+  - one file per project in `content/projects/`;
+  - one Markdown file per article in `content/blog/`.
+
+  Keys starting with `sec_` only group fields into admin sections. `src/content.py` and `src/blog_posts.py` load the files; `src/build.py` holds the page templates. When you add a field, add it to `admin/config.yml` too.
+- **Dependencies.** The build needs only Python 3.8 or newer. PyYAML and Markdown are bundled in `src/vendor/`. Pillow is optional and adds WebP conversion of new uploads.
 - **Build.**
 
   ```bash
@@ -90,7 +101,7 @@ Enquiries then arrive in that inbox. Until a key is set, the form opens the visi
 
   Vercel runs `scripts/vercel-build.sh` on every push (see `vercel.json`). It installs the requirements, builds the pages, and copies only the public files into `public/`.
 - **Edit locally with the admin panel.** Run `npx decap-server` in the repository and `python3 -m http.server 8080`, then open `http://localhost:8080/admin/`. Changes are written straight to the files.
-- **Menu.** The top menu and its panels are set in `MENU`, `MENU_META` and `NAV` in `src/content.py`.
+- **Checks.** GitHub Actions runs the same build on every push (`.github/workflows/build.yml`).
 - **Videos.** Videos go in `assets/video/<name>.mp4`, each with a cover image. The build converts images to WebP automatically, from any JPG or PNG.
 - **3D illustrations.** These are in `src/art.py`. All of them share the same materials (white matte, OXE blue, soft shadow), so new ones stay consistent.
 

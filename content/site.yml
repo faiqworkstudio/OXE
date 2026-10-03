@@ -1,0 +1,142 @@
+header_button: Book a Consultation
+menu:
+- page: index.html
+  label: Home
+  eyebrow: Start here
+  intro: Websites, content & strategy from Bangkok.
+  panel: img
+  images:
+  - /assets/img/work/about-team.jpg
+  links:
+  - label: Services
+    link: index.html#services
+  - label: Why OXE
+    link: index.html#why
+  - label: Our Works
+    link: index.html#work
+  - label: Clients
+    link: index.html#clients
+  - label: Get in Touch
+    link: index.html#get-in-touch
+- page: services.html
+  label: Services
+  eyebrow: What we do
+  intro: Five services. One team.
+  panel: art
+  images: []
+  links:
+  - label: Web Design
+    link: services.html#web
+  - label: Social Media
+    link: services.html#social
+  - label: Video
+    link: services.html#video
+  - label: Photography
+    link: services.html#photo
+  - label: Strategy
+    link: services.html#strategy
+  - label: Industries
+    link: services.html#industries
+- page: portfolio.html
+  label: Portfolio
+  eyebrow: Selected work
+  intro: Real projects for real brands.
+  panel: mosaic
+  images:
+  - /assets/img/work/xiaomi-campaign.jpg
+  - /assets/img/work/haji-strawberry.jpg
+  - /assets/img/work/shoot-1.jpg
+  links:
+  - label: All Work
+    link: portfolio.html
+  - label: Web Design
+    link: portfolio.html?filter=web
+  - label: Social Media
+    link: portfolio.html?filter=social
+  - label: Video
+    link: portfolio.html?filter=video
+  - label: Photography
+    link: portfolio.html?filter=photo
+- page: about.html
+  label: About Us
+  eyebrow: Who we are
+  intro: A multicultural team since 2020.
+  panel: img
+  images:
+  - /assets/img/work/bts-video-2.jpg
+  links:
+  - label: Mission & Vision
+    link: about.html#mission
+  - label: Our Story
+    link: about.html#story
+  - label: Why OXE
+    link: about.html#why-oxe
+  - label: Clients
+    link: about.html#clients
+- page: blog.html
+  label: Blog
+  eyebrow: Insights
+  intro: Practical marketing guides from Bangkok.
+  panel: mosaic
+  images:
+  - /assets/img/work/haji-visit.jpg
+  - /assets/img/work/bts-video-2.jpg
+  - /assets/img/work/cake-strawberry-wide.jpg
+  links:
+  - label: Websites & SEO
+    link: blog.html?cat=web
+  - label: Social Media
+    link: blog.html?cat=social
+  - label: Video
+    link: blog.html?cat=video
+  - label: Photography
+    link: blog.html?cat=photo
+  - label: Strategy
+    link: blog.html?cat=strategy
+- page: contact.html
+  label: Contact
+  eyebrow: Say hello
+  intro: Let's talk about your project.
+  panel: contact
+  images: []
+  links:
+  - label: Enquiry Form
+    link: contact.html#enquiry
+  - label: What Happens Next
+    link: contact.html#next
+  - label: Find Us
+    link: contact.html#map
+ticker:
+- Websites
+- Social Media
+- Video Production
+- Photography
+- Digital Strategy
+- Made in Bangkok
+badge_text: MULTICULTURAL AGENCY · SINCE 2020 ·
+contact_band:
+  title: Let's create something *great together*
+  text: Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.
+  button: Book a Consultation
+  card_label: Talk to us directly
+clients:
+  eyebrow: Clients & partners
+  title: Trusted by brands across *Thailand* and beyond
+  text: From global technology names to local favourites, these are some of the businesses we've worked with.
+  button: Book a Consultation
+footer:
+  text: OXE Marketing is a multicultural marketing agency in Bangkok helping businesses grow through websites, visual content, and digital storytelling.
+  slogan: Better ideas. Bigger impact.
+  copyright: OXE Marketing. All rights reserved.
+case_study:
+  services_title: Services provided
+  start_button: Start a similar project
+  next_label: Next project
+thank_you:
+  title: Thank You
+  heading: Thank you! Message received.
+  text: Our team will get back to you as soon as possible. Need a faster reply? Message us on WhatsApp.
+not_found:
+  title: Page Not Found
+  heading: Sorry, we couldn't find that page.
+  text: The page may have moved. Head back home or explore our work.

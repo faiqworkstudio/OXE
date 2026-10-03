@@ -7,8 +7,12 @@ set from art.py, and writes the HTML pages to the repository root (plus one
 case-study page per project in /work). Each section function below maps to
 one Elementor section when the site is rebuilt in WordPress.
 """
-import os, re, json
-from PIL import Image
+import os, re, json, struct
+from urllib.parse import quote
+try:
+    from PIL import Image       # optional: converts uploads to WebP and resizes them
+except ImportError:
+    Image = None
 from icons import I
 from art import ART, DEFS
 import content as C, hashlib
@@ -21,6 +25,8 @@ S = C.SITE
 CUR = ' aria-current="page"'
 ARR = I["arrow"]
 PBY = {p["id"]: p for p in C.PROJECTS}
+T = C.SITE_TEXT                       # site-wide text (content/site.yml)
+PG = C.P                               # per-page text (content/<page>.yml)
 
 
 def has_media(p):
@@ -39,39 +45,93 @@ def ver(path):
 
 # ------------------------------------------------------------------ helpers
 IMG_EXT = (".jpg", ".jpeg", ".png", ".webp", ".JPG", ".JPEG", ".PNG", ".WEBP")
+CLIENT_DIR = os.path.join(ROOT, "assets/img/clients")
 
 
 def source(folder, name):
-    """Uploaded file for an image name, whatever its extension (None if missing)."""
+    """Uploaded (non-WebP) file for an image name, whatever its extension (None if missing)."""
     for ext in IMG_EXT:
         f = os.path.join(folder, name + ext)
-        if os.path.exists(f) and not f.endswith(".webp"):
+        if os.path.exists(f) and not f.lower().endswith(".webp"):
             return f
     return None
 
 
 def webp(name, folder=IMG_DIR, max_w=1600, alpha=False):
-    """Return the .webp path for an image, converting from any uploaded format on first use."""
+    """Best file for an image: its .webp (made from the upload when Pillow is available),
+    otherwise the uploaded file itself. None (with a warning) if the image is missing."""
     dst = os.path.join(folder, name + ".webp")
     src = source(folder, name)
-    if not src and not os.path.exists(dst):
-        print(f"WARNING: image '{name}' not found in {os.path.relpath(folder, ROOT)}")
-        return None
-    if src and (not os.path.exists(dst) or os.path.getmtime(dst) < os.path.getmtime(src)):
+    if src and Image and (not os.path.exists(dst) or os.path.getmtime(dst) < os.path.getmtime(src)):
         im = Image.open(src)
         im = im.convert("RGBA") if alpha and im.mode in ("RGBA", "LA", "P") else im.convert("RGB")
         if im.width > max_w:
             im = im.resize((max_w, round(im.height * max_w / im.width)), Image.LANCZOS)
         im.save(dst, "WEBP", quality=90 if alpha else 80, method=6)
-    return dst
+    if os.path.exists(dst):
+        return dst
+    if src:
+        return src
+    print(f"WARNING: image '{name}' not found in {os.path.relpath(folder, ROOT)}")
+    return None
+
+
+def _header_size(path):
+    """Image (width, height) from the file header, for builds without Pillow (PNG, JPEG, WebP)."""
+    with open(path, "rb") as fh:
+        d = fh.read()
+    if d[:8] == b"\x89PNG\r\n\x1a\n":
+        return struct.unpack(">II", d[16:24])
+    if d[:4] == b"RIFF" and d[8:12] == b"WEBP":
+        kind = d[12:16]
+        if kind == b"VP8 ":
+            w, h = struct.unpack("<HH", d[26:30])
+            return w & 0x3FFF, h & 0x3FFF
+        if kind == b"VP8L":
+            bits = int.from_bytes(d[21:25], "little")
+            return (bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1
+        if kind == b"VP8X":
+            return int.from_bytes(d[24:27], "little") + 1, int.from_bytes(d[27:30], "little") + 1
+    if d[:2] == b"\xff\xd8":
+        i = 2
+        while i < len(d) - 9:
+            if d[i] != 0xFF:
+                i += 1
+                continue
+            marker = d[i + 1]
+            if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                h, w = struct.unpack(">HH", d[i + 5:i + 9])
+                return w, h
+            if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+                i += 2
+                continue
+            i += 2 + struct.unpack(">H", d[i + 2:i + 4])[0]
+    return 1200, 800
+
+
+def size(path):
+    if Image:
+        with Image.open(path) as im:
+            return im.size
+    return _header_size(path)
+
+
+def url(path):
+    return os.path.relpath(path, ROOT).replace(os.sep, "/")
+
+
+def wurl(name):
+    """URL of a work image (or video poster) by name."""
+    p = webp(name) if name else None
+    return url(p) if p else ""
 
 
 def img(name, alt="", cls="", lazy=True, sizes=""):
     path = webp(name) if name else None
     if not path:
         return ""
-    w, h = Image.open(path).size
-    return (f'<img src="assets/img/work/{name}.webp" alt="{alt}" width="{w}" height="{h}"'
+    w, h = size(path)
+    return (f'<img src="{url(path)}" alt="{alt}" width="{w}" height="{h}"'
             f'{f" class={chr(34)}{cls}{chr(34)}" if cls else ""}{" loading=" + chr(34) + "lazy" + chr(34) if lazy else ""} decoding="async">')
 
 
@@ -79,10 +139,13 @@ def poster(v):
     return C.POSTERS.get(v, v + "-poster")
 
 
-def logo_file(f):
-    """Client logo (any format; transparent PNGs stay transparent) -> (width, height) of its .webp."""
-    dst = webp(f, os.path.join(ROOT, "assets/img/clients"), max_w=600, alpha=True)
-    return Image.open(dst).size if dst else (200, 200)
+def logo(f):
+    """Client logo (any format; transparent PNGs stay transparent) -> (url, width, height)."""
+    p = webp(f, CLIENT_DIR, max_w=600, alpha=True)
+    if not p:
+        return "", 200, 200
+    w, h = size(p)
+    return url(p), w, h
 
 
 def plain(t):
@@ -159,7 +222,7 @@ def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=F
       <div class="nav__links">
 {nav}
       </div>
-      <a href="contact.html" class="btn btn--primary btn--sm nav__cta">Book a Consultation</a>
+      <a href="contact.html" class="btn btn--primary btn--sm nav__cta">{T["header_button"]}</a>
       <div class="nav__contact">
         <a href="{S['whatsapp']}" target="_blank" rel="noopener" aria-label="WhatsApp">{I["whatsapp"]}</a>
         <a href="mailto:{S['email']}" aria-label="Email">{I["mail2"]}</a>
@@ -248,7 +311,7 @@ def foot():
     <div class="footer-grid">
       <div class="footer-brand">
         {brand(True)}
-        <p>{C.HERO["text"]}</p>
+        <p>{T["footer"]["text"]}</p>
         <div class="socials">{socials()}</div>
       </div>
       <nav aria-label="Footer"><h2>Explore</h2><ul>{nav}</ul></nav>
@@ -263,8 +326,8 @@ def foot():
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© <span data-year>2026</span> OXE Marketing. All rights reserved.</span>
-      <span>Better ideas. Bigger impact.</span>
+      <span>© <span data-year>2026</span> {T["footer"]["copyright"]}</span>
+      <span>{T["footer"]["slogan"]}</span>
     </div>
   </div>
 </footer>
@@ -296,12 +359,12 @@ def contact_band():
     <div class="container">
       <div class="contact-band__inner reveal">
         <div class="contact-band__copy">
-          <h2>{C.PAGES["contact_band"]["title"]}</h2>
-          <p>{C.PAGES["contact_band"]["text"]}</p>
-          {btn("Book a Consultation", "contact.html")}
+          <h2>{T["contact_band"]["title"]}</h2>
+          <p>{T["contact_band"]["text"]}</p>
+          {btn(T["contact_band"]["button"], "contact.html")}
         </div>
         <div class="contact-band__card">
-          <p class="contact-band__label">Talk to us directly</p>
+          <p class="contact-band__label">{T["contact_band"]["card_label"]}</p>
           {contact_buttons("cbtns--band")}
           <p class="contact-loc">{I["pin2"]} {S["city"]}</p>
         </div>
@@ -318,8 +381,8 @@ def logo_img(p):
     alt = plain(p["client"]) + " logo"
     if p["cover"].startswith("logo:"):
         f = p["cover"][5:]
-        w, h = logo_file(f)
-        return f'<img src="assets/img/clients/{f}.webp" alt="{alt}" width="{w}" height="{h}" loading="lazy">'
+        u, w, h = logo(f)
+        return f'<img src="{u}" alt="{alt}" width="{w}" height="{h}" loading="lazy">'
     return img(p["cover"], alt)
 
 
@@ -335,7 +398,7 @@ def project_media(p, big=False):
     if p.get("video") and not big:
         v = p["video"]
         webp(poster(v))
-        return (f'<video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{poster(v)}.webp" aria-label="{alt}">'
+        return (f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(v))}" aria-label="{alt}">'
                 f'<source src="assets/video/{v}.mp4" type="video/mp4"></video>')
     return img(p["cover"], alt, lazy=not big)
 
@@ -389,16 +452,16 @@ def viewer(p):
         hidden = "" if n == 0 else ' aria-hidden="true"'
         if kind == "video":
             webp(poster(name))
-            body = f'<video controls muted loop playsinline{" autoplay" if n == 0 else ""} preload="{"metadata" if n == 0 else "none"}" poster="assets/img/work/{poster(name)}.webp"><source src="assets/video/{name}.mp4" type="video/mp4">Your browser does not support video.</video>'
-            th = f'<img src="assets/img/work/{poster(name)}.webp" alt="" loading="lazy"><span class="play" aria-hidden="true"></span>'
+            body = f'<video controls muted loop playsinline{" autoplay" if n == 0 else ""} preload="{"metadata" if n == 0 else "none"}" poster="{wurl(poster(name))}"><source src="assets/video/{name}.mp4" type="video/mp4">Your browser does not support video.</video>'
+            th = f'<img src="{wurl(poster(name))}" alt="" loading="lazy"><span class="play" aria-hidden="true"></span>'
             label = f"Play the {who} video"
         elif kind == "device":
             body = f'<div class="viewer__device">{devices(name, p.get("mobile"), alt=who + " website on laptop and phone")}</div>'
-            th = f'<img src="assets/img/work/{name}.webp" alt="" loading="lazy">'
+            th = f'<img src="{wurl(name)}" alt="" loading="lazy">'
             label = "Show the website on laptop and phone"
         else:
             body = img(name, f"{who} project by OXE Marketing, image {n + 1}", lazy=n > 0)
-            th = f'<img src="assets/img/work/{name}.webp" alt="" loading="lazy">'
+            th = f'<img src="{wurl(name)}" alt="" loading="lazy">'
             label = f"Show image {n + 1}"
         stage += f'<figure class="viewer__item viewer__item--{kind}{active}"{hidden}>{body}</figure>'
         thumbs += f'<li><button type="button" aria-label="{label}"{" aria-current=" + chr(34) + "true" + chr(34) if n == 0 else ""}>{th}</button></li>'
@@ -418,9 +481,9 @@ def clients_wall(tint=False):
     """Logo wall: bordered grid with a feature panel in the middle."""
     cells = ""
     for f, name in C.CLIENTS:
-        w, h = logo_file(f)
+        u, w, h = logo(f)
         kind = "wide" if w / h > 1.6 else "badge"
-        cells += f'<li class="logo-cell logo-cell--{kind}"><img src="assets/img/clients/{f}.webp" alt="{plain(name) if name else ""}" width="{w}" height="{h}" loading="lazy" decoding="async"></li>'
+        cells += f'<li class="logo-cell logo-cell--{kind}"><img src="{u}" alt="{plain(name) if name else ""}" width="{w}" height="{h}" loading="lazy" decoding="async"></li>'
     # pad the grid to a multiple of 6 (and so of 2 and 3) so no cell is left open
     cells += '<li class="logo-cell logo-cell--blank" aria-hidden="true"></li>' * ((-len(C.CLIENTS)) % 6)
     return f'''
@@ -428,10 +491,10 @@ def clients_wall(tint=False):
     <div class="container">
       <ul class="logo-wall reveal">
         <li class="logo-wall__feature">
-          {eyebrow("Clients &amp; partners")}
-          <h2 id="clients-title">Trusted by brands across <span class="hl">Thailand</span> and beyond</h2>
-          <p>From global technology names to local favourites, these are some of the businesses we've worked with.</p>
-          <a class="btn btn--navy" href="contact.html">Book a Consultation <span aria-hidden="true">»</span></a>
+          {eyebrow(T["clients"]["eyebrow"])}
+          <h2 id="clients-title">{T["clients"]["title"]}</h2>
+          <p>{T["clients"]["text"]}</p>
+          <a class="btn btn--navy" href="contact.html">{T["clients"]["button"]} <span aria-hidden="true">»</span></a>
         </li>{cells}
       </ul>
     </div>
@@ -444,8 +507,8 @@ BRANDS_H2 = "Brands we've <span class=\"hl\">worked with</span>"
 def clients_marquee():
     """Home: two rows of client logos scrolling in opposite directions."""
     def tile(f, name):
-        w, h = logo_file(f)
-        return f'<li><img src="assets/img/clients/{f}.webp" alt="{plain(name) if name else ""}" width="{w}" height="{h}" loading="lazy"></li>'
+        u, w, h = logo(f)
+        return f'<li><img src="{u}" alt="{plain(name) if name else ""}" width="{w}" height="{h}" loading="lazy"></li>'
     half = (len(C.CLIENTS) + 1) // 2
     rows = ""
     for n, part in enumerate((C.CLIENTS[:half], C.CLIENTS[half:])):
@@ -461,13 +524,10 @@ def clients_marquee():
   </section>'''
 
 
-WORK_VIDEO = {"video": "xiaomi-redmi-watch"}
-
-
 def works_list():
     """Home "Our Works": large category rows + one media frame that crossfades on hover/focus."""
     rows, stage = "", ""
-    for i, (key, title, cover) in enumerate(C.WORK_CATEGORIES):
+    for i, (key, title, cover, video) in enumerate(C.WORK_CATEGORIES):
         ps = [p for p in C.PROJECTS if key in p["cat"].split()]
         clients = list(dict.fromkeys(plain(p["client"]) for p in ps))[:3]
         on = " is-active" if i == 0 else ""
@@ -478,10 +538,10 @@ def works_list():
               <span class="wrow__clients"><span>{" · ".join(clients)}</span></span>
               <span class="wrow__go" aria-hidden="true">{ARR}</span>
             </a></li>'''
-        if key in WORK_VIDEO:
-            v = WORK_VIDEO[key]
+        if video:
+            v = video
             webp(poster(v))
-            media = f'<video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{poster(v)}.webp"><source src="assets/video/{v}.mp4" type="video/mp4"></video>'
+            media = f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(v))}"><source src="assets/video/{v}.mp4" type="video/mp4"></video>'
         else:
             media = img(cover, "")
         stage += f'<figure class="wstage{on}" data-i="{i}" aria-hidden="true">{media}<figcaption>{title}</figcaption></figure>'
@@ -512,10 +572,23 @@ def badge(cls=""):
           <svg viewBox="0 0 200 200">
             <defs><path id="badge-ring" d="M100,100 m-62,0 a62,62 0 1,1 124,0 a62,62 0 1,1 -124,0"/></defs>
             <circle cx="100" cy="100" r="80" fill="#fff"/>
-            <text font-size="12.6" letter-spacing="3.4" fill="#0f2b50" font-family="Poppins, sans-serif" font-weight="500"><textPath href="#badge-ring">MULTICULTURAL AGENCY · SINCE 2020 · </textPath></text>
+            <text font-size="12.6" letter-spacing="3.4" fill="#0f2b50" font-family="Poppins, sans-serif" font-weight="500"><textPath href="#badge-ring">{T["badge_text"]} </textPath></text>
             <path d="M100 72 C103 92 108 97 128 100 C108 103 103 108 100 128 C97 108 92 103 72 100 C92 97 97 92 100 72Z" fill="#0f2b50"/>
           </svg>
         </div>'''
+
+
+def intro_cards():
+    """Home intro: two image/video cards linking to work (content/home.yml → intro_cards)."""
+    out = ""
+    for c in PG["home"]["intro_cards"][:2]:
+        if c.get("video"):
+            media = (f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(c["video"]))}" aria-label="{c["alt"]}">'
+                     f'<source src="assets/video/{c["video"]}.mp4" type="video/mp4"></video>')
+        else:
+            media = img(c["image"], c["alt"])
+        out += f'<a class="icard reveal" href="{c["link"]}">{media}<span class="icard__go">{ARR}</span><span class="icard__label">{c["label"]}</span></a>'
+    return out
 
 
 def home():
@@ -534,18 +607,16 @@ def home():
           </div>
           <a class="scard2__media" href="services.html#{sv["key"]}" tabindex="-1" aria-hidden="true">{img(sv["img"], "")}</a>
         </article>'''
-    return head("OXE Marketing | Digital Marketing Agency in Bangkok",
-                "Multicultural digital marketing agency in Bangkok: website design, social media marketing, video production, photography and digital strategy.",
-                "index.html", schema=org_schema()) + f'''
+    return head(PG["home"]["seo_title"], PG["home"]["seo_description"], "index.html", schema=org_schema()) + f'''
   <section class="hero">
     <div class="container">
       <div class="hero__panel">
         <h1>{C.HOME["hero_title"]}</h1>
         <p class="lead">{C.HERO["text"]}</p>
         <div class="hero__actions">
-          {btn("Book a Consultation", "contact.html")}
+          {btn(PG["home"]["hero_button"], "contact.html")}
           <div class="hero__proof">
-            <div class="hero__logos">{"".join(f'<img src="assets/img/clients/{f}.webp" alt="{n or ""}" width="48" height="48">' for f, n in C.CLIENTS[:3])}</div>
+            <div class="hero__logos">{"".join(f'<img src="{logo(f)[0]}" alt="{n or ""}" width="48" height="48">' for f, n in C.CLIENTS[:3])}</div>
             <p><b>{C.HOME["proof_title"]}</b><span>{C.HOME["proof_text"]}</span></p>
           </div>
         </div>
@@ -557,8 +628,7 @@ def home():
           <p>{C.HOME["intro_text"]}</p>
         </div>
         <div class="intro__cards">
-          <a class="icard reveal" href="work/tailor-website.html">{img("ind-tailor", "Platinum Tailor website by OXE Marketing")}<span class="icard__go">{ARR}</span><span class="icard__label">Website Design</span></a>
-          <a class="icard reveal" href="work/xiaomi-redmi-watch.html"><video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/xiaomi-redmi-watch-poster.webp" aria-label="Xiaomi Redmi Watch campaign video by OXE Marketing"><source src="assets/video/xiaomi-redmi-watch.mp4" type="video/mp4"></video><span class="icard__go">{ARR}</span><span class="icard__label">Video Production</span></a>
+          {intro_cards()}
         </div>
       </div>
     </div>
@@ -567,8 +637,8 @@ def home():
   <section class="section" id="services">
     <div class="container">
       <div class="sec-row">
-        {sec_head("What we do", C.HOME["services_title"], C.HOME["services_text"])}
-        <div class="reveal">{btn("All Services", "services.html")}</div>
+        {sec_head(PG["home"]["services_eyebrow"], C.HOME["services_title"], C.HOME["services_text"])}
+        <div class="reveal">{btn(PG["home"]["services_button"], "services.html")}</div>
       </div>
       <div class="svc-stack">{cards}
       </div>
@@ -579,13 +649,13 @@ def home():
     <div class="container">
       <div class="why-panel">
         <div class="why-panel__media reveal">
-          <figure class="why-panel__photo">{img("bts-video-1", "The OXE Marketing crew filming a corporate interview in Bangkok")}</figure>
-          <figure class="why-panel__photo why-panel__photo--sm">{img("bts-video-2", "OXE Marketing crew on a studio shoot")}</figure>
+          <figure class="why-panel__photo">{img(PG["home"]["why_photos"][0]["image"], PG["home"]["why_photos"][0]["alt"])}</figure>
+          <figure class="why-panel__photo why-panel__photo--sm">{img(PG["home"]["why_photos"][1]["image"], PG["home"]["why_photos"][1]["alt"])}</figure>
         </div>
         <div class="why-panel__copy">
-          {sec_head("Why OXE", C.WHY["title"], C.WHY["text"])}
+          {sec_head(PG["home"]["why_eyebrow"], C.WHY["title"], C.WHY["text"])}
           <ul class="principles reveal">{principle_list(C.WHY["principles"])}</ul>
-          <div class="reveal">{btn("More About OXE", "about.html")}</div>
+          <div class="reveal">{btn(PG["home"]["why_button"], "about.html")}</div>
         </div>
       </div>
     </div>
@@ -597,7 +667,7 @@ def home():
         <div class="works__head reveal">
           <h2 class="works__title">{C.HOME["works_title"]}</h2>
           <p class="works__lede">{C.HOME["works_text"]}</p>
-          {btn("View Portfolio", "portfolio.html")}
+          {btn(PG["home"]["works_button"], "portfolio.html")}
         </div>
         {works_list()}
       </div>
@@ -619,14 +689,11 @@ def book_pill():
     return f'''<a class="book-pill" href="contact.html">{img("bts-video-2", "", lazy=False, cls="book-pill__av")}<span><small>Based in Bangkok</small>Book a call to learn more</span></a>'''
 
 
-TICKER = ["Websites", "Social Media", "Video Production", "Photography", "Digital Strategy", "Made in Bangkok"]
-
-
 def page_hero(eb, h1, lead, visual="", after="", cls="", photos=()):
     """Inner-page hero: centred copy on the lavender panel, with tilted photos,
     soft glows, a breadcrumb pill and a slow text ticker along the bottom."""
     pics = "".join(f'<figure class="phero__pic phero__pic--{n}">{img(ph, "", lazy=False)}</figure>' for n, ph in enumerate(photos[:2], 1))
-    words = "".join(f"<span>{w}</span><i>✦</i>" for w in TICKER)
+    words = "".join(f"<span>{w}</span><i>✦</i>" for w in T["ticker"])
     return f'''
   <section class="phero {cls}">
     <div class="container">
@@ -654,7 +721,7 @@ def service_media(s):
         tiles = ""
         for v, client in s["videos"]:
             webp(poster(v))
-            tiles += (f'<figure class="vwall__item"><video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{poster(v)}.webp" '
+            tiles += (f'<figure class="vwall__item"><video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(v))}" '
                       f'aria-label="{plain(client)} video by OXE Marketing"><source src="assets/video/{v}.mp4" type="video/mp4"></video>'
                       f'</figure>')
         return f'<div class="vwall" data-vwall>{tiles}</div>'
@@ -674,9 +741,6 @@ def service_media(s):
           </div>'''
 
 
-DOCK_LABELS = {"web": "Web Design", "social": "Social Media", "video": "Video", "photo": "Photography", "strategy": "Strategy"}
-
-
 def services():
     jump = "".join(f'<a href="#{s["key"]}">{s["title"]}</a>' for s in C.SERVICES)
     blocks = ""
@@ -693,21 +757,19 @@ def services():
             <h2>{s["title"]}</h2>
           </div>
           <p class="lead">{s["intro"]}</p>
-          <h3 class="svc-block__label">What we do</h3>
+          <h3 class="svc-block__label">{PG["services"]["what_label"]}</h3>
           <ul class="svc-block__list">{what}</ul>
           <div class="btn-row">
-            {btn("Book a Consultation", "contact.html?service=" + s["key"])}
-            {btn("See related work", "portfolio.html", "text")}
+            {btn(PG["services"]["book_button"], "contact.html?service=" + s["key"])}
+            {btn(PG["services"]["work_button"], "portfolio.html", "text")}
           </div>
         </div>
       </article>'''
-    dock = "".join(f'<a href="#{sv["key"]}" data-dock="{sv["key"]}"><b>{n:02d}</b><span>{DOCK_LABELS.get(sv["key"], plain(sv["title"]))}</span></a>' for n, sv in enumerate(C.SERVICES, 1))
+    dock = "".join(f'<a href="#{sv["key"]}" data-dock="{sv["key"]}"><b>{n:02d}</b><span>{sv["short_name"]}</span></a>' for n, sv in enumerate(C.SERVICES, 1))
     ind = "".join(f'<li class="ind-tile reveal">{img(im, t + " industry")}<span>{t}</span></li>' for t, im in C.INDUSTRIES)
-    return head("Services | Website Design, Video & Social Media in Bangkok | OXE Marketing",
-                "Website design & development, social media marketing, video production, photography and digital strategy for businesses in Bangkok and across Thailand.",
-                "services.html") + f'''
-{page_hero("Our services", C.PAGES["services"]["title"], C.PAGES["services"]["intro"],
-           after=f'<nav class="jump" aria-label="Services on this page">{jump}</nav>', photos=("haji-strawberry", "shoot-1"))}
+    return head(PG["services"]["seo_title"], PG["services"]["seo_description"], "services.html") + f'''
+{page_hero(PG["services"]["eyebrow"], PG["services"]["title"], PG["services"]["intro"],
+           after=f'<nav class="jump" aria-label="Services on this page">{jump}</nav>', photos=PG["services"]["photos"])}
 
   <section class="section section--flush svc-blocks" data-svc-section>
     <div class="container">{blocks}
@@ -720,7 +782,7 @@ def services():
 
   <section class="section section--tint" id="industries">
     <div class="container">
-      {sec_head("Industries", 'Industries We <span class="hl">Worked With</span>', "Experience across local businesses and international brands in Thailand.")}
+      {sec_head(PG["services"]["industries_eyebrow"], PG["services"]["industries_title"], PG["services"]["industries_text"])}
       <ul class="ind-grid">{ind}</ul>
     </div>
   </section>
@@ -729,7 +791,6 @@ def services():
 
 # ------------------------------------------------------------------ PORTFOLIO
 SPANS = [7, 5, 4, 4, 4, 5, 7]   # bento rhythm on a 12-column grid (JS re-applies it after filtering)
-SPOTLIGHT = "xiaomi-redmi-watch"
 
 
 def bento_spans(count):
@@ -768,38 +829,43 @@ def portfolio():
     pdock = "".join(f'<button type="button" class="filter-btn{" is-active" if k == "all" else ""}" data-filter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{t}<sup>{counts[k]:02d}</sup></button>' for k, t in C.FILTERS)
     first = bento_spans(7)
     cards = "".join(pcard(p, n, extra=n >= 7, span=first[n] if n < 7 else None) for n, p in enumerate(grid_projects))
-    f = PBY[SPOTLIGHT]
-    webp(poster(f["video"]))
+    f = PBY.get(PG["portfolio"]["featured_project"]) or PORT[0]
+    if f.get("video"):
+        spot_media = f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(f["video"]))}"><source src="assets/video/{f["video"]}.mp4" type="video/mp4"></video>'
+    else:
+        spot_media = project_media(f, big=True)
+    spot_logo = ""
+    if PG["portfolio"].get("featured_logo"):
+        lu, lw, lh = logo(PG["portfolio"]["featured_logo"])
+        spot_logo = f'<img class="spot__logo" src="{lu}" alt="{plain(f["client"])} logo" width="{lw}" height="{lh}">'
     disciplines = len(C.FILTERS) - 1
-    stats = f'<ul class="pstats"><li><b>{len(C.PROJECTS)}</b>projects</li><li><b>{disciplines}</b>disciplines</li><li><b>20+</b>brands</li></ul>'
-    return head("Portfolio | OXE Marketing Bangkok",
-                "Selected work by OXE Marketing: websites, video production, social media and photography for brands including Xiaomi, OPPO and Rockers Supercars.",
-                "portfolio.html") + f'''
-{page_hero("Portfolio", C.PAGES["portfolio"]["title"], C.PAGES["portfolio"]["intro"], after=stats, photos=("xiaomi-campaign", "cake-strawberry-wide"))}
+    stats = f'<ul class="pstats"><li><b>{len(C.PROJECTS)}</b>{PG["portfolio"]["stats_projects"]}</li><li><b>{disciplines}</b>{PG["portfolio"]["stats_disciplines"]}</li><li><b>{PG["portfolio"]["stats_brands_value"]}</b>{PG["portfolio"]["stats_brands"]}</li></ul>'
+    return head(PG["portfolio"]["seo_title"], PG["portfolio"]["seo_description"], "portfolio.html") + f'''
+{page_hero(PG["portfolio"]["eyebrow"], PG["portfolio"]["title"], PG["portfolio"]["intro"], after=stats, photos=PG["portfolio"]["photos"])}
 
   <section class="section spot-sec">
     <div class="container">
       <article class="spot reveal">
         <header class="spot__bar">
-          <span>Featured project</span>
+          <span>{PG["portfolio"]["featured_label"]}</span>
           <span class="spot__rule" aria-hidden="true"></span>
           <span>{f["category"]}</span>
         </header>
         <div class="spot__grid">
           <div class="spot__copy">
-            <img class="spot__logo" src="assets/img/clients/xiaomi.webp" alt="{plain(f["client"])} logo" width="203" height="203">
+            {spot_logo}
             <p class="spot__client">{f["client"]}</p>
             <h2><span class="hl">{f["title"]}</span></h2>
             <p>{f["summary"]}</p>
             <dl class="spot__facts">
               <div><dt>Client</dt><dd>{f["client"]}</dd></div>
               <div><dt>Service</dt><dd>{f["category"]}</dd></div>
-              <div><dt>Scope</dt><dd>Concept to final edit</dd></div>
+              <div><dt>Scope</dt><dd>{PG["portfolio"]["featured_scope"]}</dd></div>
             </dl>
-            <a class="link-arrow" href="work/{f["id"]}.html">View case study {ARR}</a>
+            <a class="link-arrow" href="work/{f["id"]}.html">{PG["portfolio"]["featured_link"]} {ARR}</a>
           </div>
           <a class="spot__media" href="work/{f["id"]}.html" aria-label="{plain(f["client"])} case study">
-            <video muted loop playsinline autoplay preload="metadata" poster="assets/img/work/{poster(f["video"])}.webp"><source src="assets/video/{f["video"]}.mp4" type="video/mp4"></video>
+            {spot_media}
           </a>
         </div>
       </article>
@@ -810,8 +876,8 @@ def portfolio():
     <div class="container">
       <div class="pbento" data-projects>{cards}
       </div>
-      <p class="filter-empty" hidden>No projects in this category yet.</p>
-      <div class="more-wrap"><button class="btn btn--primary" type="button" data-more>View More Projects<span class="btn__arrow" aria-hidden="true">{ARR}</span></button></div>
+      <p class="filter-empty" hidden>{PG["portfolio"]["empty_text"]}</p>
+      <div class="more-wrap"><button class="btn btn--primary" type="button" data-more>{PG["portfolio"]["more_button"]}<span class="btn__arrow" aria-hidden="true">{ARR}</span></button></div>
     </div>
     <nav class="svc-dock port-dock" aria-label="Filter projects">
       <span class="svc-dock__fill" aria-hidden="true"></span>
@@ -868,16 +934,16 @@ def case(p):
         {ccso}
       </div>
       <aside class="case-aside reveal">
-        <h2>Services provided</h2>
+        <h2>{T["case_study"]["services_title"]}</h2>
         <ul class="checks">{svc}</ul>
-        {btn("Start a similar project", "contact.html")}
+        {btn(T["case_study"]["start_button"], "contact.html")}
       </aside>
     </div>
   </section>
   <section class="section section--flush">
     <div class="container">
       <a class="next-project reveal" href="work/{nxt["id"]}.html">
-        <small>Next project</small>
+        <small>{T["case_study"]["next_label"]}</small>
         <b>{nxt["client"]}: {nxt["title"]}</b>
         <span class="arrow-circle">{ARR}</span>
       </a>
@@ -898,9 +964,9 @@ def bento():
         if area == "a":
             body = f'<div class="bento__art" aria-hidden="true"><span class="float-a">{ART["web"]}</span><span class="float-b">{ART["video"]}</span><span class="float-c">{ART["social"]}</span></div>{num}<h3>{t}</h3><p>{d}</p>'
         elif area == "d":
-            body = f'{img("bts-video-1", "OXE Marketing crew on set during a corporate video shoot")}<div class="bento__overlay">{num}<h3>{t}</h3><p>{d}</p></div>'
+            body = f'{img(PG["about"]["bento_photo"], PG["about"]["bento_photo_alt"])}<div class="bento__overlay">{num}<h3>{t}</h3><p>{d}</p></div>'
         elif area == "g":
-            body = f'{num}<b class="bento__year" aria-hidden="true">2020</b><h3>{t}</h3><p>{d}</p>'
+            body = f'{num}<b class="bento__year" aria-hidden="true">{PG["about"]["bento_year"]}</b><h3>{t}</h3><p>{d}</p>'
         else:
             body = f'<span class="ico">{I[ico]}</span>{num}<h3>{t}</h3><p>{d}</p>'
         cells += f'\n        <li class="bento__cell bento__cell--{area} reveal">{body}</li>'
@@ -910,11 +976,9 @@ def bento():
 def about():
     facts = "".join(f"<li><b>{a}</b><span>{b}</span></li>" for a, b in C.ABOUT["facts"])
     story = "".join(f"<p>{t}</p>" for t in [C.ABOUT["intro"]] + C.ABOUT["story"])
-    return head("About Us | OXE Marketing, Multicultural Agency in Bangkok",
-                "OXE Marketing is an ASEAN-based multicultural creative and digital agency headquartered in Bangkok, founded in 2020.",
-                "about.html") + f'''
-{page_hero("About us", C.ABOUT["title"], C.ABOUT["positioning"],
-           photos=("bts-video-2", "wirever-lifestyle"))}
+    return head(PG["about"]["seo_title"], PG["about"]["seo_description"], "about.html") + f'''
+{page_hero(PG["about"]["eyebrow"], C.ABOUT["title"], C.ABOUT["positioning"],
+           photos=PG["about"]["photos"])}
 
   <section class="facts-wrap">
     <div class="container"><ul class="facts reveal">{facts}</ul></div>
@@ -924,12 +988,12 @@ def about():
     <div class="container mv">
       <article class="mv__card reveal">
         <span class="mv__art" aria-hidden="true">{ART["strategy"]}</span>
-        {eyebrow("Our mission")}
+        {eyebrow(PG["about"]["mission_label"])}
         <p>{C.ABOUT["mission"]}</p>
       </article>
       <article class="mv__card mv__card--blue reveal">
         <span class="mv__art" aria-hidden="true">{ART["analytics"]}</span>
-        {eyebrow("Our vision")}
+        {eyebrow(PG["about"]["vision_label"])}
         <p>{C.ABOUT["vision"]}</p>
       </article>
     </div>
@@ -938,20 +1002,18 @@ def about():
   <section class="section section--tint" id="story">
     <div class="container story">
       <div>
-        {sec_head("Our story", 'Creative and digital marketing, <span class="hl">since 2020</span>')}
+        {sec_head(PG["about"]["story_eyebrow"], PG["about"]["story_title"])}
         <div class="reveal">{story}</div>
       </div>
       <div class="mosaic reveal">
-        {img("shoot-1", "Rockers Supercars showroom shoot by OXE Marketing")}
-        {img("cake-strawberry", "Dessert photography by OXE Marketing for Haji Café")}
-        {img("wirever-lifestyle", "Product photography by OXE Marketing for Wirever")}
+        {"".join(img(x["image"], x["alt"]) for x in PG["about"]["story_photos"][:3])}
       </div>
     </div>
   </section>
 
   <section class="section" id="why-oxe">
     <div class="container">
-      {sec_head("Why companies choose OXE", 'Your all-in-one <span class="hl">marketing partner</span>')}
+      {sec_head(PG["about"]["why_eyebrow"], PG["about"]["why_title"])}
       {bento()}
     </div>
   </section>
@@ -988,19 +1050,19 @@ def form():
               f'<input type="hidden" name="redirect" value="{S["url"]}/thank-you">') if S["form_key"] else ""
     return f'''<div class="form-card reveal" id="enquiry">
         <div class="form-card__head">
-          <h2>Tell us about your <span class="hl">project</span></h2>
+          <h2>{PG["contact"]["form_title"]}</h2>
           <p>Fields marked <b>*</b> are required.</p>
         </div>
         <form name="contact" method="POST" action="{action}" data-contact-form data-email="{S["email"]}" data-wa="{wa}" novalidate>
           {hidden}
           <p hidden><label>Don't fill this out: <input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off"></label></p>
           <fieldset class="fset" data-chips-required aria-describedby="svc-err">
-            <legend><span class="fset__n">01</span>What can we help with? <b aria-hidden="true">*</b></legend>
+            <legend><span class="fset__n">01</span>{PG["contact"]["step_1"]} <b aria-hidden="true">*</b></legend>
             <div class="chips">{chips}</div>
             <span class="error" id="svc-err">Please choose at least one service.</span>
           </fieldset>
           <fieldset class="fset">
-            <legend><span class="fset__n">02</span>About you</legend>
+            <legend><span class="fset__n">02</span>{PG["contact"]["step_2"]}</legend>
             <div class="form-grid">
               {field("f-name", "name", "Name", req=True, ac="name", ph="Your full name", err="Please enter your name.")}
               {field("f-email", "email", "Email", "email", True, "email", "you@company.com", "Please enter a valid email address.")}
@@ -1009,15 +1071,15 @@ def form():
             </div>
           </fieldset>
           <fieldset class="fset">
-            <legend><span class="fset__n">03</span>Your project</legend>
+            <legend><span class="fset__n">03</span>{PG["contact"]["step_3"]}</legend>
             <div class="field">
-              <label for="f-details">Project details <b aria-hidden="true">*</b></label>
-              <textarea id="f-details" name="details" rows="5" placeholder="Your goals, timeline and anything else we should know" required aria-describedby="f-details-err"></textarea>
+              <label for="f-details">{PG["contact"]["details_label"]} <b aria-hidden="true">*</b></label>
+              <textarea id="f-details" name="details" rows="5" placeholder="{PG["contact"]["details_placeholder"]}" required aria-describedby="f-details-err"></textarea>
               <span class="error" id="f-details-err">Please tell us a little about your project.</span>
             </div>
-            <p class="fset__sub">Budget <em>optional</em></p>
+            <p class="fset__sub">{PG["contact"]["budget_label"]} <em>optional</em></p>
             <div class="chips chips--sm">{budget}</div>
-            <p class="fset__sub">Reply by</p>
+            <p class="fset__sub">{PG["contact"]["reply_label"]}</p>
             <div class="chips chips--sm">
               <label class="chip"><input type="radio" name="method" value="Email" checked><span>Email</span></label>
               <label class="chip"><input type="radio" name="method" value="Phone"><span>Phone</span></label>
@@ -1025,25 +1087,18 @@ def form():
             </div>
           </fieldset>
           <div class="form-foot">
-            <button type="submit" class="btn btn--primary form-submit">Send message<span class="btn__arrow" aria-hidden="true">{ARR}</span></button>
-            <p>Prefer to chat? <a href="{S["whatsapp"]}" target="_blank" rel="noopener">Message us on WhatsApp</a></p>
+            <button type="submit" class="btn btn--primary form-submit">{PG["contact"]["submit_button"]}<span class="btn__arrow" aria-hidden="true">{ARR}</span></button>
+            <p>{PG["contact"]["chat_prompt"]} <a href="{S["whatsapp"]}" target="_blank" rel="noopener">{PG["contact"]["chat_link"]}</a></p>
           </div>
-          <div class="form-success" role="status" aria-live="polite">Thank you! Your message has been sent. Our team will get back to you shortly.</div>
+          <div class="form-success" role="status" aria-live="polite">{PG["contact"]["success_message"]}</div>
         </form>
       </div>'''
 
 
-NEXT_STEPS = [("We read your message", "Tell us about your business and goals. The more detail, the better."),
-              ("We have a short call", "We learn about your business, audience and timeline, and answer your questions."),
-              ("You get a clear proposal", "Scope, timeline and budget, so you know exactly what you're getting.")]
-
-
 def contact():
-    steps = "".join(f'''<li class="reveal"><span class="step-num">{n}</span><h3>{t}</h3><p>{d}</p></li>''' for n, (t, d) in enumerate(NEXT_STEPS, 1))
-    return head("Contact OXE Marketing | Digital Marketing Agency Bangkok",
-                f"Contact OXE Marketing in Bangkok: email {S['email']}, call {S['phone_display']} or message us on WhatsApp to discuss your project.",
-                "contact.html", schema=org_schema()) + f'''
-{page_hero("Contact", C.PAGES["contact"]["title"], C.PAGES["contact"]["intro"], photos=("bts-video-1", "ind-hospitality"))}
+    steps = "".join(f'''<li class="reveal"><span class="step-num">{n}</span><h3>{t}</h3><p>{d}</p></li>''' for n, (t, d) in enumerate(((x["title"], x["text"]) for x in PG["contact"]["steps"]), 1))
+    return head(PG["contact"]["seo_title"], PG["contact"]["seo_description"], "contact.html", schema=org_schema()) + f'''
+{page_hero(PG["contact"]["eyebrow"], PG["contact"]["title"], PG["contact"]["intro"], photos=PG["contact"]["photos"])}
 
   <section class="section">
     <div class="container cgrid">
@@ -1051,21 +1106,21 @@ def contact():
       <div class="cgrid__side">
       <a class="ctile ctile--wa reveal" href="{S["whatsapp"]}" target="_blank" rel="noopener">
         <span class="ctile__ico">{I["whatsapp"]}</span>
-        <span class="ctile__txt"><small>Chat with us</small><b>WhatsApp</b><span class="ctile__val">{S["phone_display"]}</span></span>
+        <span class="ctile__txt"><small>{PG["contact"]["whatsapp_label"]}</small><b>WhatsApp</b><span class="ctile__val">{S["phone_display"]}</span></span>
         <span class="ctile__go" aria-hidden="true">{ARR}</span>
       </a>
       <a class="ctile ctile--mail reveal" href="mailto:{S["email"]}">
         <span class="ctile__ico">{I["mail2"]}</span>
-        <span class="ctile__txt"><small>Write to us</small><b>Email</b><span class="ctile__val">{S["email"]}</span></span>
+        <span class="ctile__txt"><small>{PG["contact"]["email_label"]}</small><b>Email</b><span class="ctile__val">{S["email"]}</span></span>
         <span class="ctile__go" aria-hidden="true">{ARR}</span>
       </a>
       <a class="ctile ctile--call reveal" href="tel:{S["phone_tel"]}">
         <span class="ctile__ico">{I["phone2"]}</span>
-        <span class="ctile__txt"><small>Talk to us</small><b>Call</b><span class="ctile__val">{S["phone_display"]}</span></span>
+        <span class="ctile__txt"><small>{PG["contact"]["call_label"]}</small><b>Call</b><span class="ctile__val">{S["phone_display"]}</span></span>
         <span class="ctile__go" aria-hidden="true">{ARR}</span>
       </a>
       <div class="ctile ctile--time reveal">
-        <small>Local time in Bangkok</small>
+        <small>{PG["contact"]["time_label"]}</small>
         <b class="ctile__clock" data-bkk-clock>--:--</b>
         <span class="ctile__val">{I["pin2"]} {S["city"]} · ICT (UTC+7)</span>
       </div>
@@ -1075,7 +1130,7 @@ def contact():
 
   <section class="section section--flush" id="next">
     <div class="container">
-      {sec_head("What happens next", 'Three simple <span class="hl">steps</span>', cls="sec-head--center")}
+      {sec_head(PG["contact"]["steps_eyebrow"], PG["contact"]["steps_title"], cls="sec-head--center")}
       <ol class="next-steps">{steps}</ol>
     </div>
   </section>
@@ -1083,7 +1138,7 @@ def contact():
   <section class="section" id="map">
     <div class="container">
       <div class="map-card reveal">
-        <div class="map"><iframe title="Map showing Bangkok, Thailand" src="https://www.google.com/maps?q=Bangkok,Thailand&amp;z=11&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+        <div class="map"><iframe title="Map showing Bangkok, Thailand" src="https://www.google.com/maps?q={quote(plain(PG["contact"]["map_location"]), safe=",")}&amp;z=11&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
         {badge("badge--map")}
       </div>
     </div>
@@ -1178,13 +1233,11 @@ def blog():
     items = "".join(bitem(p, "card" if i in (1, 2) else "row", ' data-feat hidden' if i == 0 else "") for i, p in enumerate(POSTS))
     stack = "".join(f'<a class="bstack__card bstack__card--{n}" href="blog/{p["slug"]}.html" tabindex="-1" aria-hidden="true"><span class="bstack__in">{img(p["cover"], "", lazy=False)}<span class="bstack__tag">{CATS[p["cat"]]}</span></span></a>'
                     for n, p in enumerate(POSTS[:3], 1))
-    words_ = "".join(f"<span>{w}</span><i>✦</i>" for w in TICKER)
+    words_ = "".join(f"<span>{w}</span><i>✦</i>" for w in T["ticker"])
     schema = {"@context": "https://schema.org", "@type": "Blog", "name": "OXE Marketing Blog", "url": S["url"] + "/blog",
               "publisher": {"@type": "Organization", "name": "OXE Marketing", "url": S["url"]},
               "blogPost": [{"@type": "BlogPosting", "headline": plain(p["title"]), "url": f'{S["url"]}/blog/{p["slug"]}', "datePublished": p["date"]} for p in POSTS]}
-    return head("Blog | Digital Marketing Insights from Bangkok | OXE Marketing",
-                "Practical guides on websites, SEO, social media, video and photography for businesses in Thailand, from the OXE Marketing team in Bangkok.",
-                "blog.html", schema=schema) + f'''
+    return head(PG["blog-page"]["seo_title"], PG["blog-page"]["seo_description"], "blog.html", schema=schema) + f'''
   <section class="phero bhero">
     <div class="container">
       <div class="phero__panel bhero__panel">
@@ -1192,9 +1245,9 @@ def blog():
         <span class="phero__glow phero__glow--b" aria-hidden="true"></span>
         <div class="bhero__grid">
           <div class="bhero__copy">
-            <nav class="phero__crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span aria-hidden="true">/</span><span aria-current="page">Blog</span></nav>
-            <h1 class="split">{split_html(C.PAGES["blog"]["title"])}</h1>
-            <p class="lead">{C.PAGES["blog"]["intro"]}</p>
+            <nav class="phero__crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span aria-hidden="true">/</span><span aria-current="page">{PG["blog-page"]["eyebrow"]}</span></nav>
+            <h1 class="split">{split_html(PG["blog-page"]["title"])}</h1>
+            <p class="lead">{PG["blog-page"]["intro"]}</p>
             <nav class="jump" aria-label="Blog topics">{pills}</nav>
           </div>
           <div class="bstack" data-scrub="leave">{stack}</div>
@@ -1209,11 +1262,11 @@ def blog():
       <a class="bspot" href="blog/{f["slug"]}.html" data-scrub="enter">
         <div class="bspot__media">{img(f["cover"], "", lazy=False)}</div>
         <div class="bspot__card">
-          <p class="bspot__label"><span class="bspot__dot" aria-hidden="true"></span>Latest article</p>
+          <p class="bspot__label"><span class="bspot__dot" aria-hidden="true"></span>{PG["blog-page"]["latest_label"]}</p>
           {bmeta(f)}
           <h2>{f["title"]}</h2>
           <p class="bspot__ex">{f["excerpt"]}</p>
-          <span class="bspot__btn">Read the article<span class="btn__arrow" aria-hidden="true">{ARR}</span></span>
+          <span class="bspot__btn">{PG["blog-page"]["read_button"]}<span class="btn__arrow" aria-hidden="true">{ARR}</span></span>
         </div>
       </a>
     </div>
@@ -1222,7 +1275,7 @@ def blog():
   <section class="section section--flush" id="articles">
     <div class="container">
       <div class="bbar reveal">
-        <h2>All <span class="hl">articles</span></h2>
+        <h2>{PG["blog-page"]["all_title"]}</h2>
         <div class="btopics" role="group" aria-label="Filter articles by topic">{topics}</div>
       </div>
       <div class="blist" data-posts>{items}
@@ -1244,13 +1297,13 @@ def post(p):
     nxt = POSTS[(i + 1) % len(POSTS)]
     rel = [x for x in POSTS if x is not p and x is not nxt and x["cat"] == p["cat"]] + [x for x in POSTS if x is not p and x is not nxt and x["cat"] != p["cat"]]
     svc = next((s for s in C.SERVICES if s["key"] == CAT_SVC.get(p["cat"])), C.SERVICES[0])
-    cover = f'assets/img/work/{p["cover"]}.webp'
+    cover = wurl(p["cover"])
     webp(p["cover"])
     schema = [
         {"@context": "https://schema.org", "@type": "BlogPosting", "headline": plain(p["title"]), "description": p["description"],
          "image": f'{S["url"]}/{cover}', "datePublished": p["date"], "dateModified": p["date"], "inLanguage": "en",
          "wordCount": words(p), "articleSection": CATS[p["cat"]], "mainEntityOfPage": url,
-         "author": {"@type": "Organization", "name": AUTHOR, "url": S["url"]},
+         "author": {"@type": "Organization", "name": plain(PG["blog-page"]["author"]), "url": S["url"]},
          "publisher": {"@type": "Organization", "name": "OXE Marketing", "logo": {"@type": "ImageObject", "url": S["url"] + "/assets/img/favicon.png"}}},
         {"@context": "https://schema.org", "@type": "FAQPage",
          "mainEntity": [{"@type": "Question", "name": plain(q), "acceptedAnswer": {"@type": "Answer", "text": plain(a)}} for q, a in p["faq"]]},
@@ -1270,7 +1323,7 @@ def post(p):
           <h1 class="split">{split_words(p["title"])}</h1>
           <p class="lead ahero__lead">{p["excerpt"]}</p>
           <div class="ahero__meta">
-            <span class="ahero__by"><img src="assets/img/favicon.png" alt="" width="36" height="36">{AUTHOR}</span>
+            <span class="ahero__by"><img src="assets/img/favicon.png" alt="" width="36" height="36">{PG["blog-page"]["author"]}</span>
             <span><time datetime="{p["date"]}">{nice_date(p["date"])}</time></span>
             <span>{read_min(p)} min read</span>
           </div>
@@ -1286,7 +1339,7 @@ def post(p):
         <div class="arail__in">
           <div class="aprog" data-min="{read_min(p)}" aria-hidden="true">{RING}<span><b data-prog>0%</b> read<small data-left>{read_min(p)} min left</small></span></div>
           <nav class="atoc" aria-label="In this article">
-            <p class="atoc__label">In this article</p>
+            <p class="atoc__label">{PG["blog-page"]["contents_label"]}</p>
             <ol>{toc}<li><a href="#faq">FAQ</a></li></ol>
           </nav>
         </div>
@@ -1296,18 +1349,18 @@ def post(p):
         <div class="acta reveal">
           <span class="acta__mark" aria-hidden="true">{ART[svc["art"]]}</span>
           <div>
-            <p class="acta__eb">Need a hand with this?</p>
+            <p class="acta__eb">{PG["blog-page"]["help_eyebrow"]}</p>
             <p class="acta__h">{svc["title"]} by OXE</p>
             <p>{svc["short"]}</p>
           </div>
-          {btn("Talk to our team", "contact.html?service=" + svc["key"])}
+          {btn(PG["blog-page"]["help_button"], "contact.html?service=" + svc["key"])}
         </div>
         <section class="afaq" id="faq" aria-labelledby="faq-h">
-          <h2 id="faq-h">Frequently asked <span class="hl">questions</span></h2>
+          <h2 id="faq-h">{PG["blog-page"]["faq_title"]}</h2>
           {faq}
         </section>
         <footer class="afoot">
-          <span class="ahero__by"><img src="assets/img/favicon.png" alt="" width="36" height="36"><span><b>{AUTHOR}</b><small>Multicultural digital marketing agency in Bangkok</small></span></span>
+          <span class="ahero__by"><img src="assets/img/favicon.png" alt="" width="36" height="36"><span><b>{PG["blog-page"]["author"]}</b><small>{PG["blog-page"]["author_line"]}</small></span></span>
           <a class="link-arrow" href="services.html#{svc["key"]}">Explore {plain(svc["title"])} {ARR}</a>
         </footer>
       </article>
@@ -1318,7 +1371,7 @@ def post(p):
     <div class="container">
       <a class="anext" href="blog/{nxt["slug"]}.html" data-scrub="enter">
         <div class="anext__copy">
-          <p class="anext__eb">Up next</p>
+          <p class="anext__eb">{PG["blog-page"]["next_label"]}</p>
           <p class="anext__cat">{CATS[nxt["cat"]]} · {read_min(nxt)} min read</p>
           <h2>{nxt["title"]}</h2>
           <span class="anext__go" aria-hidden="true">{ARR}</span>
@@ -1331,8 +1384,8 @@ def post(p):
   <section class="section section--flush">
     <div class="container">
       <div class="sec-row">
-        {sec_head("Keep reading", 'More <span class="hl">insights</span>')}
-        <div class="reveal">{btn("All Articles", "blog.html")}</div>
+        {sec_head(PG["blog-page"]["more_eyebrow"], PG["blog-page"]["more_title"])}
+        <div class="reveal">{btn(PG["blog-page"]["more_button"], "blog.html")}</div>
       </div>
       <div class="bgrid">{"".join(bitem(x) for x in rel[:3])}
       </div>
@@ -1346,8 +1399,8 @@ def latest_insights():
   <section class="section" id="insights">
     <div class="container">
       <div class="sec-row">
-        {sec_head("Blog", C.HOME["insights_title"], C.HOME["insights_text"])}
-        <div class="reveal">{btn("All Articles", "blog.html")}</div>
+        {sec_head(PG["home"]["insights_eyebrow"], C.HOME["insights_title"], C.HOME["insights_text"])}
+        <div class="reveal">{btn(PG["home"]["insights_button"], "blog.html")}</div>
       </div>
       <div class="bgrid">{"".join(bitem(x) for x in POSTS[:3])}
       </div>
@@ -1384,6 +1437,7 @@ if __name__ == "__main__":
         write(f'work/{p["id"]}.html', case(p))
     for p in POSTS:
         write(f'blog/{p["slug"]}.html', post(p))
-    write("thank-you.html", simple("thank-you.html", "Thank You", "Thank you! Message received.", "Our team will get back to you as soon as possible. Need a faster reply? Message us on WhatsApp."))
-    write("404.html", simple("404.html", "Page Not Found", "Sorry, we couldn't find that page.", "The page may have moved. Head back home or explore our work."))
+    ty, nf = T["thank_you"], T["not_found"]
+    write("thank-you.html", simple("thank-you.html", ty["title"], ty["heading"], ty["text"]))
+    write("404.html", simple("404.html", nf["title"], nf["heading"], nf["text"]))
     sitemap(list(pages) + [f'work/{p["id"]}.html' for p in PORT] + [f'blog/{p["slug"]}.html' for p in POSTS])

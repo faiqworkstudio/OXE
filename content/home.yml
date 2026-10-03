@@ -1,40 +1,77 @@
-hero_title: Helping businesses build a stronger digital presence in a *connected world*
-hero_text: OXE Marketing is a multicultural marketing agency in Bangkok helping businesses grow through websites, visual content, and digital storytelling.
-proof_title: Trusted by 20+ brands
-proof_text: Xiaomi, OPPO, Netflix & more
-intro_title: Websites, video and social content that help businesses *grow online*
-intro_text: 'More than just an agency: we are a multicultural team in Bangkok, creating the websites, visual content and campaigns that bring businesses more visibility and more enquiries.'
-services_title: Our *Services*
-services_text: We offer a full range of digital marketing services to help your brand grow, engage your audience, and achieve real results.
-why_title: A multicultural team with a *shared vision*
-why_text: We're a team of creators, strategists, and problem-solvers from different backgrounds, united by a passion for helping businesses grow in the digital world.
-principles:
-- icon: bulb
-  title: Creative & Innovative
-  text: Creativity combined with data-driven marketing, so the work looks exceptional and performs.
-- icon: results
-  title: Results Driven
-  text: Every strategy is built around your goals, so your investment generates real value.
-- icon: shield
-  title: Transparent & Reliable
-  text: Clear communication, honest advice, and reliable support at every stage.
-- icon: people
-  title: People Focused
-  text: 'Long-term partnerships: as your business grows, we keep refining the strategy with you.'
-works_title: Our *Works*
-works_text: Websites, campaigns and visual content we've created with brands across Thailand.
-works:
-- filter: web
-  title: Web Design
-  image: /assets/img/work/tailor-website.jpg
-- filter: social
-  title: Social Media
-  image: /assets/img/work/haji-strawberry.jpg
-- filter: video
-  title: Video Production
-  image: /assets/img/work/xiaomi-campaign.jpg
-- filter: photo
-  title: Photography
-  image: /assets/img/work/cake-strawberry-wide.jpg
-insights_title: Latest *insights*
-insights_text: Practical guides on websites, social media, video and photography for businesses in Thailand.
+sec_seo:
+  seo_title: OXE Marketing | Digital Marketing Agency in Bangkok
+  seo_description: 'Multicultural digital marketing agency in Bangkok: website design, social media marketing, video production, photography and digital strategy.'
+sec_hero:
+  hero_title: Helping businesses build a stronger digital presence in a *connected world*
+  hero_text: OXE Marketing is a multicultural marketing agency in Bangkok helping businesses grow through websites, visual content, and digital storytelling.
+  hero_button: Book a Consultation
+  proof_title: Trusted by 20+ brands
+  proof_text: Xiaomi, OPPO, Netflix & more
+sec_intro:
+  intro_title: Websites, video and social content that help businesses *grow online*
+  intro_text: 'More than just an agency: we are a multicultural team in Bangkok, creating the websites, visual content and campaigns that bring businesses more visibility and more enquiries.'
+  intro_cards:
+  - label: Website Design
+    link: work/tailor-website.html
+    image: /assets/img/work/ind-tailor.jpg
+    video: ''
+    alt: Platinum Tailor website by OXE Marketing
+  - label: Video Production
+    link: work/xiaomi-redmi-watch.html
+    image: ''
+    video: /assets/video/xiaomi-redmi-watch.mp4
+    alt: Xiaomi Redmi Watch campaign video by OXE Marketing
+sec_services:
+  services_eyebrow: What we do
+  services_title: Our *Services*
+  services_text: We offer a full range of digital marketing services to help your brand grow, engage your audience, and achieve real results.
+  services_button: All Services
+sec_why:
+  why_eyebrow: Why OXE
+  why_title: A multicultural team with a *shared vision*
+  why_text: We're a team of creators, strategists, and problem-solvers from different backgrounds, united by a passion for helping businesses grow in the digital world.
+  why_photos:
+  - image: /assets/img/work/bts-video-1.jpg
+    alt: The OXE Marketing crew filming a corporate interview in Bangkok
+  - image: /assets/img/work/bts-video-2.jpg
+    alt: OXE Marketing crew on a studio shoot
+  principles:
+  - icon: bulb
+    title: Creative & Innovative
+    text: Creativity combined with data-driven marketing, so the work looks exceptional and performs.
+  - icon: results
+    title: Results Driven
+    text: Every strategy is built around your goals, so your investment generates real value.
+  - icon: shield
+    title: Transparent & Reliable
+    text: Clear communication, honest advice, and reliable support at every stage.
+  - icon: people
+    title: People Focused
+    text: 'Long-term partnerships: as your business grows, we keep refining the strategy with you.'
+  why_button: More About OXE
+sec_works:
+  works_title: Our *Works*
+  works_text: Websites, campaigns and visual content we've created with brands across Thailand.
+  works_button: View Portfolio
+  works:
+  - filter: web
+    title: Web Design
+    image: /assets/img/work/tailor-website.jpg
+    video: ''
+  - filter: social
+    title: Social Media
+    image: /assets/img/work/haji-strawberry.jpg
+    video: ''
+  - filter: video
+    title: Video Production
+    image: /assets/img/work/xiaomi-campaign.jpg
+    video: /assets/video/xiaomi-redmi-watch.mp4
+  - filter: photo
+    title: Photography
+    image: /assets/img/work/cake-strawberry-wide.jpg
+    video: ''
+sec_insights:
+  insights_eyebrow: Blog
+  insights_title: Latest *insights*
+  insights_text: Practical guides on websites, social media, video and photography for businesses in Thailand.
+  insights_button: All Articles

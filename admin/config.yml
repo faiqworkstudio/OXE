@@ -2,6 +2,9 @@
 # Log in at https://www.oxemarketingth.com/admin with a GitHub account that can edit the repository.
 # Every "Publish" saves a commit to GitHub; Vercel then rebuilds the site (about 1–2 minutes).
 # Login goes through this site's /api/auth and /api/callback (see api/); the address is set in admin/index.html.
+#
+# Each page is one file in content/ (Pages collection); blog articles and portfolio projects are folders.
+# Field names must match the keys in those files: the build (src/content.py, src/build.py) reads them.
 
 backend:
   name: github
@@ -20,6 +23,7 @@ local_backend: true
 site_url: https://www.oxemarketingth.com
 display_url: https://www.oxemarketingth.com
 logo_url: /assets/img/oxe-wordmark.png
+show_preview_links: true
 
 # Photos you upload go here; the site converts them to fast WebP automatically
 media_folder: assets/img/work
@@ -30,11 +34,602 @@ slug:
   clean_accents: true
   sanitize_replacement: "-"
 
+# ------------------------------------------------------------------ reusable field definitions
+x-seo: &seo
+  label: "Google & social sharing (SEO)"
+  name: sec_seo
+  widget: object
+  collapsed: true
+  summary: "{{fields.seo_title}}"
+  fields:
+    - { label: Page title, name: seo_title, widget: string, pattern: ['^.{10,75}$', "Keep the title between 10 and 75 characters"], hint: "Shown in the browser tab and as the headline in Google. 50–65 characters works best." }
+    - { label: Description, name: seo_description, widget: text, pattern: ['^[\s\S]{50,170}$', "Keep the description between 50 and 170 characters"], hint: "Shown under the title in Google results. Aim for 140–160 characters." }
+
+x-heading: &heading_hint "Wrap words in *asterisks* to show them in the italic serif accent, e.g. Our *Services*."
+
+x-hero-photos: &hero_photos
+  label: Hero photos
+  name: photos
+  widget: list
+  min: 2
+  max: 2
+  field: { label: Photo, name: photo, widget: image }
+  hint: "The two tilted photos beside the heading (shown on large screens)."
+
+x-icon: &icon
+  label: Icon
+  name: icon
+  widget: select
+  options: [bulb, results, shield, people, layers, sliders, award2, chat, calendar, handshake2, target2, growth, heart, globe, strategy, web, video, camera, social, megaphone, users, eye, thumb]
+
+x-item: &item { label: Item, name: item, widget: string }
+
 collections:
 
-  # ------------------------------------------------------------------ BLOG
+  # ================================================================== PAGES
+  - name: pages
+    label: Pages
+    description: "Everything on the main pages: headings, text, buttons, photos and Google (SEO) text. Each page is split into sections; click a section to open it."
+    editor: { preview: false }
+    files:
+
+      # ---------------------------------------------------------- HOME
+      - label: Home
+        name: home
+        file: content/home.yml
+        preview_path: "index"
+        fields:
+          - *seo
+          - label: Hero (top of the page)
+            name: sec_hero
+            widget: object
+            collapsed: true
+            summary: "{{fields.hero_title}}"
+            fields:
+              - { label: Heading, name: hero_title, widget: string, hint: *heading_hint }
+              - { label: Text, name: hero_text, widget: text }
+              - { label: Button label, name: hero_button, widget: string }
+              - { label: Trust line (bold), name: proof_title, widget: string, hint: "Next to the first three client logos (Client logos page)." }
+              - { label: Trust line (small), name: proof_text, widget: string }
+          - label: Intro and the two picture cards
+            name: sec_intro
+            widget: object
+            collapsed: true
+            summary: "{{fields.intro_title}}"
+            fields:
+              - { label: Heading, name: intro_title, widget: string, hint: *heading_hint }
+              - { label: Text, name: intro_text, widget: text }
+              - label: Picture cards
+                name: intro_cards
+                widget: list
+                min: 2
+                max: 2
+                allow_add: false
+                allow_remove: false
+                summary: "{{fields.label}}"
+                fields:
+                  - { label: Label, name: label, widget: string }
+                  - { label: Link, name: link, widget: string, hint: "e.g. work/tailor-website.html or services.html#web" }
+                  - { label: Image, name: image, widget: image, required: false, hint: "Used when there is no video." }
+                  - { label: Video (MP4), name: video, widget: file, required: false, media_folder: /assets/video, public_folder: /assets/video, hint: "Optional. Needs a cover image named <video>-poster.jpg." }
+                  - { label: Image description, name: alt, widget: string, hint: "For screen readers and Google." }
+          - label: Services section
+            name: sec_services
+            widget: object
+            collapsed: true
+            summary: "{{fields.services_title}}"
+            hint: "The service cards themselves are edited on the Services page."
+            fields:
+              - { label: Small label, name: services_eyebrow, widget: string }
+              - { label: Heading, name: services_title, widget: string, hint: *heading_hint }
+              - { label: Text, name: services_text, widget: text }
+              - { label: Button label, name: services_button, widget: string }
+          - label: Why OXE section
+            name: sec_why
+            widget: object
+            collapsed: true
+            summary: "{{fields.why_title}}"
+            fields:
+              - { label: Small label, name: why_eyebrow, widget: string }
+              - { label: Heading, name: why_title, widget: string, hint: *heading_hint }
+              - { label: Text, name: why_text, widget: text }
+              - label: Photos
+                name: why_photos
+                widget: list
+                min: 2
+                max: 2
+                allow_add: false
+                allow_remove: false
+                summary: "{{fields.alt}}"
+                fields:
+                  - { label: Photo, name: image, widget: image }
+                  - { label: Photo description, name: alt, widget: string }
+              - label: Principles
+                name: principles
+                widget: list
+                min: 2
+                max: 6
+                summary: "{{fields.title}}"
+                fields: [*icon, { label: Title, name: title, widget: string }, { label: Text, name: text, widget: text }]
+              - { label: Button label, name: why_button, widget: string }
+          - label: Our Works section
+            name: sec_works
+            widget: object
+            collapsed: true
+            summary: "{{fields.works_title}}"
+            fields:
+              - { label: Heading, name: works_title, widget: string, hint: *heading_hint }
+              - { label: Text, name: works_text, widget: text }
+              - { label: Button label, name: works_button, widget: string }
+              - label: Rows
+                name: works
+                widget: list
+                allow_add: false
+                allow_remove: false
+                summary: "{{fields.title}}"
+                hint: "Each row links to the Portfolio filtered by its category, and shows its image (or video) on hover."
+                fields:
+                  - { label: Portfolio filter, name: filter, widget: select, options: [{ label: Web Design, value: web }, { label: Social Media, value: social }, { label: Video, value: video }, { label: Photography, value: photo }] }
+                  - { label: Title, name: title, widget: string }
+                  - { label: Image, name: image, widget: image }
+                  - { label: Video (MP4), name: video, widget: file, required: false, media_folder: /assets/video, public_folder: /assets/video }
+          - label: Latest blog articles section
+            name: sec_insights
+            widget: object
+            collapsed: true
+            summary: "{{fields.insights_title}}"
+            hint: "Shows the three newest articles automatically."
+            fields:
+              - { label: Small label, name: insights_eyebrow, widget: string }
+              - { label: Heading, name: insights_title, widget: string, hint: *heading_hint }
+              - { label: Text, name: insights_text, widget: text }
+              - { label: Button label, name: insights_button, widget: string }
+
+      # ---------------------------------------------------------- SERVICES
+      - label: Services
+        name: services
+        file: content/services.yml
+        preview_path: "services"
+        fields:
+          - *seo
+          - label: Hero (top of the page)
+            name: sec_hero
+            widget: object
+            collapsed: true
+            summary: "{{fields.title}}"
+            fields:
+              - { label: Breadcrumb label, name: eyebrow, widget: string }
+              - { label: Heading, name: title, widget: string, hint: *heading_hint }
+              - { label: Intro, name: intro, widget: text }
+              - *hero_photos
+          - label: Labels and buttons
+            name: sec_labels
+            widget: object
+            collapsed: true
+            summary: "{{fields.what_label}}"
+            fields:
+              - { label: “What we do” label, name: what_label, widget: string }
+              - { label: Booking button, name: book_button, widget: string }
+              - { label: Related work button, name: work_button, widget: string }
+          - label: Services
+            name: services
+            widget: list
+            allow_add: false
+            allow_remove: false
+            summary: "{{fields.title}}"
+            hint: "The five services, in order. They also appear as cards on the home page and in the footer."
+            fields:
+              - { name: key, widget: hidden }
+              - { name: num, widget: hidden }
+              - { name: art, widget: hidden }
+              - { label: Title, name: title, widget: string }
+              - { label: Short name, name: short_name, widget: string, hint: "Used in the floating menu while scrolling the Services page." }
+              - { label: Short description, name: short, widget: text, hint: "Used on the home page cards." }
+              - { label: Introduction, name: intro, widget: text, hint: "Used on the Services page." }
+              - { label: What we do, name: what, widget: list, field: *item }
+              - { label: Deliverables, name: deliverables, widget: list, field: *item }
+              - { label: Card image, name: image, widget: image, hint: "Home page card photo." }
+              - label: Slideshow images
+                name: slides
+                widget: list
+                required: false
+                summary: "{{fields.image}}"
+                hint: "Leave empty when this service shows videos instead."
+                fields:
+                  - { label: Image, name: image, widget: image }
+                  - { label: Show as a website on laptop + phone, name: mockup, widget: boolean, default: false }
+              - label: Videos
+                name: videos
+                widget: list
+                required: false
+                summary: "{{fields.client}}"
+                fields:
+                  - { label: Video (MP4), name: video, widget: file, media_folder: /assets/video, public_folder: /assets/video }
+                  - { label: Client, name: client, widget: string }
+          - label: Industries section
+            name: sec_industries
+            widget: object
+            collapsed: true
+            summary: "{{fields.industries_title}}"
+            fields:
+              - { label: Small label, name: industries_eyebrow, widget: string }
+              - { label: Heading, name: industries_title, widget: string, hint: *heading_hint }
+              - { label: Text, name: industries_text, widget: text }
+              - label: Industries
+                name: industries
+                widget: list
+                summary: "{{fields.name}}"
+                fields:
+                  - { label: Industry, name: name, widget: string }
+                  - { label: Image, name: image, widget: image }
+
+      # ---------------------------------------------------------- PORTFOLIO
+      - label: Portfolio
+        name: portfolio
+        file: content/portfolio.yml
+        preview_path: "portfolio"
+        fields:
+          - *seo
+          - label: Hero (top of the page)
+            name: sec_hero
+            widget: object
+            collapsed: true
+            summary: "{{fields.title}}"
+            fields:
+              - { label: Breadcrumb label, name: eyebrow, widget: string }
+              - { label: Heading, name: title, widget: string, hint: *heading_hint }
+              - { label: Intro, name: intro, widget: text }
+              - *hero_photos
+              - { label: “Projects” label, name: stats_projects, widget: string, hint: "The number is counted automatically." }
+              - { label: “Disciplines” label, name: stats_disciplines, widget: string, hint: "The number is counted automatically." }
+              - { label: Brands number, name: stats_brands_value, widget: string }
+              - { label: “Brands” label, name: stats_brands, widget: string }
+          - label: Featured project
+            name: sec_featured
+            widget: object
+            collapsed: true
+            summary: "{{fields.featured_project}}"
+            fields:
+              - { label: Label, name: featured_label, widget: string }
+              - { label: Project, name: featured_project, widget: relation, collection: projects, value_field: id, search_fields: [client, title], display_fields: ["{{client}}: {{title}}"] }
+              - { label: Client logo, name: featured_logo, widget: image, required: false, media_folder: /assets/img/clients, public_folder: /assets/img/clients }
+              - { label: Scope, name: featured_scope, widget: string }
+              - { label: Link label, name: featured_link, widget: string }
+          - label: Project grid
+            name: sec_grid
+            widget: object
+            collapsed: true
+            summary: "{{fields.more_button}}"
+            hint: "The projects themselves are edited under Portfolio projects."
+            fields:
+              - { label: “View more” button, name: more_button, widget: string }
+              - { label: Message when a filter has no projects, name: empty_text, widget: string }
+
+      # ---------------------------------------------------------- ABOUT
+      - label: About
+        name: about
+        file: content/about.yml
+        preview_path: "about"
+        fields:
+          - *seo
+          - label: Hero and key facts
+            name: sec_hero
+            widget: object
+            collapsed: true
+            summary: "{{fields.title}}"
+            fields:
+              - { label: Breadcrumb label, name: eyebrow, widget: string }
+              - { label: Heading, name: title, widget: string, hint: *heading_hint }
+              - { label: Positioning line, name: positioning, widget: text }
+              - *hero_photos
+              - label: Key facts
+                name: facts
+                widget: list
+                min: 2
+                max: 6
+                summary: "{{fields.value}} {{fields.label}}"
+                fields:
+                  - { label: Value, name: value, widget: string }
+                  - { label: Label, name: label, widget: string }
+          - label: Mission and vision
+            name: sec_mission
+            widget: object
+            collapsed: true
+            summary: "{{fields.mission}}"
+            fields:
+              - { label: Mission label, name: mission_label, widget: string }
+              - { label: Mission, name: mission, widget: text }
+              - { label: Vision label, name: vision_label, widget: string }
+              - { label: Vision, name: vision, widget: text }
+          - label: Our story
+            name: sec_story
+            widget: object
+            collapsed: true
+            summary: "{{fields.story_title}}"
+            fields:
+              - { label: Small label, name: story_eyebrow, widget: string }
+              - { label: Heading, name: story_title, widget: string, hint: *heading_hint }
+              - { label: First paragraph, name: intro, widget: text }
+              - { label: More paragraphs, name: story, widget: list, field: { label: Paragraph, name: paragraph, widget: text } }
+              - label: Photos
+                name: story_photos
+                widget: list
+                min: 3
+                max: 3
+                summary: "{{fields.alt}}"
+                fields:
+                  - { label: Photo, name: image, widget: image }
+                  - { label: Photo description, name: alt, widget: string }
+          - label: Why companies choose OXE
+            name: sec_why
+            widget: object
+            collapsed: true
+            summary: "{{fields.why_title}}"
+            fields:
+              - { label: Small label, name: why_eyebrow, widget: string }
+              - { label: Heading, name: why_title, widget: string, hint: *heading_hint }
+              - label: Reasons
+                name: choose
+                widget: list
+                min: 8
+                max: 8
+                allow_add: false
+                allow_remove: false
+                summary: "{{fields.title}}"
+                hint: "Eight cards in a fixed grid: the 3rd shows 3D art, the 5th a photo and the 7th the year."
+                fields: [*icon, { label: Title, name: title, widget: string }, { label: Text, name: text, widget: text }]
+              - { label: Photo card image, name: bento_photo, widget: image }
+              - { label: Photo description, name: bento_photo_alt, widget: string }
+              - { label: Year shown on the 7th card, name: bento_year, widget: string }
+
+      # ---------------------------------------------------------- BLOG PAGE
+      - label: Blog page
+        name: blog-page
+        file: content/blog-page.yml
+        preview_path: "blog"
+        fields:
+          - *seo
+          - label: Hero (top of the page)
+            name: sec_hero
+            widget: object
+            collapsed: true
+            summary: "{{fields.title}}"
+            fields:
+              - { label: Breadcrumb label, name: eyebrow, widget: string }
+              - { label: Heading, name: title, widget: string, hint: *heading_hint }
+              - { label: Intro, name: intro, widget: text }
+          - label: Article list
+            name: sec_list
+            widget: object
+            collapsed: true
+            summary: "{{fields.all_title}}"
+            fields:
+              - { label: “Latest article” label, name: latest_label, widget: string }
+              - { label: Read button, name: read_button, widget: string }
+              - { label: List heading, name: all_title, widget: string, hint: *heading_hint }
+          - label: Article pages (labels on every article)
+            name: sec_article
+            widget: object
+            collapsed: true
+            summary: "{{fields.author}}"
+            fields:
+              - { label: Author name, name: author, widget: string }
+              - { label: Author line, name: author_line, widget: string }
+              - { label: Contents label, name: contents_label, widget: string }
+              - { label: Help box label, name: help_eyebrow, widget: string }
+              - { label: Help box button, name: help_button, widget: string }
+              - { label: FAQ heading, name: faq_title, widget: string, hint: *heading_hint }
+              - { label: “Up next” label, name: next_label, widget: string }
+              - { label: More articles label, name: more_eyebrow, widget: string }
+              - { label: More articles heading, name: more_title, widget: string, hint: *heading_hint }
+              - { label: More articles button, name: more_button, widget: string }
+
+      # ---------------------------------------------------------- CONTACT
+      - label: Contact
+        name: contact
+        file: content/contact.yml
+        preview_path: "contact"
+        fields:
+          - *seo
+          - label: Hero (top of the page)
+            name: sec_hero
+            widget: object
+            collapsed: true
+            summary: "{{fields.title}}"
+            fields:
+              - { label: Breadcrumb label, name: eyebrow, widget: string }
+              - { label: Heading, name: title, widget: string, hint: *heading_hint }
+              - { label: Intro, name: intro, widget: text }
+              - *hero_photos
+          - label: Enquiry form
+            name: sec_form
+            widget: object
+            collapsed: true
+            summary: "{{fields.form_title}}"
+            hint: "The service and budget options are under Contact details & settings."
+            fields:
+              - { label: Heading, name: form_title, widget: string, hint: *heading_hint }
+              - { label: Step 1 heading, name: step_1, widget: string }
+              - { label: Step 2 heading, name: step_2, widget: string }
+              - { label: Step 3 heading, name: step_3, widget: string }
+              - { label: Project details label, name: details_label, widget: string }
+              - { label: Project details placeholder, name: details_placeholder, widget: string }
+              - { label: Budget label, name: budget_label, widget: string }
+              - { label: “Reply by” label, name: reply_label, widget: string }
+              - { label: Send button, name: submit_button, widget: string }
+              - { label: Chat prompt, name: chat_prompt, widget: string }
+              - { label: Chat link, name: chat_link, widget: string }
+              - { label: Message after sending, name: success_message, widget: text }
+          - label: Contact tiles
+            name: sec_tiles
+            widget: object
+            collapsed: true
+            summary: "{{fields.whatsapp_label}}"
+            hint: "The email, phone and WhatsApp number come from Contact details & settings."
+            fields:
+              - { label: WhatsApp tile label, name: whatsapp_label, widget: string }
+              - { label: Email tile label, name: email_label, widget: string }
+              - { label: Call tile label, name: call_label, widget: string }
+              - { label: Clock tile label, name: time_label, widget: string }
+          - label: What happens next
+            name: sec_steps
+            widget: object
+            collapsed: true
+            summary: "{{fields.steps_title}}"
+            fields:
+              - { label: Small label, name: steps_eyebrow, widget: string }
+              - { label: Heading, name: steps_title, widget: string, hint: *heading_hint }
+              - label: Steps
+                name: steps
+                widget: list
+                min: 3
+                max: 3
+                allow_add: false
+                allow_remove: false
+                summary: "{{fields.title}}"
+                fields:
+                  - { label: Title, name: title, widget: string }
+                  - { label: Text, name: text, widget: text }
+          - label: Map
+            name: sec_map
+            widget: object
+            collapsed: true
+            summary: "{{fields.map_location}}"
+            fields:
+              - { label: Location shown on the map, name: map_location, widget: string, hint: "An address or place, e.g. Bangkok,Thailand or a street address." }
+
+      # ---------------------------------------------------------- SITE-WIDE
+      - label: Menu, footer & shared sections
+        name: site
+        file: content/site.yml
+        fields:
+          - { label: Header button, name: header_button, widget: string }
+          - label: Menu
+            name: menu
+            widget: list
+            allow_add: false
+            allow_remove: false
+            summary: "{{fields.label}}"
+            hint: "Top menu items and the panel that opens under each one. Drag to reorder."
+            fields:
+              - { name: page, widget: hidden }
+              - { name: panel, widget: hidden }
+              - { label: Menu label, name: label, widget: string }
+              - { label: Panel small label, name: eyebrow, widget: string }
+              - { label: Panel intro, name: intro, widget: string }
+              - { label: Panel images, name: images, widget: list, required: false, max: 3, field: { label: Image, name: image, widget: image }, hint: "1 image, or 3 for a mosaic. Not used for Services (3D art) or Contact (contact links)." }
+              - label: Panel links
+                name: links
+                widget: list
+                summary: "{{fields.label}}"
+                fields:
+                  - { label: Label, name: label, widget: string }
+                  - { label: Link, name: link, widget: string, hint: "e.g. services.html#web, portfolio.html?filter=video or blog.html?cat=social" }
+          - label: Moving words under each page heading
+            name: ticker
+            widget: list
+            min: 3
+            field: { label: Word, name: word, widget: string }
+          - { label: Circular badge text, name: badge_text, widget: string, hint: "The text running around the round badge." }
+          - label: “Get in touch” section (bottom of every page)
+            name: contact_band
+            widget: object
+            collapsed: true
+            summary: "{{fields.title}}"
+            fields:
+              - { label: Heading, name: title, widget: string, hint: *heading_hint }
+              - { label: Text, name: text, widget: text }
+              - { label: Button label, name: button, widget: string }
+              - { label: Card label, name: card_label, widget: string }
+          - label: Client logos section (About page)
+            name: clients
+            widget: object
+            collapsed: true
+            summary: "{{fields.title}}"
+            hint: "The logos themselves are on the Client logos page."
+            fields:
+              - { label: Small label, name: eyebrow, widget: string }
+              - { label: Heading, name: title, widget: string, hint: *heading_hint }
+              - { label: Text, name: text, widget: text }
+              - { label: Button label, name: button, widget: string }
+          - label: Footer
+            name: footer
+            widget: object
+            collapsed: true
+            summary: "{{fields.slogan}}"
+            fields:
+              - { label: Text under the logo, name: text, widget: text }
+              - { label: Slogan, name: slogan, widget: string }
+              - { label: Copyright line, name: copyright, widget: string, hint: "The year is added automatically." }
+          - label: Case-study pages (labels)
+            name: case_study
+            widget: object
+            collapsed: true
+            summary: "{{fields.start_button}}"
+            fields:
+              - { label: Services heading, name: services_title, widget: string }
+              - { label: Button, name: start_button, widget: string }
+              - { label: Next project label, name: next_label, widget: string }
+          - label: Thank-you page
+            name: thank_you
+            widget: object
+            collapsed: true
+            summary: "{{fields.heading}}"
+            fields:
+              - { label: Browser title, name: title, widget: string }
+              - { label: Heading, name: heading, widget: string }
+              - { label: Text, name: text, widget: text }
+          - label: “Page not found” page
+            name: not_found
+            widget: object
+            collapsed: true
+            summary: "{{fields.heading}}"
+            fields:
+              - { label: Browser title, name: title, widget: string }
+              - { label: Heading, name: heading, widget: string }
+              - { label: Text, name: text, widget: text }
+
+      # ---------------------------------------------------------- CLIENT LOGOS
+      - label: Client logos
+        name: clients
+        file: content/clients.yml
+        fields:
+          - label: Clients
+            name: clients
+            widget: list
+            summary: "{{fields.name}}"
+            hint: "Shown on the About page. The first three also appear in the home hero. Drag to reorder."
+            fields:
+              - { label: Logo, name: logo, widget: image, media_folder: /assets/img/clients, public_folder: /assets/img/clients, hint: "Square PNG (transparent background is fine) or JPG." }
+              - { label: Brand name, name: name, widget: string, required: false }
+
+      # ---------------------------------------------------------- SETTINGS
+      - label: Contact details & settings
+        name: settings
+        file: content/settings.yml
+        fields:
+          - { label: Email, name: email, widget: string, pattern: ['^[^@\s]+@[^@\s]+\.[^@\s]+$', "Enter a valid email address"] }
+          - { label: Phone (as shown), name: phone, widget: string, hint: "e.g. +66 82 448 0050" }
+          - { label: WhatsApp number, name: whatsapp_number, widget: string, pattern: ['^\d{8,15}$', "Digits only, with the country code, e.g. 66824480050"] }
+          - { label: WhatsApp greeting, name: whatsapp_message, widget: string, hint: "Pre-filled message when someone taps WhatsApp." }
+          - { label: City, name: city, widget: string }
+          - { label: Founded, name: founded, widget: string }
+          - { label: Contact form key, name: form_key, widget: string, required: false, hint: "Free key from web3forms.com (enter Sales@oxemarketingth.com there and paste the key you receive). Enquiries are then emailed to that address. Without a key, the form opens the visitor's email app or WhatsApp instead." }
+          - label: Social media links
+            name: social
+            widget: object
+            hint: "Full profile URLs starting with https://. Leave empty to hide an icon."
+            fields:
+              - { label: Facebook, name: facebook, widget: string, required: false, pattern: ['^(https://.+)?$', "Start with https://"] }
+              - { label: Instagram, name: instagram, widget: string, required: false, pattern: ['^(https://.+)?$', "Start with https://"] }
+              - { label: TikTok, name: tiktok, widget: string, required: false, pattern: ['^(https://.+)?$', "Start with https://"] }
+              - { label: LinkedIn, name: linkedin, widget: string, required: false, pattern: ['^(https://.+)?$', "Start with https://"] }
+          - { label: Contact form services, name: form_services, widget: list, field: *item }
+          - { label: Contact form budgets, name: form_budgets, widget: list, field: *item, hint: "Price ranges people can pick in the enquiry form." }
+
+  # ================================================================== BLOG
   - name: blog
-    label: Blog
+    label: Blog articles
     label_singular: Article
     description: "Articles on the Blog page. The newest three also appear on the home page. Untick “Draft” to publish."
     folder: content/blog
@@ -51,10 +646,10 @@ collections:
       - { label: "Photography", field: category, pattern: photo }
       - { label: "Strategy", field: category, pattern: strategy }
       - { label: "Drafts", field: draft, pattern: true }
-    preview_path: "blog/{{slug}}.html"
+    preview_path: "blog/{{slug}}"
     fields:
-      - { label: Title, name: title, widget: string, hint: "The article headline (also used for Google). Around 50–70 characters works best." }
-      - { label: Meta description, name: description, widget: text, hint: "Shown in Google results under the title. Aim for 140–160 characters." }
+      - { label: Title, name: title, widget: string, pattern: ['^.{10,110}$', "Keep the title between 10 and 110 characters"], hint: "The article headline (also used for Google). Around 50–70 characters works best." }
+      - { label: Meta description, name: description, widget: text, pattern: ['^[\s\S]{50,170}$', "Keep it between 50 and 170 characters"], hint: "Shown in Google results under the title. Aim for 140–160 characters." }
       - label: Topic
         name: category
         widget: select
@@ -84,7 +679,7 @@ collections:
           - { label: Question, name: question, widget: string }
           - { label: Answer, name: answer, widget: text }
 
-  # ------------------------------------------------------------------ PORTFOLIO
+  # ================================================================== PORTFOLIO PROJECTS
   - name: projects
     label: Portfolio projects
     label_singular: Project
@@ -98,10 +693,10 @@ collections:
     slug: "{{fields.id}}"
     summary: "{{order}} · {{client}}: {{title}}"
     sortable_fields: [order, client]
-    preview_path: "work/{{fields.id}}.html"
+    preview_path: "work/{{fields.id}}"
     fields:
       - { label: Page address, name: id, widget: string, pattern: ['^[a-z0-9]+(-[a-z0-9]+)*$', "Lowercase letters, numbers and dashes only, e.g. haji-cafe"], hint: "Becomes the page link: oxemarketingth.com/work/your-address. Don't change it after publishing." }
-      - { label: Order, name: order, widget: number, value_type: int, default: 200, hint: "Position on the Portfolio page: 10 shows first, 20 second, and so on." }
+      - { label: Order, name: order, widget: number, value_type: int, default: 200, min: 0, hint: "Position on the Portfolio page: 10 shows first, 20 second, and so on." }
       - { label: Client, name: client, widget: string }
       - { label: Project title, name: title, widget: string }
       - label: Portfolio filters
@@ -138,178 +733,5 @@ collections:
       - { label: Challenge, name: challenge, widget: text, required: false, hint: "Leave empty if not known: the page shows “case study coming soon”." }
       - { label: Solution, name: solution, widget: text, required: false }
       - { label: Outcome, name: outcome, widget: text, required: false, hint: "Only real results supplied by the client. No invented numbers." }
-      - { label: Tags, name: tags, widget: list, required: false, field: { label: Item, name: item, widget: string } }
-      - { label: Services provided, name: services, widget: list, required: false, field: { label: Item, name: item, widget: string } }
-
-  # ------------------------------------------------------------------ PAGES & SETTINGS
-  - name: pages
-    label: Pages
-    editor: { preview: false }
-    description: "Text on the main pages. Wrap words in *asterisks* in a heading to show them in the italic serif accent."
-    files:
-
-      - label: Home page
-        name: home
-        file: content/home.yml
-        preview_path: "index.html"
-        fields:
-          - { label: Hero heading, name: hero_title, widget: string, hint: "Wrap words in *asterisks* for the italic accent." }
-          - { label: Hero text, name: hero_text, widget: text }
-          - { label: Trust line (bold), name: proof_title, widget: string }
-          - { label: Trust line (small), name: proof_text, widget: string }
-          - { label: Intro heading, name: intro_title, widget: string }
-          - { label: Intro text, name: intro_text, widget: text }
-          - { label: Services heading, name: services_title, widget: string }
-          - { label: Services text, name: services_text, widget: text }
-          - { label: Why OXE heading, name: why_title, widget: string }
-          - { label: Why OXE text, name: why_text, widget: text }
-          - label: Why OXE principles
-            name: principles
-            widget: list
-            summary: "{{fields.title}}"
-            fields: &iconfields
-              - label: Icon
-                name: icon
-                widget: select
-                options: [bulb, results, shield, people, layers, sliders, award2, chat, calendar, handshake2, target2, growth, heart, globe, strategy, web, video, camera, social, megaphone, users, eye, thumb]
-              - { label: Title, name: title, widget: string }
-              - { label: Text, name: text, widget: text }
-          - { label: Our Works heading, name: works_title, widget: string }
-          - { label: Our Works text, name: works_text, widget: text }
-          - label: Our Works rows
-            name: works
-            widget: list
-            allow_add: false
-            summary: "{{fields.title}}"
-            fields:
-              - { label: Portfolio filter, name: filter, widget: select, options: [web, social, video, photo] }
-              - { label: Title, name: title, widget: string }
-              - { label: Image, name: image, widget: image }
-          - { label: Blog section heading, name: insights_title, widget: string }
-          - { label: Blog section text, name: insights_text, widget: text }
-
-      - label: About page
-        name: about
-        file: content/about.yml
-        preview_path: "about.html"
-        fields:
-          - { label: Heading, name: title, widget: string, hint: "Wrap words in *asterisks* for the italic accent." }
-          - { label: Positioning line, name: positioning, widget: text }
-          - { label: Intro, name: intro, widget: text }
-          - { label: Our story, name: story, widget: list, field: { label: Paragraph, name: paragraph, widget: text } }
-          - { label: Mission, name: mission, widget: text }
-          - { label: Vision, name: vision, widget: text }
-          - label: Key facts
-            name: facts
-            widget: list
-            summary: "{{fields.value}} {{fields.label}}"
-            fields:
-              - { label: Value, name: value, widget: string }
-              - { label: Label, name: label, widget: string }
-          - { label: Why companies choose OXE, name: choose, widget: list, summary: "{{fields.title}}", fields: *iconfields }
-
-      - label: Page headers
-        name: page_headers
-        file: content/pages.yml
-        fields:
-          - label: Services page
-            name: services
-            widget: object
-            fields: [{ label: Heading, name: title, widget: string }, { label: Intro, name: intro, widget: text }]
-          - label: Portfolio page
-            name: portfolio
-            widget: object
-            fields: [{ label: Heading, name: title, widget: string }, { label: Intro, name: intro, widget: text }]
-          - label: Blog page
-            name: blog
-            widget: object
-            fields: [{ label: Heading, name: title, widget: string }, { label: Intro, name: intro, widget: text }]
-          - label: Contact page
-            name: contact
-            widget: object
-            fields: [{ label: Heading, name: title, widget: string }, { label: Intro, name: intro, widget: text }]
-          - label: “Get in touch” section (bottom of every page)
-            name: contact_band
-            widget: object
-            fields: [{ label: Heading, name: title, widget: string }, { label: Text, name: text, widget: text }]
-
-      - label: Services
-        name: services
-        file: content/services.yml
-        preview_path: "services.html"
-        fields:
-          - label: Services
-            name: services
-            widget: list
-            allow_add: false
-            summary: "{{fields.title}}"
-            fields:
-              - { name: key, widget: hidden }
-              - { name: num, widget: hidden }
-              - { name: art, widget: hidden }
-              - { label: Title, name: title, widget: string }
-              - { label: Short description, name: short, widget: text, hint: "Used on the home page cards." }
-              - { label: Introduction, name: intro, widget: text, hint: "Used on the Services page." }
-              - { label: What we do, name: what, widget: list, field: { label: Item, name: item, widget: string } }
-              - { label: Deliverables, name: deliverables, widget: list, field: { label: Item, name: item, widget: string } }
-              - { label: Card image, name: image, widget: image }
-              - label: Slideshow images
-                name: slides
-                widget: list
-                required: false
-                summary: "{{fields.image}}"
-                hint: "Leave empty when this service shows videos instead."
-                fields:
-                  - { label: Image, name: image, widget: image }
-                  - { label: Show as a website on laptop + phone, name: mockup, widget: boolean, default: false }
-              - label: Videos
-                name: videos
-                widget: list
-                required: false
-                summary: "{{fields.client}}"
-                fields:
-                  - { label: Video (MP4), name: video, widget: file, media_folder: /assets/video, public_folder: /assets/video }
-                  - { label: Client, name: client, widget: string }
-          - label: Industries we worked with
-            name: industries
-            widget: list
-            summary: "{{fields.name}}"
-            fields:
-              - { label: Industry, name: name, widget: string }
-              - { label: Image, name: image, widget: image }
-
-      - label: Client logos
-        name: clients
-        file: content/clients.yml
-        fields:
-          - label: Clients
-            name: clients
-            widget: list
-            summary: "{{fields.name}}"
-            hint: "Shown on the home and About pages. The first three also appear in the home hero. Drag to reorder."
-            fields:
-              - { label: Logo, name: logo, widget: image, media_folder: /assets/img/clients, public_folder: /assets/img/clients, hint: "Square PNG (transparent background is fine) or JPG." }
-              - { label: Brand name, name: name, widget: string, required: false }
-
-      - label: Contact details & settings
-        name: settings
-        file: content/settings.yml
-        fields:
-          - { label: Email, name: email, widget: string }
-          - { label: Phone (as shown), name: phone, widget: string, hint: "e.g. +66 82 448 0050" }
-          - { label: WhatsApp number, name: whatsapp_number, widget: string, hint: "Country code + number, digits only, e.g. 66824480050" }
-          - { label: WhatsApp greeting, name: whatsapp_message, widget: string, hint: "Pre-filled message when someone taps WhatsApp." }
-          - { label: City, name: city, widget: string }
-          - { label: Founded, name: founded, widget: string }
-          - { label: Contact form key, name: form_key, widget: string, required: false, hint: "Free key from web3forms.com (enter Sales@oxemarketingth.com there and paste the key you receive). Enquiries are then emailed to that address. Without a key, the form opens the visitor's email app or WhatsApp instead." }
-          - label: Social media links
-            name: social
-            widget: object
-            hint: "Full profile URLs. Leave empty to hide an icon."
-            fields:
-              - { label: Facebook, name: facebook, widget: string, required: false }
-              - { label: Instagram, name: instagram, widget: string, required: false }
-              - { label: TikTok, name: tiktok, widget: string, required: false }
-              - { label: LinkedIn, name: linkedin, widget: string, required: false }
-          - { label: Contact form services, name: form_services, widget: list, field: { label: Item, name: item, widget: string } }
-          - { label: Contact form budgets, name: form_budgets, widget: list, field: { label: Item, name: item, widget: string }, hint: "Price ranges people can pick in the enquiry form." }
+      - { label: Tags, name: tags, widget: list, required: false, field: *item }
+      - { label: Services provided, name: services, widget: list, required: false, field: *item }

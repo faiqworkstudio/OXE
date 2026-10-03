@@ -1,0 +1,40 @@
+sec_seo:
+  seo_title: Contact OXE Marketing | Digital Marketing Agency Bangkok
+  seo_description: 'Contact OXE Marketing in Bangkok: email Sales@oxemarketingth.com, call +66 82 448 0050 or message us on WhatsApp to discuss your project.'
+sec_hero:
+  eyebrow: Contact
+  title: Let's create something *great together*
+  intro: Whether you're looking to build a new website, grow your brand through social media, or create professional photo and video content, we're here to help.
+  photos:
+  - /assets/img/work/bts-video-1.jpg
+  - /assets/img/work/ind-hospitality.jpg
+sec_form:
+  form_title: Tell us about your *project*
+  step_1: What can we help with?
+  step_2: About you
+  step_3: Your project
+  details_label: Project details
+  details_placeholder: Your goals, timeline and anything else we should know
+  budget_label: Budget
+  reply_label: Reply by
+  submit_button: Send message
+  chat_prompt: Prefer to chat?
+  chat_link: Message us on WhatsApp
+  success_message: Thank you! Your message has been sent. Our team will get back to you shortly.
+sec_tiles:
+  whatsapp_label: Chat with us
+  email_label: Write to us
+  call_label: Talk to us
+  time_label: Local time in Bangkok
+sec_steps:
+  steps_eyebrow: What happens next
+  steps_title: Three simple *steps*
+  steps:
+  - title: We read your message
+    text: Tell us about your business and goals. The more detail, the better.
+  - title: We have a short call
+    text: We learn about your business, audience and timeline, and answer your questions.
+  - title: You get a clear proposal
+    text: Scope, timeline and budget, so you know exactly what you're getting.
+sec_map:
+  map_location: Bangkok,Thailand
