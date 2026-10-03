@@ -2,10 +2,11 @@
   "name": "oxe-website",
   "private": true,
   "description": "OXE Marketing website: static pages built by src/build.py, plus the admin API in api/",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "admin:dev": "node scripts/admin-dev-server.js",
-    "admin:password": "node scripts/admin-password.js"
+    "admin:dev": "node scripts/admin-dev-server.js"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0"

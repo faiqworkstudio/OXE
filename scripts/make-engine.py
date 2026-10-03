@@ -34,3 +34,31 @@ for folder in ("assets/img", "assets/video", "assets/css", "assets/js"):
 with open(os.path.join(out, "engine.json"), "w") as fh:
     json.dump({"files": sorted(files), "assets": sorted(assets), "sizes": sizes}, fh, separators=(",", ":"))
 print(f"Preview engine: {len(files)} source files, {len(assets)} assets, {len(sizes)} image sizes -> {os.path.relpath(out, ROOT)}")
+
+# Demo account data: a read-only copy of the content, so the admin can be explored with the
+# demo login without touching the real site. Turn it off with ADMIN_DEMO=off at build time.
+demo_dir = os.path.join(os.path.dirname(out), "demo")
+if os.environ.get("ADMIN_DEMO", "on").lower() in ("off", "0", "false", "no"):
+    shutil.rmtree(demo_dir, ignore_errors=True)
+    print("Admin demo: off")
+else:
+    import subprocess
+    content = {}
+    for base, dirs, names in os.walk(os.path.join(ROOT, "content")):
+        for n in names:
+            if n.endswith((".yml", ".md")):
+                rel = os.path.relpath(os.path.join(base, n), ROOT).replace(os.sep, "/")
+                content[rel] = open(os.path.join(ROOT, rel), encoding="utf-8").read()
+    media = [{"path": a, "size": os.path.getsize(os.path.join(ROOT, a))} for a in assets if a.startswith(("assets/img/", "assets/video/"))]
+    history = []
+    try:
+        log = subprocess.run(["git", "log", "-n15", "--format=%H%x1f%s%x1f%aI%x1f%an"], cwd=ROOT, capture_output=True, text=True, timeout=10).stdout
+        for line in log.splitlines():
+            sha, msg, date, author = line.split("\x1f")
+            history.append({"sha": sha, "message": msg, "date": date, "author": author})
+    except Exception:
+        pass
+    os.makedirs(demo_dir, exist_ok=True)
+    with open(os.path.join(demo_dir, "bundle.json"), "w", encoding="utf-8") as fh:
+        json.dump({"head": "demo", "files": content, "media": media, "history": history}, fh, ensure_ascii=False, separators=(",", ":"))
+    print(f"Admin demo: {len(content)} content files, {len(media)} media files")

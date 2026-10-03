@@ -25,7 +25,7 @@ The site is hosted on Vercel, and all content is edited in the branded admin at 
 
 ## Editing the website (no code)
 
-Go to **https://www.oxemarketingth.com/admin** and log in with your username and password. The admin uses the OXE look and is built for this site, and nothing goes live until you publish.
+Go to **https://www.oxemarketingth.com/admin** and log in with your email and password. The admin uses the OXE look and is built for this site, and nothing goes live until you publish.
 
 | Area | What you can do |
 |---|---|
@@ -48,22 +48,44 @@ Go to **https://www.oxemarketingth.com/admin** and log in with your username and
 
 In headings, wrap words in `*asterisks*` to show them in the italic serif accent, e.g. `Our *Services*`.
 
-### Setting up the admin (once, in Vercel)
+### Logging in
 
-In the Vercel project, go to **Settings → Environment Variables**, add the following, then redeploy:
+The admin login uses **Supabase Auth**. Supabase stores and checks passwords, limits repeated attempts and sends password-reset emails. After a successful login, the site gives the admin a signed, HttpOnly session cookie that lasts 12 hours.
+
+**Demo account.** To look around before Supabase is connected, log in with:
+
+- email: `demo`
+- password: `OXE-demo-2026`
+
+The demo uses a copy of the site's content, and publishing in it is only simulated, so the real website is never changed. To turn the demo off, set `ADMIN_DEMO=off` in Vercel and redeploy.
+
+### Setting up the admin (once)
+
+1. **Supabase.** Create a project at supabase.com (the free plan is fine).
+   - In **Authentication → Sign In / Providers**, keep **Email** on, and turn off **Allow new users to sign up**, so only people you invite get accounts.
+   - In **Authentication → URL Configuration**, set the Site URL to `https://www.oxemarketingth.com` and add `https://www.oxemarketingth.com/admin` to the redirect URLs, for password-reset links.
+   - In **Authentication → Users**, use **Add user** or **Invite user** for each editor.
+2. **Who can open the admin.** Either list the editors' emails in `ADMIN_EMAILS`, or give a user the admin role in Supabase's SQL editor:
+
+   ```sql
+   update auth.users set raw_app_meta_data = raw_app_meta_data || '{"role":"admin"}' where email = 'you@oxemarketingth.com';
+   ```
+
+   Other Supabase accounts are refused.
+3. **Vercel.** In **Settings → Environment Variables**, add the following, then redeploy:
 
 | Variable | Value |
 |---|---|
-| `ADMIN_USERNAME` and `ADMIN_PASSWORD` | Login for one admin user (use a long password) |
-| `ADMIN_USERS` (instead, for several users) | One line per user: `name:scrypt$…`. Create a line with `node scripts/admin-password.js <name>`; it stores a hash, not the password |
-| `SESSION_SECRET` | A long random string, at least 32 characters (e.g. from a password generator) |
-| `GITHUB_TOKEN` | A GitHub fine-grained token for **this repository only**, with **Contents: Read and write** (GitHub → Settings → Developer settings → Fine-grained tokens). The admin saves through it; it is never sent to the browser |
+| `SUPABASE_URL` | Supabase → Project Settings → API → Project URL (`https://….supabase.co`) |
+| `SUPABASE_ANON_KEY` | Supabase → Project Settings → API → the `anon` / publishable key |
+| `SESSION_SECRET` | A long random string, at least 32 characters |
+| `ADMIN_EMAILS` *(optional)* | Comma-separated emails allowed into the admin, e.g. `sales@oxemarketingth.com, faiq@…` |
+| `GITHUB_TOKEN` | A GitHub fine-grained token for **this repository only**, with **Contents: Read and write**. The admin saves through it; it is never sent to the browser |
 | `GITHUB_BRANCH` *(optional)* | The branch Vercel deploys to production (default: `claude/website-design-requirements-89zc90`) |
-| `ADMIN_COMMIT_EMAIL` *(optional)* | Email shown on admin updates in GitHub |
+| `ADMIN_DEMO` *(optional)* | `off` to disable the demo account |
 
 - **Videos over 3.3 MB** are uploaded straight to Vercel Blob storage. Enable it once: **Vercel → Storage → Create → Blob**, then connect it to this project (this adds `BLOB_READ_WRITE_TOKEN`). Smaller videos and all images are stored in the repository.
 - **Contact form.** Paste a free Web3Forms key into *Contact & settings → Contact form key*. On web3forms.com, enter `Sales@oxemarketingth.com` and the key is emailed to you. Until a key is set, the form opens the visitor's email app or WhatsApp with their message.
-- **Supabase login (later).** All login logic is in `api/_lib/auth.js`. Replace `verifyCredentials()` with Supabase's `signInWithPassword` and the rest of the admin stays the same.
 
 ### Content rule
 
@@ -82,7 +104,7 @@ Only use facts supplied by OXE or the client: no invented results, numbers or te
   - **App:** `admin/app.js` (single-page app) and `admin/admin.css`.
   - **Live preview:** `admin/preview-worker.js` runs the real builder (`src/preview.py`) in the browser with Pyodide. `scripts/make-engine.py` ships the builder and image sizes to `public/admin/engine/` at build time.
 - **API (Vercel functions in `api/`).**
-  - `session` handles login and logout.
+  - `session` handles login, logout and password reset through Supabase Auth (`api/_lib/auth.js`).
   - `repo/*` provides `bundle`, `tree`, `file`, `blob` (upload), `commit` (atomic publish with a conflict check), `history` and `deploy` (status).
   - `upload` issues Vercel Blob tokens for large videos.
   - Writes are limited to `content/` and `assets/img|video/`, and core page files can't be deleted.
@@ -94,12 +116,12 @@ Only use facts supplied by OXE or the client: no invented results, numbers or te
   ```
 
   GitHub Actions runs the same build on every push (`.github/workflows/build.yml`).
-- **Admin locally.** This runs the admin against a local git checkout, with real commits and no GitHub token:
+- **Admin locally.** This runs the admin against a local git checkout, with real commits and no GitHub token. Or just use the demo account:
 
   ```bash
   bash scripts/vercel-build.sh
-  ADMIN_LOCAL_REPO=/path/to/a/clone ADMIN_USERNAME=me ADMIN_PASSWORD=secret \
-    SESSION_SECRET=$(openssl rand -hex 24) node scripts/admin-dev-server.js 3000
+  ADMIN_LOCAL_REPO=/path/to/a/clone SUPABASE_URL=https://….supabase.co SUPABASE_ANON_KEY=… \
+    ADMIN_EMAILS=you@example.com SESSION_SECRET=$(openssl rand -hex 24) node scripts/admin-dev-server.js 3000
   ```
 - **Videos** are files in `assets/video/<name>.mp4`, or full URLs (Vercel Blob). Every video field has a cover-image field next to it.
 - **3D illustrations** are in `src/art.py`. All of them share the same materials (white matte, OXE blue, soft shadow), so new ones stay consistent.

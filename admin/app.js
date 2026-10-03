@@ -106,6 +106,7 @@
   // ------------------------------------------------------------------ API
   let reauth = null;
   async function api(method, url, data) {
+    if (S.demo) return demoApi(method, url, data);
     const r = await fetch(url, {
       method, credentials: "same-origin",
       headers: Object.assign({ "X-OXE-Admin": "1" }, data ? { "Content-Type": "application/json" } : {}),
@@ -155,10 +156,11 @@
     user: null, schema: null, head: null, files: {}, media: [], norm: {},
     drafts: { base: null, items: {} }, blobURLs: {}, route: "", lastPublish: null,
   };
-  const DKEY = "oxe-admin:drafts:v1";
-  function loadDrafts() { try { const d = JSON.parse(localStorage.getItem(DKEY)); if (d && d.items) S.drafts = d; } catch (e) { /* none */ } }
+  const dkey = () => (S.demo ? "oxe-admin:demo-drafts:v1" : "oxe-admin:drafts:v1");
+  const lkey = () => (S.demo ? "oxe-admin:demo-last" : "oxe-admin:last");
+  function loadDrafts() { S.drafts = { base: null, items: {} }; try { const d = JSON.parse(localStorage.getItem(dkey())); if (d && d.items) S.drafts = d; } catch (e) { /* none */ } }
   function saveDrafts() {
-    try { localStorage.setItem(DKEY, JSON.stringify(S.drafts)); }
+    try { localStorage.setItem(dkey(), JSON.stringify(S.drafts)); }
     catch (e) { toast("Your browser storage is full: publish or discard some changes.", "bad"); }
     refreshChrome();
   }
@@ -191,7 +193,7 @@
   // pending media files (uploaded, not yet published): kept in IndexedDB for previews
   const idb = {
     db: null,
-    open() { return this.db || (this.db = new Promise((res, rej) => { const r = indexedDB.open("oxe-admin", 1); r.onupgradeneeded = () => r.result.createObjectStore("media"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); },
+    open() { return this.db || (this.db = new Promise((res, rej) => { const r = indexedDB.open(S.demo ? "oxe-admin-demo" : "oxe-admin", 1); r.onupgradeneeded = () => r.result.createObjectStore("media"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); },
     async put(k, v) { const db = await this.open(); return new Promise((res) => { const t = db.transaction("media", "readwrite"); t.objectStore("media").put(v, k); t.oncomplete = res; t.onerror = res; }); },
     async get(k) { const db = await this.open(); return new Promise((res) => { const r = db.transaction("media").objectStore("media").get(k); r.onsuccess = () => res(r.result); r.onerror = () => res(null); }); },
     async del(k) { const db = await this.open(); return new Promise((res) => { const t = db.transaction("media", "readwrite"); t.objectStore("media").delete(k); t.oncomplete = res; t.onerror = res; }); },
@@ -1006,8 +1008,8 @@
       S.drafts = { base: null, items: {} };
       saveDrafts();
       S.lastPublish = { sha: r.sha, at: Date.now(), state: "pending" };
-      localStorage.setItem("oxe-admin:last", JSON.stringify(S.lastPublish));
-      toast("Published! The site is updating.", "ok");
+      localStorage.setItem(lkey(), JSON.stringify(S.lastPublish));
+      toast(S.demo ? "Demo: published in this browser only. The real website is not changed." : "Published! The site is updating.", "ok");
       trackDeploy();
       render();
     } catch (e) {
@@ -1034,9 +1036,9 @@
       try {
         const d = await api("GET", "/api/repo/deploy?sha=" + last.sha);
         last.state = d.state; last.url = d.url;
-        localStorage.setItem("oxe-admin:last", JSON.stringify(last));
+        localStorage.setItem(lkey(), JSON.stringify(last));
         refreshChrome();
-        if (d.state === "success") { toast("Your changes are live.", "ok", { href: "/", text: "View site" }); return; }
+        if (d.state === "success") { if (!S.demo) toast("Your changes are live.", "ok", { href: "/", text: "View site" }); return; }
         if (d.state === "failure" || d.state === "error") { toast("The site update failed. The previous version stays online. Open Activity for details.", "bad"); return; }
       } catch (e) { /* keep trying */ }
       await new Promise((r) => setTimeout(r, 6000));
@@ -1212,17 +1214,40 @@
       h("div", { class: "card panel" }, list));
   }
 
-  // ------------------------------------------------------------------ login
-  function loginScreen(message) {
-    const user = h("input", { type: "text", id: "u", autocomplete: "username", required: true });
-    const pass = h("input", { type: "password", id: "p", autocomplete: "current-password", required: true });
-    const err = h("div", { class: "callout callout--bad", hidden: !message }, message || "");
-    const btn = h("button", { class: "btn", type: "submit" }, "Log in");
-    const form = h("form", { onsubmit: async (e) => {
-      e.preventDefault(); err.hidden = true; btn.disabled = true; btn.textContent = "Checking…";
-      try { const r = await api("POST", "/api/session", { username: user.value, password: pass.value }); S.user = r.user; start(); }
-      catch (x) { err.textContent = x.message; err.hidden = false; btn.disabled = false; btn.textContent = "Log in"; pass.select(); }
-    } }, h("div", { class: "field" }, h("label", { for: "u" }, "Username"), user), h("div", { class: "field" }, h("label", { for: "p" }, "Password"), pass), err, btn);
+  // ------------------------------------------------------------------ login (Supabase) & demo
+  // Demo account: explore the whole admin with a copy of the site content. Publishing is
+  // simulated, so the demo can never change the website. Only a hash is kept here.
+  const DEMO_HASH = "74e36ce282a033ba2445b7ab4e8d483ccf8f710f6f8134ac176eca3d5f7c408b";
+  async function isDemo(user, pass) {
+    if (!crypto.subtle) return false;
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(user).trim().toLowerCase() + ":" + pass));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("") === DEMO_HASH;
+  }
+  let demoBundle = null;
+  async function demoApi(method, url, data) {
+    const path = url.split("?")[0], q = new URLSearchParams(url.split("?")[1] || "");
+    const fake = () => [...crypto.getRandomValues(new Uint8Array(20))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    if (!demoBundle) {
+      const r = await fetch("/admin/demo/bundle.json", { cache: "no-cache" });
+      if (!r.ok) throw new Error("The demo isn't available on this site.");
+      demoBundle = await r.json();
+    }
+    if (path === "/api/session") return method === "GET" ? { user: "Demo" } : { ok: true };
+    if (path === "/api/repo/bundle") return { head: demoBundle.head, files: Object.assign({}, demoBundle.files), media: demoBundle.media.slice() };
+    if (path === "/api/repo/history") return { commits: q.get("path") ? [] : demoBundle.history || [] };
+    if (path === "/api/repo/file") { const t = demoBundle.files[q.get("path")]; if (t == null) throw new Error("File not found"); return { content: btoa(unescape(encodeURIComponent(t))) }; }
+    if (path === "/api/repo/blob") return { sha: fake(), path: data.path };
+    if (path === "/api/repo/commit") { await new Promise((r) => setTimeout(r, 600)); return { sha: fake() }; }
+    if (path === "/api/repo/deploy") return { state: "success", description: "Demo" };
+    if (path === "/api/upload") return { enabled: false };
+    throw new Error("Not available in the demo");
+  }
+  function enterDemo() {
+    S.demo = true; S.user = "Demo";
+    try { sessionStorage.setItem("oxe-admin:demo", "1"); } catch (e) { /* private mode */ }
+    start();
+  }
+  function authLayout(title, intro, content) {
     const app = $("#app");
     app.innerHTML = "";
     app.appendChild(h("div", { class: "login" },
@@ -1230,24 +1255,72 @@
         h("div", { class: "login__brand" }, h("img", { src: "/assets/img/oxe-wordmark.png", alt: "OXE Marketing" })),
         h("div", {}, h("h1", { html: 'Your website, <span class="hl">your way</span>' }), h("p", {}, "Edit every page, article, project, photo and video. See each change live before it's published.")),
         h("div", { class: "login__chips" }, ["Live preview", "Drafts until you publish", "Full version history"].map((t) => h("span", {}, t)))),
-      h("section", { class: "login__form" }, h("div", { class: "login__card" }, h("h2", {}, "Welcome back"), h("p", {}, "Log in to the OXE website editor."), form,
-        h("div", { class: "login__foot" }, icon("lock"), "Private area. Your session ends after 12 hours.")))));
-    user.focus();
+      h("section", { class: "login__form" }, h("div", { class: "login__card" }, h("h2", {}, title), h("p", {}, intro), content,
+        h("div", { class: "login__foot" }, icon("lock"), "Secured by Supabase. Your session ends after 12 hours.")))));
+  }
+  function loginScreen(message, kind) {
+    const email = h("input", { type: "text", id: "u", autocomplete: "username", inputmode: "email", required: true });
+    const pass = h("input", { type: "password", id: "p", autocomplete: "current-password", required: true });
+    const note = h("div", { class: "callout callout--" + (kind || "bad"), hidden: !message }, message || "");
+    const btn = h("button", { class: "btn", type: "submit" }, "Log in");
+    const form = h("form", { onsubmit: async (e) => {
+      e.preventDefault(); note.hidden = true; btn.disabled = true; btn.textContent = "Checking…";
+      if (await isDemo(email.value, pass.value)) return enterDemo();
+      try { const r = await api("POST", "/api/session", { email: email.value, password: pass.value }); S.user = r.user; start(); }
+      catch (x) { note.className = "callout callout--bad"; note.textContent = x.message; note.hidden = false; btn.disabled = false; btn.textContent = "Log in"; pass.select(); }
+    } },
+      h("div", { class: "field" }, h("label", { for: "u" }, "Email"), email),
+      h("div", { class: "field" }, h("label", { for: "p", style: { justifyContent: "space-between", display: "flex" } }, "Password",
+        h("a", { href: "#", style: { fontWeight: 400 }, onclick: (e) => { e.preventDefault(); forgotScreen(email.value); } }, "Forgot password?")), pass),
+      note, btn);
+    authLayout("Welcome back", "Log in to the OXE website editor.", form);
+    email.focus();
+  }
+  function forgotScreen(prefill) {
+    const email = h("input", { type: "email", id: "u", autocomplete: "email", value: prefill && prefill.includes("@") ? prefill : "", required: true });
+    const note = h("div", { class: "callout", hidden: true });
+    const btn = h("button", { class: "btn", type: "submit" }, "Send reset link");
+    const form = h("form", { onsubmit: async (e) => {
+      e.preventDefault(); btn.disabled = true; btn.textContent = "Sending…";
+      try { const r = await api("POST", "/api/session", { action: "recover", email: email.value }); note.className = "callout callout--ok"; note.textContent = r.message; }
+      catch (x) { note.className = "callout callout--bad"; note.textContent = x.message; }
+      note.hidden = false; btn.disabled = false; btn.textContent = "Send reset link";
+    } }, h("div", { class: "field" }, h("label", { for: "u" }, "Email"), email), note, btn,
+      h("p", { style: { marginTop: "16px" } }, h("a", { href: "#", onclick: (e) => { e.preventDefault(); loginScreen(); } }, "← Back to log in")));
+    authLayout("Reset your password", "Enter your email and we'll send you a link to choose a new password.", form);
+    email.focus();
+  }
+  function resetScreen(token) {
+    const p1 = h("input", { type: "password", id: "p1", autocomplete: "new-password", minlength: 10, required: true });
+    const p2 = h("input", { type: "password", id: "p2", autocomplete: "new-password", required: true });
+    const note = h("div", { class: "callout callout--bad", hidden: true });
+    const btn = h("button", { class: "btn", type: "submit" }, "Save new password");
+    const form = h("form", { onsubmit: async (e) => {
+      e.preventDefault(); note.hidden = true;
+      if (p1.value.length < 10) { note.textContent = "Please use at least 10 characters."; note.hidden = false; return; }
+      if (p1.value !== p2.value) { note.textContent = "The two passwords don't match."; note.hidden = false; return; }
+      btn.disabled = true; btn.textContent = "Saving…";
+      try { const r = await api("POST", "/api/session", { action: "reset", access_token: token, password: p1.value }); loginScreen(r.message, "ok"); }
+      catch (x) { note.textContent = x.message; note.hidden = false; btn.disabled = false; btn.textContent = "Save new password"; }
+    } }, h("div", { class: "field" }, h("label", { for: "p1" }, "New password"), p1, h("p", { class: "hint" }, "At least 10 characters.")),
+      h("div", { class: "field" }, h("label", { for: "p2" }, "Repeat new password"), p2), note, btn);
+    authLayout("Choose a new password", "Set the password for your admin account.", form);
+    p1.focus();
   }
   function loginAgain() {
     return new Promise((resolve) => {
-      const user = h("input", { type: "text", value: S.user || "", autocomplete: "username" });
+      const email = h("input", { type: "text", autocomplete: "username" });
       const pass = h("input", { type: "password", autocomplete: "current-password" });
       const err = h("p", { class: "err", hidden: true });
       const m = modal({
         title: "Your session has ended",
-        body: [h("p", { style: { margin: 0 } }, "Please log in again. Your unpublished changes are safe."), h("div", { class: "field" }, h("label", {}, "Username"), user), h("div", { class: "field" }, h("label", {}, "Password"), pass), err],
+        body: [h("p", { style: { margin: 0 } }, "Please log in again. Your unpublished changes are safe."), h("div", { class: "field" }, h("label", {}, "Email"), email), h("div", { class: "field" }, h("label", {}, "Password"), pass), err],
         foot: [h("button", { class: "btn", onclick: async () => {
-          try { await api("POST", "/api/session", { username: user.value, password: pass.value }); m.close(); resolve(); }
+          try { await api("POST", "/api/session", { email: email.value, password: pass.value }); m.close(); resolve(); }
           catch (e) { err.textContent = e.message; err.hidden = false; }
         } }, "Log in")],
       });
-      setTimeout(() => pass.focus(), 60);
+      setTimeout(() => email.focus(), 60);
     });
   }
 
@@ -1288,7 +1361,7 @@
         nav.appendChild(h("a", { href, class: active ? "is-active" : "", onclick: () => document.body.classList.remove("menu-open") }, icon(ic), text, dirty(href) ? h("span", { class: "dot", title: "Unpublished changes" }) : null));
       });
     });
-    nav.appendChild(h("div", { class: "side__user" }, h("span", { class: "side__avatar" }, (S.user || "?").slice(0, 1).toUpperCase()), h("div", {}, h("b", {}, S.user), h("small", {}, "Administrator")),
+    nav.appendChild(h("div", { class: "side__user" }, h("span", { class: "side__avatar" }, (S.user || "?").slice(0, 1).toUpperCase()), h("div", {}, h("b", {}, S.user), h("small", {}, S.demo ? "Demo account" : "Administrator")),
       h("button", { title: "Log out", "aria-label": "Log out", onclick: logout }, icon("out"))));
     const n = draftCount();
     const last = S.lastPublish;
@@ -1298,7 +1371,8 @@
       h("button", { class: "btn btn--ghost btn--icon top__menu", "aria-label": "Menu", onclick: () => document.body.classList.toggle("menu-open") }, icon("menu")),
       h("div", { class: "top__title" }, h("small", {}, "OXE Marketing"), h("b", {}, titleFor(hash))),
       h("div", { class: "top__actions" },
-        deploying ? h("span", { class: "deploy hide-sm" }, h("span", { class: "spin" }), "Updating the live site…") : null,
+        S.demo ? h("span", { class: "badge badge--new", title: "Nothing you do in the demo changes the real website" }, "Demo mode · changes stay in this browser") : null,
+        deploying && !S.demo ? h("span", { class: "deploy hide-sm" }, h("span", { class: "spin" }), "Updating the live site…") : null,
         n ? h("button", { class: "pending", onclick: reviewModal }, `${n} unpublished change${n > 1 ? "s" : ""}`) : h("span", { class: "pending pending--clear hide-sm" }, "All changes live"),
         h("a", { class: "btn btn--ghost btn--sm hide-sm", href: "/", target: "_blank", rel: "noopener" }, icon("ext"), "View site"),
         h("button", { class: "btn btn--sm", disabled: !n, onclick: reviewModal }, "Publish", n ? h("span", { class: "btn__count" }, n) : null)),
@@ -1334,7 +1408,9 @@
   async function logout() {
     if (draftCount() && !(await confirmBox("Log out?", "Your unpublished changes stay saved in this browser, ready for next time.", "Log out"))) return;
     await api("DELETE", "/api/session").catch(() => {});
-    S.user = null; shellEls = null;
+    if (S.demo) { try { sessionStorage.removeItem("oxe-admin:demo"); } catch (e) { /* ignore */ } }
+    S.user = null; S.demo = false; shellEls = null; idb.db = null;
+    if (preview.worker) { preview.worker.terminate(); preview.worker = null; preview.ready = false; }
     loginScreen();
   }
   async function loadBundle() {
@@ -1353,19 +1429,32 @@
     }
     loadDrafts();
     await restoreBlobURLs();
-    try { S.lastPublish = JSON.parse(localStorage.getItem("oxe-admin:last")); } catch (e) { S.lastPublish = null; }
+    try { S.lastPublish = JSON.parse(localStorage.getItem(lkey())); } catch (e) { S.lastPublish = null; }
     shell();
     render();
     preview.start();    // warm up the preview engine in the background
     if (S.lastPublish && S.lastPublish.state !== "success") trackDeploy();
   }
-  window.addEventListener("hashchange", render);
+  window.addEventListener("hashchange", () => {
+    const hp = new URLSearchParams(location.hash.replace(/^#/, ""));
+    if (hp.get("type") === "recovery" && hp.get("access_token")) { const t = hp.get("access_token"); history.replaceState(null, "", location.pathname); S.user = null; shellEls = null; return resetScreen(t); }
+    render();
+  });
   document.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); if (S.user) toast("Your changes are saved as drafts automatically. Publish when ready.", "ok"); }
   });
   (async function boot() {
     if (typeof jsyaml === "undefined") { $("#app").innerHTML = '<div class="boot">The editor couldn\'t load. Check your internet connection and refresh.</div>'; return; }
+    // back from a Supabase password-reset email: #access_token=…&type=recovery
+    const hp = new URLSearchParams(location.hash.replace(/^#/, ""));
+    if (hp.get("type") === "recovery" && hp.get("access_token")) {
+      const token = hp.get("access_token");
+      history.replaceState(null, "", location.pathname);
+      return resetScreen(token);
+    }
+    if (hp.get("error_description")) { history.replaceState(null, "", location.pathname); return loginScreen(hp.get("error_description").replace(/\+/g, " ")); }
+    try { if (sessionStorage.getItem("oxe-admin:demo") === "1") return enterDemo(); } catch (e) { /* private mode */ }
     try { const me = await api("GET", "/api/session"); S.user = me.user; start(); }
-    catch (e) { loginScreen(e.data && e.data.configured === false ? "The login isn't set up yet: add ADMIN_USERNAME, ADMIN_PASSWORD and SESSION_SECRET in Vercel → Settings → Environment Variables, then redeploy." : ""); }
+    catch (e) { loginScreen(e.data && e.data.configured === false ? "The login isn't connected to Supabase yet. You can still explore with the demo account." : "", "info"); }
   })();
 })();
