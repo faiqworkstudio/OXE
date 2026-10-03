@@ -469,7 +469,8 @@
 
   /* ---------- Contact form ----------
      Pre-selects the service from ?service=web|social|video|photo|strategy,
-     validates, then submits to Netlify Forms via AJAX.
+     validates, then sends it with Web3Forms (key set in Admin → Contact details & settings).
+     Without a key, or if sending fails, it opens the visitor's email app or WhatsApp instead.
      On WordPress this is replaced by the Elementor Pro Form widget. */
   document.querySelectorAll("[data-contact-form]").forEach(function (form) {
     var success = form.querySelector(".form-success");
@@ -509,7 +510,7 @@
       e.preventDefault();
       var firstBad = null;
       form.querySelectorAll("input, select, textarea").forEach(function (el) {
-        if (el.type === "radio" || el.type === "checkbox" || el.type === "hidden" || el.name === "bot-field") return;
+        if (el.type === "radio" || el.type === "checkbox" || el.type === "hidden") return;
         if (!validate(el) && !firstBad) firstBad = el;
       });
       if (!validateChips()) firstBad = chipSet.querySelector("input");
@@ -532,23 +533,37 @@
         if (success) success.classList.add("is-visible");
         form.reset();
       }
-      // Outside Netlify (e.g. opened locally) fall back to email or WhatsApp
+      // No form key yet, or sending failed: hand the message to email or WhatsApp
       function fallback() {
+        var wa = form.getAttribute("data-wa") || WHATSAPP_NUMBER, mail = form.getAttribute("data-email") || CONTACT_EMAIL;
         if (d.get("method") === "WhatsApp") {
-          window.open("https://wa.me/" + WHATSAPP_NUMBER + "?text=" + encodeURIComponent("Hi OXE Marketing!\n\n" + text), "_blank", "noopener");
+          window.open("https://wa.me/" + wa + "?text=" + encodeURIComponent("Hi OXE Marketing!\n\n" + text), "_blank", "noopener");
         } else {
-          window.location.href = "mailto:" + CONTACT_EMAIL + "?subject=" + encodeURIComponent("New enquiry: " + d.getAll("service").join(", ")) + "&body=" + encodeURIComponent(text);
+          window.location.href = "mailto:" + mail + "?subject=" + encodeURIComponent("New enquiry: " + d.getAll("service").join(", ")) + "&body=" + encodeURIComponent(text);
         }
         done();
       }
+      var accessKey = d.get("access_key");
+      if (!accessKey) { fallback(); return; }
+      if (d.get("botcheck")) { done(); return; }   // spam bot filled the hidden field
 
       var btn = form.querySelector('[type="submit"]');
       if (btn) btn.disabled = true;
-      fetch("/", {
+      fetch(form.action, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(d).toString()
-      }).then(function (res) { if (res.ok) done(); else fallback(); })
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          access_key: accessKey,
+          subject: "New website enquiry: " + d.getAll("service").join(", "),
+          from_name: "OXE Marketing website",
+          name: d.get("name"), email: d.get("email"), replyto: d.get("email"),
+          phone: d.get("phone") || "", company: d.get("company") || "",
+          services: d.getAll("service").join(", "), budget: d.get("budget") || "",
+          reply_by: d.get("method") || "Email",
+          message: text
+        })
+      }).then(function (res) { return res.json(); })
+        .then(function (r) { if (r && r.success) done(); else fallback(); })
         .catch(fallback)
         .then(function () { if (btn) btn.disabled = false; });
     });

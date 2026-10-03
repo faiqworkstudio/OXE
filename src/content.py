@@ -54,6 +54,8 @@ SITE = {
     "whatsapp": f"https://wa.me/{_digits}?text={quote(_settings.get('whatsapp_message') or '', safe='')}",
     "city": fmt(_settings["city"]),
     "founded": str(_settings["founded"]),
+    # Web3Forms access key: contact-form submissions are emailed to the address it was created for
+    "form_key": (_settings.get("form_key") or "").strip(),
     "social": {k: (v or "").strip() for k, v in (_settings.get("social") or {}).items()},
 }
 SERVICE_OPTIONS = [fmt(x) for x in _settings["form_services"]]

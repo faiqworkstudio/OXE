@@ -960,6 +960,9 @@ def about():
 {contact_band()}''' + foot()
 
 
+FORM_ACTION = "https://api.web3forms.com/submit"   # contact form backend (works on any host, incl. Vercel)
+
+
 # ------------------------------------------------------------------ CONTACT
 REQ = ' <b aria-hidden="true">*</b>'
 
@@ -976,14 +979,21 @@ def form():
                 <input id="{id_}" name="{name}" type="{typ}" placeholder="{ph}"{f' autocomplete="{ac}"' if ac else ""}{" required" if req else ""}{f' aria-describedby="{id_}-err"' if err else ""}>
                 {f'<span class="error" id="{id_}-err">{err}</span>' if err else ""}
               </div>'''
+    # Web3Forms when a key is set (Admin → Contact details & settings); otherwise the JS hands off to email/WhatsApp
+    action = FORM_ACTION if S["form_key"] else "mailto:" + S["email"]
+    wa = re.search(r"wa\.me/(\d+)", S["whatsapp"]).group(1)
+    hidden = (f'<input type="hidden" name="access_key" value="{S["form_key"]}">'
+              '<input type="hidden" name="subject" value="New website enquiry">'
+              '<input type="hidden" name="from_name" value="OXE Marketing website">'
+              f'<input type="hidden" name="redirect" value="{S["url"]}/thank-you">') if S["form_key"] else ""
     return f'''<div class="form-card reveal" id="enquiry">
         <div class="form-card__head">
           <h2>Tell us about your <span class="hl">project</span></h2>
           <p>Fields marked <b>*</b> are required.</p>
         </div>
-        <form name="contact" method="POST" action="thank-you.html" data-netlify="true" netlify-honeypot="bot-field" data-contact-form novalidate>
-          <input type="hidden" name="form-name" value="contact">
-          <p hidden><label>Don't fill this out: <input name="bot-field"></label></p>
+        <form name="contact" method="POST" action="{action}" data-contact-form data-email="{S["email"]}" data-wa="{wa}" novalidate>
+          {hidden}
+          <p hidden><label>Don't fill this out: <input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off"></label></p>
           <fieldset class="fset" data-chips-required aria-describedby="svc-err">
             <legend><span class="fset__n">01</span>What can we help with? <b aria-hidden="true">*</b></legend>
             <div class="chips">{chips}</div>

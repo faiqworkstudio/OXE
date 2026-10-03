@@ -1,11 +1,12 @@
 # OXE Marketing admin panel (Decap CMS) — https://decapcms.org/docs/
 # Log in at https://www.oxemarketingth.com/admin with a GitHub account that can edit the repository.
-# Every "Publish" saves a commit to GitHub; Netlify then rebuilds the site (about 1–2 minutes).
+# Every "Publish" saves a commit to GitHub; Vercel then rebuilds the site (about 1–2 minutes).
+# Login goes through this site's /api/auth and /api/callback (see api/); the address is set in admin/index.html.
 
 backend:
   name: github
   repo: faiqworkstudio/OXE
-  branch: claude/website-design-requirements-89zc90   # the branch Netlify publishes
+  branch: claude/website-design-requirements-89zc90   # must be the branch Vercel deploys to production
   commit_messages:
     create: "Admin: add {{collection}} “{{slug}}”"
     update: "Admin: update {{collection}} “{{slug}}”"
@@ -300,6 +301,7 @@ collections:
           - { label: WhatsApp greeting, name: whatsapp_message, widget: string, hint: "Pre-filled message when someone taps WhatsApp." }
           - { label: City, name: city, widget: string }
           - { label: Founded, name: founded, widget: string }
+          - { label: Contact form key, name: form_key, widget: string, required: false, hint: "Free key from web3forms.com (enter Sales@oxemarketingth.com there and paste the key you receive). Enquiries are then emailed to that address. Without a key, the form opens the visitor's email app or WhatsApp instead." }
           - label: Social media links
             name: social
             widget: object

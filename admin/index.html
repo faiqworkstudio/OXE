@@ -6,9 +6,11 @@
   <meta name="robots" content="noindex, nofollow">
   <title>OXE Marketing · Website editor</title>
   <link rel="icon" type="image/png" href="/assets/img/favicon.png">
+  <link rel="cms-config-url" type="text/yaml" href="/admin/config.yml">
 </head>
 <body>
-  <!-- Decap CMS: the editor reads ./config.yml. Docs: https://decapcms.org/docs/ -->
+  <!-- Decap CMS: the editor reads /admin/config.yml. Docs: https://decapcms.org/docs/ -->
+  <script>window.CMS_MANUAL_INIT = true;</script>
   <script src="https://unpkg.com/decap-cms@^3.6.0/dist/decap-cms.js"></script>
   <script>
     // Previews use the site's own fonts and stylesheet, so articles look like they will on the site.
@@ -39,6 +41,10 @@
       }
     });
     CMS.registerPreviewTemplate("blog", BlogPreview);
+
+    // Log in through this site's own /api/auth (Vercel functions), on whatever domain the admin is opened:
+    // the live domain, www or a Vercel preview URL.
+    CMS.init({ config: { backend: { base_url: location.origin, auth_endpoint: "api/auth" } } });
   </script>
 </body>
 </html>

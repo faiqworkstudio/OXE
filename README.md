@@ -7,7 +7,7 @@ It is a fast static site: HTML, one CSS file and a small script, with no framewo
 - Poppins for headings and Inter for body text;
 - device mockups and a set of 3D illustrations built in CSS and SVG, all sharing one lighting style.
 
-The site runs on Netlify as it is, and every section maps to an Elementor section for the planned WordPress build.
+The site is hosted on Vercel. Content is edited in the admin panel at `/admin`, and every section maps to an Elementor section for the planned WordPress build.
 
 ## Pages
 
@@ -38,7 +38,7 @@ Go to **https://www.oxemarketingth.com/admin** and log in. Everything is edited 
 | **Pages → Client logos** | Add, remove, rename and reorder logos |
 | **Pages → Contact details & settings** | Email, phone, WhatsApp, city, social media links, contact-form options |
 
-**How it works.** Click **Publish** and the change is saved to GitHub. Netlify rebuilds the site automatically, and the change is live in about 1–2 minutes.
+**How it works.** Click **Publish** and the change is saved to GitHub. Vercel rebuilds the site automatically, and the change is live in about 1–2 minutes.
 
 **Tips**
 - In headings, wrap words in `*asterisks*` to show them in the italic serif accent, e.g. `Our *Services*`.
@@ -49,21 +49,34 @@ Go to **https://www.oxemarketingth.com/admin** and log in. Everything is edited 
 
 ### One-time setup of the admin login (about 5 minutes)
 
-The admin uses GitHub accounts to log in, through Netlify.
+The admin uses GitHub accounts to log in, through two small Vercel functions in `api/` (`/api/auth` and `/api/callback`).
 
 1. **Create a GitHub OAuth app.** On GitHub, go to *Settings → Developer settings → OAuth Apps → New OAuth App*. Fill in:
    - Application name: `OXE website editor`
    - Homepage URL: `https://www.oxemarketingth.com`
-   - Authorization callback URL: `https://api.netlify.com/auth/done`
+   - Authorization callback URL: `https://www.oxemarketingth.com/api/callback`
 
    Click *Register application*, copy the **Client ID**, then *Generate a new client secret* and copy it.
-2. **Connect it to Netlify.** In Netlify, open the site, then *Site configuration → Access & security → OAuth → Install provider → GitHub*. Paste the Client ID and secret.
+2. **Add them to Vercel.** In the Vercel project, go to *Settings → Environment Variables* and add:
+   - `GITHUB_CLIENT_ID`: the Client ID
+   - `GITHUB_CLIENT_SECRET`: the client secret
+
+   Then redeploy (*Deployments → ⋯ → Redeploy*) so the functions pick them up.
 3. **Add editors.** Each editor needs a free GitHub account with *Write* access to this repository (GitHub repository → *Settings → Collaborators → Add people*).
-4. Open `/admin`, click **Login with GitHub**, and start editing.
+4. Open `https://www.oxemarketingth.com/admin`, click **Login with GitHub**, and start editing.
 
-The admin saves to the branch set in `admin/config.yml` (`backend.branch`). If Netlify ever publishes a different branch, change it there too.
+The admin saves to the branch set in `admin/config.yml` (`backend.branch`). It must be the branch Vercel deploys to production (*Vercel → Settings → Git → Production Branch*). If you change one, change the other.
 
-> Prefer email and password logins instead of GitHub accounts? A service such as DecapBridge can provide that; it only needs a small change to `backend` in `admin/config.yml`.
+> GitHub only allows one callback URL per OAuth app, so log in from the address you entered there (`www.oxemarketingth.com`). To use the admin on another address too, such as a `*.vercel.app` preview, create a second OAuth app for it.
+
+### Contact form
+
+Enquiries are sent by [Web3Forms](https://web3forms.com), which is free and works on any host.
+
+1. On web3forms.com, enter `Sales@oxemarketingth.com` and you'll receive an **access key** by email.
+2. Paste it into *Admin → Pages → Contact details & settings → Contact form key* and publish.
+
+Enquiries then arrive in that inbox. Until a key is set, the form opens the visitor's email app or WhatsApp, with their message filled in, so no enquiry is lost.
 
 ## For developers
 
@@ -75,7 +88,7 @@ The admin saves to the branch set in `admin/config.yml` (`backend.branch`). If N
   python3 src/build.py      # regenerates every page, /work, /blog and sitemap.xml
   ```
 
-  Netlify runs the same build on every push (see `netlify.toml`).
+  Vercel runs `scripts/vercel-build.sh` on every push (see `vercel.json`). It installs the requirements, builds the pages, and copies only the public files into `public/`.
 - **Edit locally with the admin panel.** Run `npx decap-server` in the repository and `python3 -m http.server 8080`, then open `http://localhost:8080/admin/`. Changes are written straight to the files.
 - **Menu.** The top menu and its panels are set in `MENU`, `MENU_META` and `NAV` in `src/content.py`.
 - **Videos.** Videos go in `assets/video/<name>.mp4`, each with a cover image. The build converts images to WebP automatically, from any JPG or PNG.
@@ -83,7 +96,7 @@ The admin saves to the branch set in `admin/config.yml` (`backend.branch`). If N
 
 ## Still to do before launch
 
-- [ ] Set up the admin login (see *One-time setup* above).
+- [ ] Set up the admin login and the contact form key (see above).
 - [ ] Social media profile URLs: *Admin → Pages → Contact details & settings*. The icons link to `#` until these are filled in.
 - [ ] Screenshots of the Anthony Bespoke Tailor website. That card currently shows a branded placeholder.
 - [ ] Written case studies for Haji Café, Dh Foods, Gaia Tribe, Wirever, Wine Connection, event coverage and the corporate video. These currently show real media plus a "coming soon" note.
@@ -94,13 +107,19 @@ The admin saves to the branch set in `admin/config.yml` (`backend.branch`). If N
 - [ ] Add the GA4 measurement ID: uncomment the snippet in `head()` in `build.py`.
 - [ ] If OXE has a street address, update the map on the contact page.
 
-## Put it live on Netlify
+## Hosting on Vercel
 
-1. In Netlify, choose **Add new site → Import an existing project → GitHub** and pick this repository and branch. `netlify.toml` already sets the build command and the publish directory.
-2. Add the custom domain `oxemarketingth.com` under **Domain management**. SSL is issued automatically.
-3. **Forms → contact.** Add an email notification to `Sales@oxemarketingth.com`.
+1. In Vercel, choose **Add New → Project** and import this GitHub repository. `vercel.json` already sets the build command (`bash scripts/vercel-build.sh`) and the output directory (`public`). Leave the framework preset as **Other**.
+2. Under *Settings → Git*, set the **Production Branch** to the branch that `admin/config.yml` saves to.
+3. Under *Settings → Domains*, add `oxemarketingth.com` and `www.oxemarketingth.com`, and redirect the bare domain to `www`. SSL is issued automatically.
+4. Add the admin login environment variables (see *One-time setup* above) and the contact form key.
 
-`netlify.toml` caches images and video for a week. CSS and JS are revalidated on every visit and are linked with a `?v=` content hash, so a new deploy never shows new pages with an old stylesheet.
+`vercel.json` also:
+- serves clean URLs (`/services` instead of `/services.html`);
+- adds the security headers;
+- caches images and video for a week, and revalidates CSS and JS on every visit. Pages link them with a `?v=` content hash, so a new deploy never shows new pages with an old stylesheet.
+
+The source folders (`src/`, `content/`) are not published.
 
 ## Quality checklist
 
