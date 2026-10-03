@@ -71,5 +71,6 @@ def _post(path):
 
 _dir = os.path.join(DATA, "blog")
 POSTS = [_post(os.path.join(_dir, f)) for f in sorted(os.listdir(_dir)) if f.endswith(".md")]
-POSTS = [p for p in POSTS if not p["draft"]]
+if not os.environ.get("OXE_PREVIEW_DRAFTS"):       # the admin preview shows drafts too
+    POSTS = [p for p in POSTS if not p["draft"]]
 POSTS.sort(key=lambda p: p["date"], reverse=True)

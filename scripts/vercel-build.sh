@@ -39,4 +39,7 @@ $PY src/build.py
 echo "== Copying the public site to public/"
 rm -rf public && mkdir public
 cp -R *.html sitemap.xml robots.txt assets admin blog work public/
+
+echo "== Preparing the admin live preview"
+$PY scripts/make-engine.py public/admin/engine
 echo "Done: $(find public -name '*.html' | wc -l | tr -d ' ') pages"

@@ -4,47 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>OXE Marketing · Website editor</title>
+  <title>OXE Admin</title>
   <link rel="icon" type="image/png" href="/assets/img/favicon.png">
-  <link rel="cms-config-url" type="text/yaml" href="/admin/config.yml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin/admin.css">
 </head>
 <body>
-  <!-- Decap CMS: the editor reads /admin/config.yml. Docs: https://decapcms.org/docs/ -->
-  <script>window.CMS_MANUAL_INIT = true;</script>
-  <script src="https://unpkg.com/decap-cms@^3.6.0/dist/decap-cms.js"></script>
-  <script>
-    // Previews use the site's own fonts and stylesheet, so articles look like they will on the site.
-    CMS.registerPreviewStyle("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap");
-    CMS.registerPreviewStyle("/assets/css/style.css");
-    CMS.registerPreviewStyle(".prose{max-width:760px;margin:0 auto;padding:32px 24px}.preview-head{max-width:760px;margin:0 auto;padding:32px 24px 0}.preview-head h1{font-size:2.4rem;color:#1f2937;margin:12px 0}.preview-head img{width:100%;border-radius:24px;margin-top:16px}.preview-head .pc__cat{display:inline-block}", { raw: true });
-
-    var h = window.h;
-    var BlogPreview = createClass({
-      render: function () {
-        var e = this.props.entry, get = function (k) { return e.getIn(["data", k]); };
-        var cover = get("cover") ? this.props.getAsset(get("cover")) : null;
-        var faq = (get("faq") || []).map ? get("faq") : null;
-        return h("div", {},
-          h("div", { className: "preview-head" },
-            h("span", { className: "pc__cat" }, get("category") || ""),
-            h("h1", {}, get("title") || "Untitled article"),
-            h("p", { className: "lead" }, get("excerpt") || ""),
-            cover ? h("img", { src: cover.toString(), alt: "" }) : null),
-          h("article", { className: "prose" },
-            this.props.widgetFor("body"),
-            faq && faq.size ? h("section", { className: "afaq" },
-              h("h2", {}, "Frequently asked questions"),
-              faq.map(function (x, i) {
-                return h("details", { className: "afaq__item", key: i, open: true },
-                  h("summary", {}, x.get("question")), h("p", {}, x.get("answer")));
-              })) : null));
-      }
-    });
-    CMS.registerPreviewTemplate("blog", BlogPreview);
-
-    // Log in through this site's own /api/auth (Vercel functions), on whatever domain the admin is opened:
-    // the live domain, www or a Vercel preview URL.
-    CMS.init({ config: { backend: { base_url: location.origin, auth_endpoint: "api/auth" } } });
-  </script>
+  <div id="app"><div class="boot"><div><div class="spin"></div>Loading the OXE admin…</div></div></div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <!-- YAML reader/writer for the content files -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+  <script src="/admin/app.js" defer></script>
 </body>
 </html>

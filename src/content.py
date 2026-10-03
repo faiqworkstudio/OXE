@@ -41,10 +41,19 @@ def fmt_or_none(t):
 
 
 def asset(path):
-    """'/assets/img/work/photo.jpg' (from the admin panel) or 'photo' -> 'photo'."""
+    """'/assets/img/work/photo.jpg' (from the admin panel) or 'photo' -> 'photo'.
+    Full URLs (large videos stored in Vercel Blob) are kept as they are."""
     if not path:
         return None
-    return os.path.splitext(os.path.basename(unquote(str(path)).strip()))[0]
+    path = str(path).strip()
+    if path.startswith(("https://", "http://")):
+        return path
+    return os.path.splitext(os.path.basename(unquote(path)))[0]
+
+
+def site_path(path, default):
+    """Brand image path from the admin ('/assets/img/logo.png') -> 'assets/img/logo.png'."""
+    return (str(path or "").strip().lstrip("/")) or default
 
 
 _settings = load("settings.yml")
@@ -60,6 +69,12 @@ SITE = {
     "founded": str(_settings["founded"]),
     # Web3Forms access key: contact-form submissions are emailed to the address it was created for
     "form_key": (_settings.get("form_key") or "").strip(),
+    # brand images (Admin → Contact details & settings)
+    "logo": site_path(_settings.get("logo"), "assets/img/oxe-wordmark.png"),
+    "logo_white": site_path(_settings.get("logo_white"), "assets/img/oxe-wordmark-white.png"),
+    "favicon": site_path(_settings.get("favicon"), "assets/img/favicon.png"),
+    "share_image": site_path(_settings.get("share_image"), "assets/img/og-image.jpg"),
+    "org_logo": site_path(_settings.get("org_logo"), "assets/img/oxe-logo.png"),
     "social": {k: (v or "").strip() for k, v in (_settings.get("social") or {}).items()},
 }
 SERVICE_OPTIONS = [fmt(x) for x in _settings["form_services"]]
@@ -99,6 +114,23 @@ def flatten(d):
 P = {n: flatten(deep(load(n + ".yml"))) for n in ("site", "home", "services", "portfolio", "about", "blog-page", "contact")}
 SITE_TEXT = P["site"]
 
+POSTERS = {}   # video -> cover image shown before it plays
+
+
+def _collect_posters(v):
+    if isinstance(v, dict):
+        if v.get("video") and v.get("video_poster"):
+            POSTERS[v["video"]] = v["video_poster"]
+        for x in v.values():
+            _collect_posters(x)
+    elif isinstance(v, list):
+        for x in v:
+            _collect_posters(x)
+
+
+for _page in P.values():
+    _collect_posters(_page)
+
 # ------------------------------------------------------------------ MENU (content/site.yml)
 NAV = [(m["page"], m["label"]) for m in SITE_TEXT["menu"]]
 MENU = {m["page"]: [(l["link"], l["label"]) for l in m.get("links") or []] for m in SITE_TEXT["menu"]}
@@ -137,7 +169,8 @@ ABOUT = dict(_about,
 SERVICES_PAGE = P["services"]
 SERVICES = []
 for s in SERVICES_PAGE["services"]:
-    d = dict(key=s["key"], num=s["num"], art=s["art"], img=s["image"], title=s["title"],
+    key = s.get("key") or re.sub(r"[^a-z0-9]+", "-", re.sub(r"<[^>]+>", "", s["title"]).lower()).strip("-")
+    d = dict(key=key, num=f"{len(SERVICES) + 1:02d}", art=s.get("art") or "web", img=s["image"], title=s["title"],
              short_name=s.get("short_name") or re.sub(r"<[^>]+>", "", s["title"]),
              short=s["short"], intro=s["intro"], what=s.get("what") or [], deliverables=s.get("deliverables") or [])
     if s.get("videos"):
@@ -151,7 +184,6 @@ INDUSTRIES = [(x["name"], x["image"]) for x in SERVICES_PAGE["industries"]]
 # cat: space-separated filter keys (web social video photo)
 FILTERS = [("all", "All"), ("web", "Web Design"), ("social", "Social Media"), ("video", "Video"), ("photo", "Photography")]
 
-POSTERS = {}   # video name -> poster image name
 
 
 def _project(d):

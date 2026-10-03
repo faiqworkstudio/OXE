@@ -23,3 +23,8 @@ form_budgets:
 - ฿80,000 – ฿150,000
 - ฿150,000+
 - Not sure yet
+logo: /assets/img/oxe-wordmark.png
+logo_white: /assets/img/oxe-wordmark-white.png
+favicon: /assets/img/favicon.png
+share_image: /assets/img/og-image.jpg
+org_logo: /assets/img/oxe-logo.png

@@ -135,8 +135,25 @@ def img(name, alt="", cls="", lazy=True, sizes=""):
             f'{f" class={chr(34)}{cls}{chr(34)}" if cls else ""}{" loading=" + chr(34) + "lazy" + chr(34) if lazy else ""} decoding="async">')
 
 
+def is_url(v):
+    return isinstance(v, str) and v.startswith(("https://", "http://"))
+
+
+def vurl(v):
+    """Video source: an uploaded file in assets/video, or a full URL (large videos in Vercel Blob)."""
+    return v if is_url(v) else f"assets/video/{v}.mp4"
+
+
 def poster(v):
-    return C.POSTERS.get(v, v + "-poster")
+    """Cover image shown before a video plays: set next to the video in the admin, or <video>-poster."""
+    return C.POSTERS.get(v) or (None if is_url(v) else v + "-poster")
+
+
+def brand_img(path):
+    """Brand image set in Admin → Contact details & settings: (url, width, height)."""
+    f = os.path.join(ROOT, path)
+    w, h = size(f) if os.path.exists(f) else (240, 100)
+    return path, w, h
 
 
 def logo(f):
@@ -180,7 +197,8 @@ def devices(screen, phone=None, alt=""):
 
 
 # ------------------------------------------------------------------ layout
-def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=False, og_type="website"):
+def head(title, desc, page, og=None, schema=None, noindex=False, og_type="website"):
+    og = og or S["share_image"]
     nav = mega_nav(page)
     canon = S["url"] + "/" + ("" if page == "index.html" else page.replace(".html", ""))
     ld = f'\n  <script type="application/ld+json">{json.dumps(schema, ensure_ascii=False)}</script>' if schema else ""
@@ -201,7 +219,7 @@ def head(title, desc, page, og="assets/img/og-image.jpg", schema=None, noindex=F
   <meta property="og:url" content="{canon}">
   <meta property="og:image" content="{S['url']}/{og}">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" type="image/png" href="assets/img/favicon.png">
+  <link rel="icon" href="{S["favicon"]}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -289,8 +307,9 @@ def mega_nav(page):
 
 
 def brand(white=False):
+    logo_src, lw, lh = brand_img(S["logo_white"] if white else S["logo"])
     return f'''<a class="brand" href="index.html" aria-label="OXE Marketing, home">
-      <img src="assets/img/oxe-wordmark{'-white' if white else ''}.png" alt="" width="243" height="100">
+      <img src="{logo_src}" alt="" width="{lw}" height="{lh}">
       <span>Marketing</span>
     </a>'''
 
@@ -399,7 +418,7 @@ def project_media(p, big=False):
         v = p["video"]
         webp(poster(v))
         return (f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(v))}" aria-label="{alt}">'
-                f'<source src="assets/video/{v}.mp4" type="video/mp4"></video>')
+                f'<source src="{vurl(v)}" type="video/mp4"></video>')
     return img(p["cover"], alt, lazy=not big)
 
 
@@ -452,7 +471,7 @@ def viewer(p):
         hidden = "" if n == 0 else ' aria-hidden="true"'
         if kind == "video":
             webp(poster(name))
-            body = f'<video controls muted loop playsinline{" autoplay" if n == 0 else ""} preload="{"metadata" if n == 0 else "none"}" poster="{wurl(poster(name))}"><source src="assets/video/{name}.mp4" type="video/mp4">Your browser does not support video.</video>'
+            body = f'<video controls muted loop playsinline{" autoplay" if n == 0 else ""} preload="{"metadata" if n == 0 else "none"}" poster="{wurl(poster(name))}"><source src="{vurl(name)}" type="video/mp4">Your browser does not support video.</video>'
             th = f'<img src="{wurl(poster(name))}" alt="" loading="lazy"><span class="play" aria-hidden="true"></span>'
             label = f"Play the {who} video"
         elif kind == "device":
@@ -541,7 +560,7 @@ def works_list():
         if video:
             v = video
             webp(poster(v))
-            media = f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(v))}"><source src="assets/video/{v}.mp4" type="video/mp4"></video>'
+            media = f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(v))}"><source src="{vurl(v)}" type="video/mp4"></video>'
         else:
             media = img(cover, "")
         stage += f'<figure class="wstage{on}" data-i="{i}" aria-hidden="true">{media}<figcaption>{title}</figcaption></figure>'
@@ -559,7 +578,7 @@ def principle_list(items):
 # ------------------------------------------------------------------ HOME
 def org_schema():
     return {"@context": "https://schema.org", "@type": "ProfessionalService", "name": S["name"], "url": S["url"],
-            "logo": S["url"] + "/assets/img/oxe-logo.png", "image": S["url"] + "/assets/img/og-image.jpg",
+            "logo": S["url"] + "/" + S["org_logo"], "image": S["url"] + "/" + S["share_image"],
             "email": S["email"], "telephone": S["phone_tel"], "foundingDate": S["founded"],
             "address": {"@type": "PostalAddress", "addressLocality": "Bangkok", "addressCountry": "TH"},
             "areaServed": "Thailand", "description": C.HERO["text"],
@@ -584,7 +603,7 @@ def intro_cards():
     for c in PG["home"]["intro_cards"][:2]:
         if c.get("video"):
             media = (f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(c["video"]))}" aria-label="{c["alt"]}">'
-                     f'<source src="assets/video/{c["video"]}.mp4" type="video/mp4"></video>')
+                     f'<source src="{vurl(c["video"])}" type="video/mp4"></video>')
         else:
             media = img(c["image"], c["alt"])
         out += f'<a class="icard reveal" href="{c["link"]}">{media}<span class="icard__go">{ARR}</span><span class="icard__label">{c["label"]}</span></a>'
@@ -684,11 +703,6 @@ def collage(imgs, alts):
     return '<div class="collage">' + "".join(f'<figure>{img(i, a, lazy=False)}</figure>' for i, a in zip(imgs, alts)) + '</div>'
 
 
-def book_pill():
-    """Small pill above hero headings: avatar + 'Book a call'."""
-    return f'''<a class="book-pill" href="contact.html">{img("bts-video-2", "", lazy=False, cls="book-pill__av")}<span><small>Based in Bangkok</small>Book a call to learn more</span></a>'''
-
-
 def page_hero(eb, h1, lead, visual="", after="", cls="", photos=()):
     """Inner-page hero: centred copy on the lavender panel, with tilted photos,
     soft glows, a breadcrumb pill and a slow text ticker along the bottom."""
@@ -722,7 +736,7 @@ def service_media(s):
         for v, client in s["videos"]:
             webp(poster(v))
             tiles += (f'<figure class="vwall__item"><video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(v))}" '
-                      f'aria-label="{plain(client)} video by OXE Marketing"><source src="assets/video/{v}.mp4" type="video/mp4"></video>'
+                      f'aria-label="{plain(client)} video by OXE Marketing"><source src="{vurl(v)}" type="video/mp4"></video>'
                       f'</figure>')
         return f'<div class="vwall" data-vwall>{tiles}</div>'
     slides, dots = "", ""
@@ -831,7 +845,7 @@ def portfolio():
     cards = "".join(pcard(p, n, extra=n >= 7, span=first[n] if n < 7 else None) for n, p in enumerate(grid_projects))
     f = PBY.get(PG["portfolio"]["featured_project"]) or PORT[0]
     if f.get("video"):
-        spot_media = f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(f["video"]))}"><source src="assets/video/{f["video"]}.mp4" type="video/mp4"></video>'
+        spot_media = f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(f["video"]))}"><source src="{vurl(f["video"])}" type="video/mp4"></video>'
     else:
         spot_media = project_media(f, big=True)
     spot_logo = ""
@@ -1164,7 +1178,8 @@ CAT_SVC = {"web": "web", "social": "social", "video": "video", "photo": "photo",
 
 
 def nice_date(iso):
-    return _date.fromisoformat(iso).strftime("%-d %b %Y")
+    d = _date.fromisoformat(iso)
+    return f"{d.day} {d.strftime('%b %Y')}"   # portable (no %-d), also in the admin preview
 
 
 def words(p):
@@ -1304,7 +1319,7 @@ def post(p):
          "image": f'{S["url"]}/{cover}', "datePublished": p["date"], "dateModified": p["date"], "inLanguage": "en",
          "wordCount": words(p), "articleSection": CATS[p["cat"]], "mainEntityOfPage": url,
          "author": {"@type": "Organization", "name": plain(PG["blog-page"]["author"]), "url": S["url"]},
-         "publisher": {"@type": "Organization", "name": "OXE Marketing", "logo": {"@type": "ImageObject", "url": S["url"] + "/assets/img/favicon.png"}}},
+         "publisher": {"@type": "Organization", "name": "OXE Marketing", "logo": {"@type": "ImageObject", "url": S["url"] + "/" + S["org_logo"]}}},
         {"@context": "https://schema.org", "@type": "FAQPage",
          "mainEntity": [{"@type": "Question", "name": plain(q), "acceptedAnswer": {"@type": "Answer", "text": plain(a)}} for q, a in p["faq"]]},
         {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
@@ -1323,7 +1338,7 @@ def post(p):
           <h1 class="split">{split_words(p["title"])}</h1>
           <p class="lead ahero__lead">{p["excerpt"]}</p>
           <div class="ahero__meta">
-            <span class="ahero__by"><img src="assets/img/favicon.png" alt="" width="36" height="36">{PG["blog-page"]["author"]}</span>
+            <span class="ahero__by"><img src="{S["favicon"]}" alt="" width="36" height="36">{PG["blog-page"]["author"]}</span>
             <span><time datetime="{p["date"]}">{nice_date(p["date"])}</time></span>
             <span>{read_min(p)} min read</span>
           </div>
@@ -1360,7 +1375,7 @@ def post(p):
           {faq}
         </section>
         <footer class="afoot">
-          <span class="ahero__by"><img src="assets/img/favicon.png" alt="" width="36" height="36"><span><b>{PG["blog-page"]["author"]}</b><small>{PG["blog-page"]["author_line"]}</small></span></span>
+          <span class="ahero__by"><img src="{S["favicon"]}" alt="" width="36" height="36"><span><b>{PG["blog-page"]["author"]}</b><small>{PG["blog-page"]["author_line"]}</small></span></span>
           <a class="link-arrow" href="services.html#{svc["key"]}">Explore {plain(svc["title"])} {ARR}</a>
         </footer>
       </article>

@@ -1,38 +1,14 @@
-# OXE Marketing admin panel (Decap CMS) — https://decapcms.org/docs/
-# Log in at https://www.oxemarketingth.com/admin with a GitHub account that can edit the repository.
-# Every "Publish" saves a commit to GitHub; Vercel then rebuilds the site (about 1–2 minutes).
-# Login goes through this site's /api/auth and /api/callback (see api/); the address is set in admin/index.html.
+# OXE admin: what can be edited, and how each field looks in the admin.
+# The admin app (admin/app.js) builds its forms from this file. Field names must match
+# the keys in the content files (content/*.yml, content/blog/*.md, content/projects/*.yml),
+# which the site builder (src/content.py, src/build.py) reads.
 #
-# Each page is one file in content/ (Pages collection); blog articles and portfolio projects are folders.
-# Field names must match the keys in those files: the build (src/content.py, src/build.py) reads them.
+# Widgets: string, text, markdown, number, boolean, select (options, multiple), datetime,
+# image / file (media_folder), list (field | fields, min, max, allow_add, allow_remove,
+# summary), object (fields, collapsed, summary), relation (collection, value_field,
+# display_fields), hidden. Validation: required (default true), pattern [regex, message].
 
-backend:
-  name: github
-  repo: faiqworkstudio/OXE
-  branch: claude/website-design-requirements-89zc90   # must be the branch Vercel deploys to production
-  commit_messages:
-    create: "Admin: add {{collection}} “{{slug}}”"
-    update: "Admin: update {{collection}} “{{slug}}”"
-    delete: "Admin: delete {{collection}} “{{slug}}”"
-    uploadMedia: "Admin: upload {{path}}"
-    deleteMedia: "Admin: delete {{path}}"
-
-# Editing on your own computer: run `npx decap-server` in the repo, then open http://localhost:8080/admin/
-local_backend: true
-
-site_url: https://www.oxemarketingth.com
-display_url: https://www.oxemarketingth.com
-logo_url: /assets/img/oxe-wordmark.png
-show_preview_links: true
-
-# Photos you upload go here; the site converts them to fast WebP automatically
 media_folder: assets/img/work
-public_folder: /assets/img/work
-
-slug:
-  encoding: ascii
-  clean_accents: true
-  sanitize_replacement: "-"
 
 # ------------------------------------------------------------------ reusable field definitions
 x-seo: &seo
@@ -111,7 +87,8 @@ collections:
                   - { label: Label, name: label, widget: string }
                   - { label: Link, name: link, widget: string, hint: "e.g. work/tailor-website.html or services.html#web" }
                   - { label: Image, name: image, widget: image, required: false, hint: "Used when there is no video." }
-                  - { label: Video (MP4), name: video, widget: file, required: false, media_folder: /assets/video, public_folder: /assets/video, hint: "Optional. Needs a cover image named <video>-poster.jpg." }
+                  - { label: Video, name: video, widget: file, required: false, media_folder: /assets/video, hint: "Optional. Plays instead of the image." }
+                  - { label: Video cover image, name: video_poster, widget: image, required: false, hint: "Shown while the video loads." }
                   - { label: Image description, name: alt, widget: string, hint: "For screen readers and Google." }
           - label: Services section
             name: sec_services
@@ -172,7 +149,8 @@ collections:
                   - { label: Portfolio filter, name: filter, widget: select, options: [{ label: Web Design, value: web }, { label: Social Media, value: social }, { label: Video, value: video }, { label: Photography, value: photo }] }
                   - { label: Title, name: title, widget: string }
                   - { label: Image, name: image, widget: image }
-                  - { label: Video (MP4), name: video, widget: file, required: false, media_folder: /assets/video, public_folder: /assets/video }
+                  - { label: Video, name: video, widget: file, required: false, media_folder: /assets/video, hint: "Optional. Plays instead of the image on hover." }
+                  - { label: Video cover image, name: video_poster, widget: image, required: false }
           - label: Latest blog articles section
             name: sec_insights
             widget: object
@@ -214,14 +192,12 @@ collections:
           - label: Services
             name: services
             widget: list
-            allow_add: false
-            allow_remove: false
+            min: 1
             summary: "{{fields.title}}"
-            hint: "The five services, in order. They also appear as cards on the home page and in the footer."
+            hint: "In order. They also appear as cards on the home page, in the footer and in the contact form options."
             fields:
-              - { name: key, widget: hidden }
-              - { name: num, widget: hidden }
-              - { name: art, widget: hidden }
+              - { label: Link name, name: key, widget: string, pattern: ['^[a-z0-9]+(-[a-z0-9]+)*$', "Lowercase letters, numbers and dashes, e.g. branding"], hint: "Used in links such as services.html#web. Keep web, social, video, photo and strategy for the existing services." }
+              - { label: 3D icon, name: art, widget: select, default: web, options: [{ label: Website, value: web }, { label: Social media, value: social }, { label: Video, value: video }, { label: Photography, value: photo }, { label: Strategy, value: strategy }, { label: Analytics, value: analytics }] }
               - { label: Title, name: title, widget: string }
               - { label: Short name, name: short_name, widget: string, hint: "Used in the floating menu while scrolling the Services page." }
               - { label: Short description, name: short, widget: text, hint: "Used on the home page cards." }
@@ -244,7 +220,8 @@ collections:
                 required: false
                 summary: "{{fields.client}}"
                 fields:
-                  - { label: Video (MP4), name: video, widget: file, media_folder: /assets/video, public_folder: /assets/video }
+                  - { label: Video, name: video, widget: file, media_folder: /assets/video }
+                  - { label: Video cover image, name: video_poster, widget: image, required: false, hint: "Shown while the video loads." }
                   - { label: Client, name: client, widget: string }
           - label: Industries section
             name: sec_industries
@@ -292,7 +269,7 @@ collections:
             fields:
               - { label: Label, name: featured_label, widget: string }
               - { label: Project, name: featured_project, widget: relation, collection: projects, value_field: id, search_fields: [client, title], display_fields: ["{{client}}: {{title}}"] }
-              - { label: Client logo, name: featured_logo, widget: image, required: false, media_folder: /assets/img/clients, public_folder: /assets/img/clients }
+              - { label: Client logo, name: featured_logo, widget: image, required: false, media_folder: /assets/img/clients }
               - { label: Scope, name: featured_scope, widget: string }
               - { label: Link label, name: featured_link, widget: string }
           - label: Project grid
@@ -600,7 +577,7 @@ collections:
             summary: "{{fields.name}}"
             hint: "Shown on the About page. The first three also appear in the home hero. Drag to reorder."
             fields:
-              - { label: Logo, name: logo, widget: image, media_folder: /assets/img/clients, public_folder: /assets/img/clients, hint: "Square PNG (transparent background is fine) or JPG." }
+              - { label: Logo, name: logo, widget: image, media_folder: /assets/img/clients, hint: "Square PNG (transparent background is fine) or JPG." }
               - { label: Brand name, name: name, widget: string, required: false }
 
       # ---------------------------------------------------------- SETTINGS
@@ -614,6 +591,15 @@ collections:
           - { label: WhatsApp greeting, name: whatsapp_message, widget: string, hint: "Pre-filled message when someone taps WhatsApp." }
           - { label: City, name: city, widget: string }
           - { label: Founded, name: founded, widget: string }
+          - label: Brand images
+            name: brand
+            widget: group
+            fields:
+              - { label: Logo (header), name: logo, widget: image, media_folder: /assets/img/brand, hint: "Transparent PNG, about 240×100." }
+              - { label: Logo on dark (footer), name: logo_white, widget: image, media_folder: /assets/img/brand }
+              - { label: Browser tab icon, name: favicon, widget: image, media_folder: /assets/img/brand, hint: "Square PNG, 192×192 or larger." }
+              - { label: Social sharing image, name: share_image, widget: image, media_folder: /assets/img/brand, hint: "Shown when a page is shared on Facebook, LINE or WhatsApp. 1200×630." }
+              - { label: Logo for Google, name: org_logo, widget: image, media_folder: /assets/img/brand, hint: "Square logo used in search results." }
           - { label: Contact form key, name: form_key, widget: string, required: false, hint: "Free key from web3forms.com (enter Sales@oxemarketingth.com there and paste the key you receive). Enquiries are then emailed to that address. Without a key, the form opens the visitor's email app or WhatsApp instead." }
           - label: Social media links
             name: social
@@ -662,7 +648,7 @@ collections:
       - { label: Publish date, name: date, widget: datetime, format: "YYYY-MM-DD", date_format: "D MMM YYYY", time_format: false, default: "{{now}}" }
       - { label: Cover image, name: cover, widget: image, hint: "Landscape photo, at least 1200px wide. JPG or PNG." }
       - { label: Short summary, name: excerpt, widget: text, hint: "One or two sentences shown on the article cards and under the headline." }
-      - { label: Draft, name: draft, widget: boolean, default: true, hint: "Drafts are saved but not shown on the website." }
+      - { label: Hidden from the website, name: draft, widget: boolean, default: true, hint: "Hidden articles are kept but not shown on the website. Switch off to make the article live." }
       - label: Article
         name: body
         widget: markdown
@@ -727,7 +713,7 @@ collections:
         required: false
         field: { label: Image, name: image, widget: image }
         hint: "More images shown on the case-study page."
-      - { label: Video (MP4), name: video, widget: file, required: false, media_folder: /assets/video, public_folder: /assets/video, hint: "Optional. Keep it short and under 20 MB." }
+      - { label: Video, name: video, widget: file, required: false, media_folder: /assets/video, hint: "Optional. MP4, ideally short and under 20 MB." }
       - { label: Video cover image, name: video_poster, widget: image, required: false, hint: "A still frame shown before the video plays. Needed when you add a video." }
       - { label: Summary, name: summary, widget: text }
       - { label: Challenge, name: challenge, widget: text, required: false, hint: "Leave empty if not known: the page shows “case study coming soon”." }
