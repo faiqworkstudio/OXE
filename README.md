@@ -121,8 +121,8 @@ Do these steps in order. Allow about 20 minutes. Each step names the exact place
 
 **5. Add them to Vercel.** Vercel → the project → **Settings → Environment Variables**. Add each one for **Production** (and Preview if you use previews), then **Deployments → ⋯ → Redeploy**:
 
-🔒 **Secret**: gives access to something. In Vercel, tick **Sensitive** so it can't be read back. Never put it in code, chat, email or screenshots. If one leaks, create a new one at the source and replace it in Vercel.
-⚙️ **Config**: a setting. It's harmless if seen, so it doesn't need to be marked Sensitive.
+- 🔒 **Secret**: gives access to something. In Vercel, tick **Sensitive** so it can't be read back. Never put it in code, chat, email or screenshots. If one leaks, create a new one at the source and replace it in Vercel.
+- ⚙️ **Config**: a setting. It's harmless if seen, so it doesn't need to be marked Sensitive.
 
 | Variable | Type | Value |
 |---|---|---|
