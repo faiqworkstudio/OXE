@@ -1,0 +1,43 @@
+# Weekly backup of the leads (Supabase's free plan has no automatic backups).
+# The file is encrypted with BACKUP_PASSPHRASE before it is stored, so it is safe even though
+# this repository is public. Backups are kept for 90 days (Actions → this workflow → a run → Artifacts).
+# Set up and restore: README → "Backups".
+name: Back up leads
+on:
+  schedule:
+    - cron: "23 2 * * 1"     # Mondays 02:23 UTC (09:23 in Bangkok)
+  workflow_dispatch:         # "Run workflow" button for a backup right now
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Export the leads from Supabase and encrypt them
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${KEY}" ] || [ -z "${PASS}" ]; then
+            echo "::notice::Lead backups aren't set up yet (README → Backups). Skipping."
+            exit 0
+          fi
+          if [ "${#PASS}" -lt 16 ]; then echo "::error::BACKUP_PASSPHRASE must be at least 16 characters."; exit 1; fi
+          AUTH=(-H "apikey: ${KEY}")
+          case "${KEY}" in eyJ*) AUTH+=(-H "Authorization: Bearer ${KEY}");; esac
+          curl -fsS "${AUTH[@]}" "${SUPABASE_URL%/}/rest/v1/leads?select=*&order=created_at.asc" -o leads.json
+          echo "Backed up $(jq length leads.json) leads"     # only the count is printed, never the data
+          gzip -9 leads.json
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:PASS -in leads.json.gz -out "leads-$(date -u +%F).json.gz.enc"
+          shred -u leads.json.gz 2>/dev/null || rm -f leads.json.gz
+      - name: Keep the encrypted backup for 90 days
+        if: hashFiles('leads-*.json.gz.enc') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: leads-backup
+          path: leads-*.json.gz.enc
+          retention-days: 90
+          if-no-files-found: ignore

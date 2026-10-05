@@ -1,5 +1,6 @@
 User-agent: *
 Disallow: /admin/
+Disallow: /api/
 Allow: /
 
 Sitemap: https://www.oxemarketingth.com/sitemap.xml

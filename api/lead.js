@@ -26,7 +26,23 @@ function sameSite(req) {
 
 const LINKS = /(https?:\/\/|www\.)\S+/gi;
 
+// Daily Vercel cron (vercel.json): one tiny database query, so Supabase's free plan never pauses
+// the project for inactivity (which would stop logins and leads), plus a clean-up of old
+// security records. Vercel sends "Authorization: Bearer <CRON_SECRET>" when CRON_SECRET is set.
+async function keepAlive(req, res) {
+  const secret = process.env.CRON_SECRET;
+  if (secret && req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, "Unauthorized");
+  if (!leads.configured()) return send(res, 200, { ok: false, reason: "Supabase not configured" });
+  try {
+    await leads.rest("GET", "leads?select=id&limit=1");
+    await leads.rest("DELETE", `security_events?at=lt.${new Date(Date.now() - 2 * 86400000).toISOString()}`).catch(() => {});
+    await leads.purgeBin(30).catch(() => {});   // "Recently deleted" leads older than 30 days
+    send(res, 200, { ok: true, at: new Date().toISOString() });
+  } catch (e) { fail(res, 502, e.message); }
+}
+
 module.exports = async (req, res) => {
+  if (req.method === "GET" && req.query && req.query.keepalive !== undefined) return keepAlive(req, res);
   if (req.method === "GET") {
     res.setHeader("Cache-Control", "no-store");
     return send(res, 200, { token: sec.formToken(), turnstile: sec.turnstileSiteKey(), enabled: leads.configured() });

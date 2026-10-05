@@ -29,10 +29,13 @@ create table if not exists public.leads (
 );
 -- sender fingerprint (a keyed hash of the IP address, never the IP itself), for rate limits
 alter table public.leads add column if not exists ip_hash text;
+-- "Recently deleted": deleted leads are kept for 30 days and can be restored
+alter table public.leads add column if not exists deleted_at timestamptz;
 
 create index if not exists leads_created_at_idx on public.leads (created_at desc);
 create index if not exists leads_status_idx on public.leads (status);
 create index if not exists leads_ip_hash_idx on public.leads (ip_hash, created_at desc);
+create index if not exists leads_deleted_at_idx on public.leads (deleted_at);
 
 alter table public.leads enable row level security;
 

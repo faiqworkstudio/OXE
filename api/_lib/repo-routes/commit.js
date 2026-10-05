@@ -25,7 +25,11 @@ module.exports = async (req, res) => {
   }
   const msg = String(message || "").trim().slice(0, 200) || `Update ${list.length} item${list.length > 1 ? "s" : ""}`;
   try {
-    const r = await backend.commit({ message: `Admin: ${msg}`, base, changes: list, author: user.name });
+    // the repository's history may be public: never put (part of) a login email in it. A real name
+    // (Supabase user metadata "name") is shown; otherwise just "OXE admin".
+    const local = String(user.email || "").split("@")[0].toLowerCase();
+    const author = user.name && String(user.name).toLowerCase() !== local ? user.name : "OXE admin";
+    const r = await backend.commit({ message: `Admin: ${msg}`, base, changes: list, author });
     send(res, 200, { sha: r.sha });
   } catch (e) {
     if (e instanceof Conflict) return fail(res, 409, "Someone else published changes to the same content while you were editing.", { paths: e.paths });

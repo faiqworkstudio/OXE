@@ -287,19 +287,29 @@
     } else { inView = true; sync(); }
   });
 
-  /* ---------- Autoplay videos: play muted while on screen, pause when not ---------- */
-  var autoVids = document.querySelectorAll("video[autoplay]");
+  /* ---------- Background videos: nothing downloads until a video is about to scroll into
+     view (preload="none" + data-autoplay), then it plays muted, and pauses when off screen.
+     Saves several MB per page on phones. ---------- */
+  var autoVids = document.querySelectorAll("video[data-autoplay], video[autoplay]");
+  function playMuted(v) {
+    v.muted = true;
+    if (v.preload === "none") v.preload = "auto";
+    var p = v.play(); if (p && p.catch) p.catch(function () {});
+  }
   if (reduced) {
     autoVids.forEach(function (v) { v.removeAttribute("autoplay"); v.pause(); v.controls = true; });
   } else if ("IntersectionObserver" in window) {
+    // start loading a little before the video is visible, play once it actually is
     var vio = new IntersectionObserver(function (es) {
       es.forEach(function (e) {
         var v = e.target;
-        if (e.isIntersecting) { v.muted = true; var p = v.play(); if (p && p.catch) p.catch(function () {}); }
-        else v.pause();
+        if (e.isIntersecting) playMuted(v);
+        else if (!v.paused) v.pause();
       });
-    }, { threshold: 0.2 });
+    }, { rootMargin: "200px 0px", threshold: 0.01 });
     autoVids.forEach(function (v) { vio.observe(v); });
+  } else {
+    autoVids.forEach(playMuted);
   }
 
   /* ---------- Case-study media viewer ---------- */

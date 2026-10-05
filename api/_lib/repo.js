@@ -55,7 +55,14 @@ async function gh(method, path, body, accept) {
   if (r.status === 404) return null;
   const data = r.status === 204 ? null : await r.json().catch(() => null);
   if (!r.ok) {
-    const e = new Error((data && data.message) || `GitHub error ${r.status}`);
+    const raw = (data && data.message) || `GitHub error ${r.status}`;
+    // plain-language versions of the errors that will happen one day (expired token, busy GitHub)
+    const msg = r.status === 401 ? "The GitHub token has expired or is wrong. Create a new one (README: GITHUB_TOKEN), update it in Vercel → Settings → Environment Variables, then redeploy. Your drafts are safe."
+      : r.status === 403 && /rate limit/i.test(raw) ? "GitHub is busy right now (too many requests). Please try again in a few minutes. Your drafts are safe."
+      : r.status === 403 ? "The GitHub token isn't allowed to change this repository. It needs Contents: Read and write on " + REPO + "."
+      : r.status >= 500 ? "GitHub isn't responding right now. Please try again in a few minutes. Your drafts are safe."
+      : raw;
+    const e = new Error(msg);
     e.status = r.status;
     throw e;
   }
@@ -106,7 +113,7 @@ const github = {
       }
       const tree = await gh("POST", `/repos/${REPO}/git/trees`, { base_tree: head.tree, tree: entries });
       const when = new Date().toISOString();
-      const who = { name: `${author} (OXE admin)`, email: process.env.ADMIN_COMMIT_EMAIL || "admin@oxemarketingth.com", date: when };
+      const who = { name: /OXE admin/.test(author) ? author : `${author} (OXE admin)`, email: process.env.ADMIN_COMMIT_EMAIL || "admin@oxemarketingth.com", date: when };
       const commit = await gh("POST", `/repos/${REPO}/git/commits`, { message, tree: tree.sha, parents: [head.sha], author: who, committer: who });
       try {
         await gh("PATCH", `/repos/${REPO}/git/refs/heads/${encodeURIComponent(BRANCH)}`, { sha: commit.sha, force: false });

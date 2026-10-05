@@ -32,8 +32,11 @@ async function rest(method, path, body, prefer) {
   try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
   if (!r.ok) {
     const msg = data && (data.message || data.hint) || `Supabase error ${r.status}`;
-    if (/does not exist|Could not find the table|column .* of relation/i.test(msg)) throw new LeadError("The database isn't set up yet: run supabase/setup.sql in Supabase → SQL Editor.", 503);
-    throw new LeadError(msg, r.status >= 500 ? 502 : 400);
+    const err = /does not exist|Could not find the table|column .* of relation/i.test(msg)
+      ? new LeadError("The database isn't set up yet: run supabase/setup.sql in Supabase → SQL Editor.", 503)
+      : new LeadError(msg, r.status >= 500 ? 502 : 400);
+    err.raw = msg;
+    throw err;
   }
   return data;
 }
@@ -63,8 +66,17 @@ function entry(by, type, text) {
   return { at: new Date().toISOString(), by: by || "Website", type, text: String(text || "").slice(0, 2000) };
 }
 
-async function list() {
-  return rest("GET", "leads?select=*&order=created_at.desc&limit=5000");
+// Deleted leads go to "Recently deleted" (deleted_at set) for 30 days before they're removed for
+// good, so a mistake or misuse can be undone. Works with older databases too (no deleted_at
+// column yet: deletes are permanent, as before; run supabase/setup.sql again to get the bin).
+const noBinColumn = (e) => /deleted_at/.test(String(e && (e.raw || e.message)));
+async function list(trash) {
+  try {
+    return await rest("GET", `leads?select=*&deleted_at=${trash ? "not.is.null" : "is.null"}&order=${trash ? "deleted_at" : "created_at"}.desc&limit=5000`);
+  } catch (e) {
+    if (!noBinColumn(e)) throw e;
+    return trash ? [] : rest("GET", "leads?select=*&order=created_at.desc&limit=5000");
+  }
 }
 
 async function get(id) {
@@ -99,11 +111,28 @@ async function editActivity(id, at, text) {
   return rows[0];
 }
 
-async function remove(ids) {
+// -> { deleted, bin }  bin: true when the leads went to "Recently deleted"
+async function remove(ids, forever) {
   ids = (Array.isArray(ids) ? ids : [ids]).filter(isUUID);
   if (!ids.length) throw new LeadError("Nothing to delete.");
+  if (!forever) {
+    try {
+      await rest("PATCH", `leads?id=in.(${ids.join(",")})`, { deleted_at: new Date().toISOString() });
+      return { deleted: ids.length, bin: true };
+    } catch (e) { if (!noBinColumn(e)) throw e; }
+  }
   await rest("DELETE", `leads?id=in.(${ids.join(",")})`);
-  return ids.length;
+  return { deleted: ids.length, bin: false };
+}
+
+async function undelete(ids) {
+  ids = (Array.isArray(ids) ? ids : [ids]).filter(isUUID);
+  if (!ids.length) throw new LeadError("Nothing to restore.");
+  return rest("PATCH", `leads?id=in.(${ids.join(",")})`, { deleted_at: null }, "return=representation");
+}
+
+async function purgeBin(days) {
+  try { await rest("DELETE", `leads?deleted_at=lt.${new Date(Date.now() - (days || 30) * 86400000).toISOString()}`); } catch (e) { if (!noBinColumn(e)) throw e; }
 }
 
 async function bulkStatus(ids, status, by) {
@@ -117,4 +146,4 @@ async function bulkStatus(ids, status, by) {
   return out;
 }
 
-module.exports = { rest, STATUSES, LeadError, configured, clean, entry, list, get, create, update, editActivity, remove, bulkStatus, isEmail };
+module.exports = { rest, undelete, purgeBin, STATUSES, LeadError, configured, clean, entry, list, get, create, update, editActivity, remove, bulkStatus, isEmail };

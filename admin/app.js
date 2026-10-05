@@ -227,7 +227,9 @@
     const p = path.replace(/^\//, "");
     if (S.blobURLs[p]) return S.blobURLs[p];
     if (notDeployed(p)) return "/api/repo/raw?path=" + encodeURIComponent(p);
-    return "/" + p;
+    // the file's version, so a replaced photo never shows an old cached copy
+    const f = S.media.find((x) => x.path === p);
+    return "/" + p + (f && f.sha ? "?v=" + f.sha.slice(0, 8) : "");
   }
   // A deployment link (project-<hash>-team.vercel.app) is a frozen snapshot: it never shows newer
   // changes. The main address (and branch links, "-git-") always serve the latest version.
@@ -361,7 +363,7 @@
     const swap = Object.assign({}, S.blobURLs);                                       // pending uploads
     S.media.forEach((f) => { if (!swap[f.path] && notDeployed(f.path)) swap[f.path] = location.origin + "/api/repo/raw?path=" + encodeURIComponent(f.path); });
     for (const [p, u] of Object.entries(swap)) {
-      out = out.replace(new RegExp("(?:\\.\\./)*/?" + p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), u);
+      out = out.replace(new RegExp("(?:\\.\\./)*/?" + p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?:\\?v=[0-9a-f]+)?", "g"), u);
     }
     // show everything at once: no entrance animations or scroll reveals while editing
     const still = "<style>.js .reveal,.js .reveal-clip,.js .split .w>span,.js .bstack__in,.js .ahero__lead,.js .ahero__meta,.js .phero__crumb{opacity:1!important;transform:none!important;clip-path:none!important;animation:none!important}.js .reveal-clip img,.js .reveal-clip video{transform:none!important}</style>";
@@ -1486,13 +1488,16 @@
   }
   async function deleteLeads(list) {
     const one = list.length === 1;
-    if (!(await confirmBox(one ? `Delete ${list[0].name}?` : `Delete ${list.length} leads?`, `${one ? "This lead and its notes" : "These leads and their notes"} will be removed. You can undo right after.`, "Delete", true))) return false;
+    if (!(await confirmBox(one ? `Delete ${list[0].name}?` : `Delete ${list.length} leads?`, `${one ? "It moves" : "They move"} to “Recently deleted”, where you can restore ${one ? "it" : "them"} for 30 days.`, "Delete", true))) return false;
     try {
-      await api("DELETE", "/api/leads", { ids: list.map((l) => l.id) });
+      const r = await api("DELETE", "/api/leads", { ids: list.map((l) => l.id) });
       const gone = new Set(list.map((l) => l.id));
       L.items = L.items.filter((l) => !gone.has(l.id));
-      toast(one ? `${list[0].name} deleted.` : `${list.length} leads deleted.`, "ok", { text: "Undo", onClick: async () => {
-        for (const l of list) { try { upsertLead((await api("POST", "/api/leads", { restore: l })).lead); } catch (e) { toast(e.message, "bad"); } }
+      toast(one ? `${list[0].name} moved to Recently deleted.` : `${list.length} leads moved to Recently deleted.`, "ok", { text: "Undo", onClick: async () => {
+        try {
+          if (r.bin) (await api("POST", "/api/leads", { undelete: list.map((l) => l.id) })).leads.forEach(upsertLead);
+          else for (const l of list) upsertLead((await api("POST", "/api/leads", { restore: l })).lead);   // older database without the bin
+        } catch (e) { toast(e.message, "bad"); }
         L.items.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
         softRender(); toast("Restored.", "ok");
       } });
@@ -1808,6 +1813,36 @@
               timeline))));
     });
   }
+  // "Recently deleted": restore, or delete for good. Kept 30 days, then removed automatically.
+  function trashScreen() {
+    const body = h("div", { class: "card leads" }, h("div", { class: "empty" }, h("div", { class: "spin", style: { margin: "0 auto 12px" } }), "Loading…"));
+    const draw = (items) => {
+      body.innerHTML = "";
+      if (!items.length) { body.appendChild(h("div", { class: "empty" }, h("span", { class: "empty__ico" }, icon("trash")), h("b", {}, "Nothing here"), "Deleted leads appear here for 30 days, so they can be restored.")); return; }
+      items.forEach((l) => {
+        const days = Math.max(0, 30 - Math.floor((Date.now() - new Date(l.deleted_at)) / 86400000));
+        body.appendChild(h("div", { class: "lrow lrow--trash" },
+          h("div", { class: "lrow__who" }, h("span", { class: "avatar avatar--lost" }, initials(l.name)),
+            h("div", {}, h("b", {}, l.name, l.company ? h("span", { class: "co" }, " · " + l.company) : null),
+              h("small", {}, `Deleted ${ago(l.deleted_at)} · removed for good in ${days} day${days === 1 ? "" : "s"}`))),
+          h("div", { class: "lrow__acts" },
+            h("button", { class: "btn btn--soft btn--sm", onclick: async () => {
+              try { (await api("POST", "/api/leads", { undelete: [l.id] })).leads.forEach(upsertLead); L.items.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))); toast(`${l.name} restored.`, "ok"); load(); refreshChrome(); }
+              catch (e) { toast(e.message, "bad"); }
+            } }, icon("undo"), "Restore"),
+            h("button", { class: "btn btn--danger btn--sm", onclick: async () => {
+              if (!(await confirmBox(`Delete ${l.name} for good?`, "This can't be undone.", "Delete for good", true))) return;
+              try { await api("DELETE", "/api/leads", { ids: [l.id], forever: true }); toast("Deleted for good.", "ok"); load(); } catch (e) { toast(e.message, "bad"); }
+            } }, "Delete for good"))));
+      });
+    };
+    const load = () => api("GET", "/api/leads?trash=1").then((r) => draw(r.leads || [])).catch((e) => { body.innerHTML = ""; body.appendChild(h("div", { class: "empty" }, h("b", {}, "Couldn't load"), e.message)); });
+    load();
+    return h("div", {},
+      h("div", { class: "page-head" }, h("div", {}, h("span", { class: "eyebrow" }, "Leads"), h("h1", { html: 'Recently <span class="hl">deleted</span>' }),
+        h("p", {}, "Deleted leads stay here for 30 days, so a mistake can always be undone. After that they're removed for good automatically."))),
+      body);
+  }
   // re-render a leads screen in place (keeps scroll), used after quick actions
   function softRender() {
     if (!/^#\/leads/.test(location.hash || "") || !shellEls) return;
@@ -1842,7 +1877,7 @@
     if (path === "/api/repo/commit") { await new Promise((r) => setTimeout(r, 600)); return { sha: fake() }; }
     if (path === "/api/repo/deploy") return { state: "success", description: "Demo" };
     if (path === "/api/upload") return { enabled: false };
-    if (path === "/api/leads") return demoLeads(method, data || {});
+    if (path === "/api/leads") return demoLeads(method, data || {}, q);
     if (path === "/api/blobs") return { enabled: false, blobs: [] };
     if (path === "/api/drive") throw new Error("Importing from Google Drive isn't available in the demo.");
     throw new Error("Not available in the demo");
@@ -1864,7 +1899,7 @@
       mk(6, { created_at: t(20), name: "Sample Lead Six", company: "Demo Boutique", email: "lead.six@example.com", status: "won", value: 60000, services: ["Photography"], activity: [act(t(20), "Website", "created", "Enquiry sent from the website form"), act(t(12), "Demo", "status", "Status: Proposal sent → Won")] }),
     ]);
   }
-  function demoLeads(method, d) {
+  function demoLeads(method, d, q) {
     let list = demoLeadStore();
     const now = new Date().toISOString();
     const LBL = (k) => stageLabel(k);
@@ -1877,7 +1912,8 @@
       if (o.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) throw new Error("That email address doesn't look right.");
       return o;
     };
-    if (method === "GET") return { configured: true, leads: list.slice().sort((a, b) => b.created_at.localeCompare(a.created_at)) };
+    if (method === "GET") return { configured: true, leads: list.filter((l) => (q && q.get("trash") ? !!l.deleted_at : !l.deleted_at)).sort((a, b) => b.created_at.localeCompare(a.created_at)) };
+    if (method === "POST" && d.undelete) { const out = list.filter((l) => d.undelete.includes(l.id)); out.forEach((l) => { delete l.deleted_at; }); demoLeadStore(list); return { leads: out }; }
     if (method === "POST") {
       const lead = d.restore ? Object.assign({}, d.restore) : Object.assign({ id: crypto.randomUUID ? crypto.randomUUID() : "demo-" + Date.now(), created_at: now, updated_at: now, status: "new", services: [], utm: {}, page: null,
         activity: [{ at: now, by: "Demo", type: "created", text: "Lead added in the admin" }] }, tidy(d.lead || {}), { source: (d.lead && d.lead.source) || "Added by hand" });
@@ -1897,7 +1933,11 @@
       }
       l.updated_at = now; demoLeadStore(list); return { lead: Object.assign({}, l) };
     }
-    if (method === "DELETE") { const ids = new Set(d.ids || [d.id]); list = list.filter((l) => !ids.has(l.id)); demoLeadStore(list); return { deleted: ids.size }; }
+    if (method === "DELETE") {
+      const ids = new Set(d.ids || [d.id]);
+      if (d.forever) list = list.filter((l) => !ids.has(l.id)); else list.forEach((l) => { if (ids.has(l.id)) l.deleted_at = now; });
+      demoLeadStore(list); return { deleted: ids.size, bin: !d.forever };
+    }
     throw new Error("Not available in the demo");
   }
   function enterDemo() {
@@ -2046,6 +2086,7 @@
     ["Views", [["#/leads/view/new", "star", "New", newLeadCount, "hot"], ["#/leads/view/followup", "cal", "Follow-ups due", () => (L.items || []).filter(isDue).length, "warn"],
       ["#/leads/view/open", "users", "In progress", () => (L.items || []).filter(LEAD_VIEWS.open.test).length], ["#/leads/view/won", "check", "Won", () => (L.items || []).filter(LEAD_VIEWS.won.test).length],
       ["#/leads/view/lost", "x", "Lost", () => (L.items || []).filter(LEAD_VIEWS.lost.test).length]]],
+    ["", [["#/leads/trash", "trash", "Recently deleted"]]],
   ];
   const NAV = [
     ["", [["#/", "dash", "Dashboard"]]],
@@ -2071,7 +2112,7 @@
       if (label) nav.appendChild(h("div", { class: "side__label" }, label));
       links.forEach(([href, ic, text, count, tone]) => {
         const active = leadsMode
-          ? hash === href || (href === "#/leads" && /^#\/leads\/[0-9a-z-]{8,}$/i.test(hash) && !/^#\/leads\/(board|view)/.test(hash))
+          ? hash === href || (href === "#/leads" && /^#\/leads\/[0-9a-z-]{8,}$/i.test(hash) && !/^#\/leads\/(board|view|trash)/.test(hash))
           : href === "#/" ? hash === "#/" || hash === "#" : hash === href || hash.startsWith(href + "/") || (href === "#/blog" && hash.startsWith("#/blog/")) || (href === "#/projects" && hash.startsWith("#/project/"));
         const n = count ? count() : 0;
         nav.appendChild(h("a", { href, class: active ? "is-active" : "", onclick: () => document.body.classList.remove("menu-open") }, icon(ic), text,
@@ -2114,6 +2155,7 @@
     m = hash.match(/^#\/project\/(.+)$/); if (m) return "Project";
     if (isLeadsRoute(hash)) {
       if (hash === "#/leads/board") return "Pipeline board";
+      if (hash === "#/leads/trash") return "Recently deleted";
       m = hash.match(/^#\/leads\/view\/(\w+)$/); if (m) return LEAD_VIEWS[m[1]] ? LEAD_VIEWS[m[1]].label : "Leads";
       m = hash.match(/^#\/leads\/(.+)$/); if (m) { const l = leadById(m[1]); return l ? l.name : "Lead"; }
       return "Leads";
@@ -2137,6 +2179,7 @@
     else if (hash === "#/activity") view = activityScreen();
     else if (hash === "#/leads") view = leadsListScreen("all");
     else if (hash === "#/leads/board") view = boardScreen();
+    else if (hash === "#/leads/trash") view = trashScreen();
     else if ((m = hash.match(/^#\/leads\/view\/(\w+)$/))) view = leadsListScreen(m[1]);
     else if ((m = hash.match(/^#\/leads\/([^/]+)$/))) view = leadScreen(m[1]);
     else view = dashboard();

@@ -116,8 +116,22 @@ def size(path):
     return _header_size(path)
 
 
+_STAMPS = {}
+
+
+def stamp(rel):
+    """'assets/img/x.webp' -> 'assets/img/x.webp?v=<content hash>'. A replaced photo or video
+    (same name, new content) gets a new address, so visitors never see an old cached copy."""
+    if not rel.startswith(("assets/img/", "assets/video/")):
+        return rel
+    if rel not in _STAMPS:
+        f = os.path.join(ROOT, rel)
+        _STAMPS[rel] = f"{rel}?v={ver(rel)}" if os.path.isfile(f) else rel
+    return _STAMPS[rel]
+
+
 def url(path):
-    return os.path.relpath(path, ROOT).replace(os.sep, "/")
+    return stamp(os.path.relpath(path, ROOT).replace(os.sep, "/"))
 
 
 def wurl(name):
@@ -141,7 +155,7 @@ def is_url(v):
 
 def vurl(v):
     """Video source: an uploaded file in assets/video, or a full URL (large videos in Vercel Blob)."""
-    return v if is_url(v) else f"assets/video/{v}.mp4"
+    return v if is_url(v) else stamp(f"assets/video/{v}.mp4")
 
 
 def poster(v):
@@ -153,7 +167,7 @@ def brand_img(path):
     """Brand image set in Admin → Contact details & settings: (url, width, height)."""
     f = os.path.join(ROOT, path)
     w, h = size(f) if os.path.exists(f) else (240, 100)
-    return path, w, h
+    return stamp(path), w, h
 
 
 def logo(f):
@@ -419,7 +433,7 @@ def project_media(p, big=False):
     if p.get("video") and not big:
         v = p["video"]
         webp(poster(v))
-        return (f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(v))}" aria-label="{alt}">'
+        return (f'<video muted loop playsinline data-autoplay preload="none" poster="{wurl(poster(v))}" aria-label="{alt}">'
                 f'<source src="{vurl(v)}" type="video/mp4"></video>')
     return img(p["cover"], alt, lazy=not big)
 
@@ -473,7 +487,7 @@ def viewer(p):
         hidden = "" if n == 0 else ' aria-hidden="true"'
         if kind == "video":
             webp(poster(name))
-            body = f'<video controls muted loop playsinline{" autoplay" if n == 0 else ""} preload="{"metadata" if n == 0 else "none"}" poster="{wurl(poster(name))}"><source src="{vurl(name)}" type="video/mp4">Your browser does not support video.</video>'
+            body = f'<video controls muted loop playsinline{" data-autoplay" if n == 0 else ""} preload="none" poster="{wurl(poster(name))}"><source src="{vurl(name)}" type="video/mp4">Your browser does not support video.</video>'
             th = f'<img src="{wurl(poster(name))}" alt="" loading="lazy"><span class="play" aria-hidden="true"></span>'
             label = f"Play the {who} video"
         elif kind == "device":
@@ -562,7 +576,7 @@ def works_list():
         if video:
             v = video
             webp(poster(v))
-            media = f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(v))}"><source src="{vurl(v)}" type="video/mp4"></video>'
+            media = f'<video muted loop playsinline data-autoplay preload="none" poster="{wurl(poster(v))}"><source src="{vurl(v)}" type="video/mp4"></video>'
         else:
             media = img(cover, "")
         stage += f'<figure class="wstage{on}" data-i="{i}" aria-hidden="true">{media}<figcaption>{title}</figcaption></figure>'
@@ -604,7 +618,7 @@ def intro_cards():
     out = ""
     for c in PG["home"]["intro_cards"][:2]:
         if c.get("video"):
-            media = (f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(c["video"]))}" aria-label="{c["alt"]}">'
+            media = (f'<video muted loop playsinline data-autoplay preload="none" poster="{wurl(poster(c["video"]))}" aria-label="{c["alt"]}">'
                      f'<source src="{vurl(c["video"])}" type="video/mp4"></video>')
         else:
             media = img(c["image"], c["alt"])
@@ -737,7 +751,7 @@ def service_media(s):
         tiles = ""
         for v, client in s["videos"]:
             webp(poster(v))
-            tiles += (f'<figure class="vwall__item"><video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(v))}" '
+            tiles += (f'<figure class="vwall__item"><video muted loop playsinline data-autoplay preload="none" poster="{wurl(poster(v))}" '
                       f'aria-label="{plain(client)} video by OXE Marketing"><source src="{vurl(v)}" type="video/mp4"></video>'
                       f'</figure>')
         return f'<div class="vwall" data-vwall>{tiles}</div>'
@@ -847,7 +861,7 @@ def portfolio():
     cards = "".join(pcard(p, n, extra=n >= 7, span=first[n] if n < 7 else None) for n, p in enumerate(grid_projects))
     f = PBY.get(PG["portfolio"]["featured_project"]) or PORT[0]
     if f.get("video"):
-        spot_media = f'<video muted loop playsinline autoplay preload="metadata" poster="{wurl(poster(f["video"]))}"><source src="{vurl(f["video"])}" type="video/mp4"></video>'
+        spot_media = f'<video muted loop playsinline data-autoplay preload="none" poster="{wurl(poster(f["video"]))}"><source src="{vurl(f["video"])}" type="video/mp4"></video>'
     else:
         spot_media = project_media(f, big=True)
     spot_logo = ""
