@@ -100,7 +100,7 @@ Do these steps in order. Allow about 20 minutes. Each step names the exact place
    - **Redirect URLs**: add `https://www.oxemarketingth.com/admin`. Password-reset links only ever go to addresses on this list.
 3. **Authentication → Attack Protection** (names can vary by plan):
    - Set the minimum password length to **12**, and require lowercase, uppercase, digits and symbols.
-   - Turn on **leaked password protection** if your plan offers it.
+   - Turn on **leaked password protection** if your plan offers it. On plans without it, the admin's own "choose a new password" screen still refuses breached passwords: it checks Have I Been Pwned privately, sending only the first 5 characters of the password's hash. It also requires 12+ characters with lowercase and uppercase letters, a number and a symbol.
    - Leave Supabase's own **CAPTCHA protection off**. The website runs its own checks (step 6), and Supabase's CAPTCHA would block the admin login.
 4. **Authentication → Emails → SMTP Settings**: connect your own email sender, such as Hostinger email for `sales@oxemarketingth.com`, Resend or Brevo. Supabase's built-in sender only delivers to your Supabase team members and only a few emails an hour, so password resets need this.
 

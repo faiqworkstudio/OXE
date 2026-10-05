@@ -79,10 +79,34 @@ async function sendReset(email, redirectTo) {
   // Always answer the same way, so the form doesn't reveal which emails exist.
 }
 
+// Has this password appeared in a known data breach? Uses Have I Been Pwned's k-anonymity
+// API: only the first 5 characters of the password's SHA-1 hash leave the server, never the
+// password. If the service can't be reached, the check is skipped (Supabase's own rules still apply).
+async function breached(password) {
+  try {
+    const hash = crypto.createHash("sha1").update(String(password)).digest("hex").toUpperCase();
+    const r = await fetch(`https://api.pwnedpasswords.com/range/${hash.slice(0, 5)}`, { headers: { "Add-Padding": "true" } });
+    if (!r.ok) return false;
+    const rest = hash.slice(5);
+    return (await r.text()).split("\n").some((line) => { const [suffix, n] = line.trim().split(":"); return suffix === rest && Number(n) > 0; });
+  } catch (e) {
+    return false;
+  }
+}
+
+function strongEnough(password) {
+  const p = String(password || "");
+  if (p.length < 12) return "Please choose a password with at least 12 characters.";
+  if (!/[a-z]/.test(p) || !/[A-Z]/.test(p) || !/\d/.test(p) || !/[^A-Za-z0-9]/.test(p)) return "Please use lowercase and uppercase letters, a number and a symbol.";
+  return null;
+}
+
 // The reset link signs the user in for a moment; use that to set the new password.
 async function resetPassword(accessToken, password) {
   if (!accessToken) throw new AuthError("This reset link is invalid or has expired. Request a new one.", 400);
-  if (!password || String(password).length < 10) throw new AuthError("Please choose a password with at least 10 characters.", 400);
+  const weak = strongEnough(password);
+  if (weak) throw new AuthError(weak, 400);
+  if (await breached(password)) throw new AuthError("This password has appeared in a known data breach, so it isn't safe. Please choose a different one.", 400);
   const r = await supabase("PUT", "/user", { password: String(password) }, accessToken);
   if (!r.ok) throw new AuthError(r.data.msg || r.data.message || "This reset link is invalid or has expired. Request a new one.", 400);
   return { email: r.data.email };

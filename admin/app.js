@@ -1804,18 +1804,18 @@
     email.focus();
   }
   function resetScreen(token) {
-    const p1 = h("input", { type: "password", id: "p1", autocomplete: "new-password", minlength: 10, required: true });
+    const p1 = h("input", { type: "password", id: "p1", autocomplete: "new-password", minlength: 12, required: true });
     const p2 = h("input", { type: "password", id: "p2", autocomplete: "new-password", required: true });
     const note = h("div", { class: "callout callout--bad", hidden: true });
     const btn = h("button", { class: "btn", type: "submit" }, "Save new password");
     const form = h("form", { onsubmit: async (e) => {
       e.preventDefault(); note.hidden = true;
-      if (p1.value.length < 10) { note.textContent = "Please use at least 10 characters."; note.hidden = false; return; }
+      if (p1.value.length < 12) { note.textContent = "Please use at least 12 characters."; note.hidden = false; return; }
       if (p1.value !== p2.value) { note.textContent = "The two passwords don't match."; note.hidden = false; return; }
       btn.disabled = true; btn.textContent = "Saving…";
       try { const r = await api("POST", "/api/session", { action: "reset", access_token: token, password: p1.value }); loginScreen(r.message, "ok"); }
       catch (x) { note.textContent = x.message; note.hidden = false; btn.disabled = false; btn.textContent = "Save new password"; }
-    } }, h("div", { class: "field" }, h("label", { for: "p1" }, "New password"), p1, h("p", { class: "hint" }, "At least 10 characters.")),
+    } }, h("div", { class: "field" }, h("label", { for: "p1" }, "New password"), p1, h("p", { class: "hint" }, "At least 12 characters, with lowercase and uppercase letters, a number and a symbol. Passwords found in known data breaches are refused.")),
       h("div", { class: "field" }, h("label", { for: "p2" }, "Repeat new password"), p2), note, btn);
     authLayout("Choose a new password", "Set the password for your admin account.", form);
     p1.focus();
