@@ -1,8 +1,8 @@
 // Publish: all pending changes in one commit. Vercel then rebuilds the site.
 // changes: [{ path, text }] | [{ path, sha }] (uploaded media) | [{ path, delete: true }]
-const { requireUser } = require("../_lib/auth");
-const { backend, checkPath, Conflict } = require("../_lib/repo");
-const { send, fail, body, methods } = require("../_lib/http");
+const { requireUser } = require("../auth");
+const { backend, checkPath, Conflict } = require("../repo");
+const { send, fail, body, methods } = require("../http");
 
 module.exports = async (req, res) => {
   if (!methods(req, res, ["POST"])) return;

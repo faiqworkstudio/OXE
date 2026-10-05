@@ -22,9 +22,14 @@ function vercelHeaders(res, pathname) {
 }
 
 function api(req, res, url) {
-  const file = path.join(ROOT, url.pathname.replace(/\/$/, "") + ".js");
-  if (!file.startsWith(path.join(ROOT, "api")) || !fs.existsSync(file)) { res.statusCode = 404; return res.end("{}"); }
+  let file = path.join(ROOT, url.pathname.replace(/\/$/, "") + ".js");
   req.query = Object.fromEntries(url.searchParams);
+  if (!fs.existsSync(file)) {
+    // dynamic routes like Vercel: api/repo/[action].js answers /api/repo/<anything>
+    const dir = path.dirname(file), dyn = fs.existsSync(dir) && fs.readdirSync(dir).find((f) => /^\[\w+\]\.js$/.test(f));
+    if (dyn) { req.query[dyn.slice(1, -4)] = path.basename(file, ".js"); file = path.join(dir, dyn); }
+  }
+  if (!file.startsWith(path.join(ROOT, "api")) || path.basename(file).startsWith("_") || file.includes(`${path.sep}_lib${path.sep}`) || !fs.existsSync(file)) { res.statusCode = 404; return res.end("{}"); }
   let raw = "";
   req.on("data", (c) => { raw += c; });
   req.on("end", async () => {

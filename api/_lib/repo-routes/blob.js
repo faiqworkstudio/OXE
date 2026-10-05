@@ -1,8 +1,8 @@
 // Upload one media file (base64) into the repository's storage. It becomes part of the
 // site when the change that uses it is published.
-const { requireUser } = require("../_lib/auth");
-const { backend, checkPath } = require("../_lib/repo");
-const { send, fail, body, methods } = require("../_lib/http");
+const { requireUser } = require("../auth");
+const { backend, checkPath } = require("../repo");
+const { send, fail, body, methods } = require("../http");
 
 const MAX = 3.3 * 1024 * 1024;   // Vercel accepts request bodies up to 4.5 MB (base64 adds a third)
 

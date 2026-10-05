@@ -225,7 +225,8 @@ Only use facts supplied by OXE or the client: no invented results, numbers or te
   - **Live preview:** `admin/preview-worker.js` runs the real builder (`src/preview.py`) in the browser with Pyodide. `scripts/make-engine.py` ships the builder and image sizes to `public/admin/engine/` at build time.
 - **API (Vercel functions in `api/`).**
   - `session` handles login, logout and password reset through Supabase Auth (`api/_lib/auth.js`).
-  - `repo/*` provides `bundle`, `tree`, `file`, `blob` (upload), `commit` (atomic publish with a conflict check), `history` and `deploy` (status).
+  - `repo/*` provides `bundle`, `tree`, `file`, `blob` (upload), `commit` (atomic publish with a conflict check), `history` and `deploy` (status). They're one function, `api/repo/[action].js`, which routes to `api/_lib/repo-routes/`.
+  - **Vercel's Hobby plan allows at most 12 functions** per deployment: every `.js` file in `api/` outside `_lib` counts as one. There are 7 now, and CI fails if there are ever more than 12. Add new endpoints as routes inside an existing function where possible.
   - `lead` (public): `GET` hands out a signed form token, and `POST` saves a contact-form enquiry. `leads` (login required) lists, adds, edits, re-stages, notes, deletes and restores leads. Both use `api/_lib/leads.js` and the `leads` table from `supabase/setup.sql`, through Supabase's REST API with the service role key. Bot, spam and login protection is in `api/_lib/security.js`.
   - `drive` imports a shared Google Drive file (photos resized with `sharp`, videos streamed into Vercel Blob) or lists a shared folder. `blobs` lists and deletes the videos in Blob. `upload` issues Blob tokens for large browser uploads.
   - `upload` issues Vercel Blob tokens for large videos.

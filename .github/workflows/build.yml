@@ -22,4 +22,6 @@ jobs:
         with:
           node-version: "20"
       - name: Check admin and API scripts
-        run: for f in admin/*.js api/*.js api/*/*.js scripts/*.js; do node --check "$f"; done
+        run: for f in admin/*.js api/*.js api/*/*.js api/_lib/*/*.js scripts/*.js; do node --check "$f"; done
+      - name: Stay within the Vercel Hobby limit of 12 functions
+        run: n=$(find api -name "*.js" -not -path "api/_lib/*" -not -name "_*" | wc -l); echo "$n functions"; test "$n" -le 12

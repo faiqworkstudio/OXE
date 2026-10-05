@@ -1,8 +1,8 @@
 // All content files (pages, articles, projects) in one response, for the admin's lists
 // and live preview: { head, files: { "content/home.yml": "<text>", ... } }.
-const { requireUser } = require("../_lib/auth");
-const { backend } = require("../_lib/repo");
-const { send, fail, methods } = require("../_lib/http");
+const { requireUser } = require("../auth");
+const { backend } = require("../repo");
+const { send, fail, methods } = require("../http");
 
 module.exports = async (req, res) => {
   if (!methods(req, res, ["GET"]) || !requireUser(req, res)) return;

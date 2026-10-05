@@ -1,7 +1,7 @@
 // Recent versions of one file (or of the whole site when no path is given).
-const { requireUser } = require("../_lib/auth");
-const { backend } = require("../_lib/repo");
-const { send, fail, methods } = require("../_lib/http");
+const { requireUser } = require("../auth");
+const { backend } = require("../repo");
+const { send, fail, methods } = require("../http");
 
 module.exports = async (req, res) => {
   if (!methods(req, res, ["GET"]) || !requireUser(req, res)) return;
