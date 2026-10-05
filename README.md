@@ -38,7 +38,7 @@ The switch at the top of the admin moves between two workspaces:
 | **Pages** (Home, Services, Portfolio, About, Blog page, Contact) | Edit every heading, text, button, photo, video and Google (SEO) text; add, remove and reorder list items such as services, principles, facts, steps and industries |
 | **Blog articles** | Create, edit, duplicate, hide or show, and delete articles; Markdown editor with buttons for headings, lists, quotes and tip boxes; Google snippet preview |
 | **Portfolio projects** | Create, edit, duplicate, reorder (▲▼) and delete projects, with cover style, gallery, video and case study |
-| **Media library** | Upload by drag and drop (images are resized and converted to WebP in the browser); replace a file everywhere it's used; delete it, with a warning when it's still in use; see where each file is used |
+| **Media library** | Upload by drag and drop (images are resized and converted to WebP in the browser); **import from Google Drive** by pasting share links or a folder link; replace a file everywhere it's used; delete it, with a warning when it's still in use; see where each file is used. Videos stored in Vercel Blob are listed too (marked *Cloud*) |
 | **Menu & footer, Client logos, Contact & settings** | Menu labels and panels, footer, shared sections, thank-you and 404 pages; client logos; contact details, social links, logo, favicon and sharing image, contact-form options and key |
 | **Activity** | Every published update, by whom and when |
 
@@ -131,27 +131,39 @@ Do these steps in order. Allow about 20 minutes. Each step names the exact place
 | `SUPABASE_SERVICE_ROLE_KEY` | 🔒 **Secret** | The secret / service_role key. It can read and change all data, so mark it **Sensitive**. Server-only, never sent to the browser |
 | `SESSION_SECRET` | 🔒 **Secret** | A random string of at least 32 characters. Create one at <https://generate-secret.vercel.app/32>, or run `openssl rand -base64 32`. Changing it logs everyone out |
 | `GITHUB_TOKEN` | 🔒 **Secret** | A GitHub fine-grained token for **this repository only**, with **Contents: Read and write** and an expiry date. The admin publishes through it; it is never sent to the browser |
-| `TURNSTILE_SECRET_KEY` *(recommended)* | 🔒 **Secret** | Cloudflare Turnstile secret key (step 6) |
+| `TURNSTILE_SECRET_KEY` *(recommended)* | 🔒 **Secret** | Cloudflare Turnstile secret key (step 6). Setting it switches the "I'm human" check on |
+| `GOOGLE_API_KEY` *(optional)* | 🔒 **Secret** | Only needed to import a **whole Drive folder** at once (single files work without it). Google Cloud Console → APIs & Services → enable **Google Drive API** → Credentials → Create API key → restrict it to the Google Drive API |
 | `BLOB_READ_WRITE_TOKEN` *(added automatically)* | 🔒 **Secret** | Vercel creates this when you connect Blob storage for large videos. Don't edit it |
-| `TURNSTILE_SITE_KEY` *(recommended)* | ⚙️ Config | Cloudflare Turnstile site key. It's public by design, because visitors' browsers use it |
+| `TURNSTILE_SITE_KEY` *(optional)* | ⚙️ Config | Not needed: the site key `0x4AAAAAAFOAs13rqrJZF0b9` is built in (it's public by design). Set it only to use a different widget, e.g. Cloudflare's test key `1x00000000000000000000AA` when testing locally |
 | `ADMIN_EMAILS` *(optional)* | ⚙️ Config | Comma-separated admin emails, e.g. `sales@oxemarketingth.com, faiq@…` |
 | `GITHUB_BRANCH` *(optional)* | ⚙️ Config | The branch Vercel deploys to production (default: `claude/website-design-requirements-89zc90`) |
 | `GITHUB_REPO` *(optional)* | ⚙️ Config | `owner/name` of the repository (default: `faiqworkstudio/OXE`) |
 | `ADMIN_DEMO` *(set when live)* | ⚙️ Config | `off` turns off the demo account. Do this once your real accounts work |
 
-**6. Turn on the "I'm human" check (free).**
-1. In your Cloudflare dashboard (sign up free at dash.cloudflare.com), open **Turnstile → Add widget**.
-2. Name it "OXE website", and add the hostnames `oxemarketingth.com` and `www.oxemarketingth.com`. Choose **Managed** mode.
-3. Copy the **Site key** and **Secret key** into the two Vercel variables above, then redeploy.
+**6. Turn on the "I'm human" check (free).** The Cloudflare Turnstile widget already exists, and its site key `0x4AAAAAAFOAs13rqrJZF0b9` is built into the site.
+1. In Cloudflare → **Turnstile** → the widget → **Settings**, make sure the **Hostnames** include `oxemarketingth.com` and `www.oxemarketingth.com`. Also add your `….vercel.app` address if you want to test on Vercel preview links. On any other address the widget shows an error and visitors fall back to email/WhatsApp.
+2. Copy the widget's **Secret key** into Vercel as `TURNSTILE_SECRET_KEY` (mark it Sensitive), then redeploy. That switches it on.
+3. Test: open the Contact page. An "I'm human" box appears above the send button, usually ticking itself. Send a test enquiry and check it appears in Leads.
 
 Most visitors never see a puzzle; Cloudflare decides in the background.
+
+How it works:
+- The widget gives the form a one-time token.
+- The server checks that token with Cloudflare, confirms it came from the contact form (`action: contact`), and refuses reused or expired tokens.
+- If the widget can't load at all (blocked by a browser extension or network), the visitor isn't stuck: their message is handed to email or WhatsApp instead.
 
 **7. Test it**
 1. Open `/admin` and log in with your new account.
 2. Send a test enquiry from the Contact page, wait a few seconds after the page loads, and check that it appears under **Leads**.
 3. Try **Forgot password?** once and check that the email arrives.
 
-- **Videos over 3.3 MB** are uploaded straight to Vercel Blob storage. Enable it once: **Vercel → Storage → Create → Blob**, then connect it to this project (this adds `BLOB_READ_WRITE_TOKEN`). Smaller videos and all images are stored in the repository.
+- **Videos over 3.3 MB** are stored in **Vercel Blob**, whether uploaded or imported from Google Drive. Enable it once: **Vercel → Storage → Create → Blob**, then connect it to this project (this adds `BLOB_READ_WRITE_TOKEN`). Smaller videos and all images are stored with the website files. Blob videos appear in *Media library → Videos* with a *Cloud* badge; deleting one there removes it from storage immediately. For long videos (full ads, interviews), use YouTube or Vimeo instead: they're free, stream better on slow phones and help search.
+- **Google Drive import.** *Media library → Import from Google Drive* (also *From Google Drive* in every photo or video picker). Share the files as "Anyone with the link" and paste the links, one per line, or a folder link (folders need `GOOGLE_API_KEY`).
+  - Photos are resized on the server (up to 60 MB originals, any orientation) to fit 2000 px as WebP, then added like uploads.
+  - Videos must be MP4 or WebM, up to 300 MB, and go to Vercel Blob.
+  - iPhone HEIC photos need saving as JPG first.
+
+  The website never loads anything from Drive itself. Drive isn't made for serving websites: it has view limits and is slow, and links break when files move.
 - **Email alerts for new enquiries (optional).** Paste a free Web3Forms key into *Contact & settings → Contact form key*. On web3forms.com, enter `Sales@oxemarketingth.com` and the key is emailed to you. Enquiries are saved to Leads either way. If neither leads nor a key is set up, the form opens the visitor's email app or WhatsApp with their message.
 
 ### Security: what protects the site
@@ -215,6 +227,7 @@ Only use facts supplied by OXE or the client: no invented results, numbers or te
   - `session` handles login, logout and password reset through Supabase Auth (`api/_lib/auth.js`).
   - `repo/*` provides `bundle`, `tree`, `file`, `blob` (upload), `commit` (atomic publish with a conflict check), `history` and `deploy` (status).
   - `lead` (public): `GET` hands out a signed form token, and `POST` saves a contact-form enquiry. `leads` (login required) lists, adds, edits, re-stages, notes, deletes and restores leads. Both use `api/_lib/leads.js` and the `leads` table from `supabase/setup.sql`, through Supabase's REST API with the service role key. Bot, spam and login protection is in `api/_lib/security.js`.
+  - `drive` imports a shared Google Drive file (photos resized with `sharp`, videos streamed into Vercel Blob) or lists a shared folder. `blobs` lists and deletes the videos in Blob. `upload` issues Blob tokens for large browser uploads.
   - `upload` issues Vercel Blob tokens for large videos.
   - Writes are limited to `content/` and `assets/img|video/`, and core page files can't be deleted.
 - **Build.** The build needs only Python 3.8 or newer: PyYAML and Markdown are bundled in `src/vendor/`, and Pillow is optional (WebP conversion).

@@ -5,6 +5,11 @@
   "outputDirectory": "public",
   "cleanUrls": true,
   "trailingSlash": false,
+  "functions": {
+    "api/drive.js": {
+      "maxDuration": 60
+    }
+  },
   "redirects": [
     {
       "source": "/home",

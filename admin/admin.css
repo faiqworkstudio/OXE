@@ -545,3 +545,14 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 .pw-rules li.is-ok::before { content: "✓"; }
 .modal form .field + .field, .login__card form .field + .field { margin-top: 14px; }
 .modal form .btn { margin-top: 14px; }
+.drive-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.drive-list li { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--lav-1); border: 1px solid var(--lav-2); font-size: 13.5px; }
+.drive-list li > div { min-width: 0; }
+.drive-list li b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.drive-list li small { display: block; color: var(--muted); }
+.drive-list .spin { flex: none; width: 18px; height: 18px; border: 2px solid var(--lav-2); border-top-color: var(--peri); border-radius: 50%; animation: spin .8s linear infinite; }
+.drive-list .tick { display: grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 50%; color: #fff; font: 600 12px var(--head); }
+.drive-list li.is-ok .tick { background: var(--ok); }
+.drive-list li.is-bad { background: var(--bad-bg); border-color: #f3c9c4; }
+.drive-list li.is-bad .tick { background: var(--bad); }
+.drive-list li.is-bad small { color: #8e2a1f; }

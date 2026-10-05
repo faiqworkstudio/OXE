@@ -3,7 +3,7 @@
 //   - Form tokens: the contact form must first ask /api/lead for a signed token, and can
 //     only be sent between 3 seconds and 12 hours later (bots post instantly, or replay).
 //   - Cloudflare Turnstile (optional): a free, mostly invisible "are you human" check.
-//     Set TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY in Vercel to switch it on.
+//     The site key (public) is below; set TURNSTILE_SECRET_KEY in Vercel to switch it on.
 //   - Throttling: failed logins and reset requests are counted per email and per IP
 //     (in Supabase's security_events table, so it holds across all server instances).
 // IP addresses are never stored: only a keyed hash, so they can be compared but not read.
@@ -41,10 +41,14 @@ function checkFormToken(token) {
 }
 
 // ---- Cloudflare Turnstile
-const turnstileSiteKey = () => (process.env.TURNSTILE_SECRET_KEY && process.env.TURNSTILE_SITE_KEY) || null;
+// The widget's site key is public by design (browsers use it). TURNSTILE_SITE_KEY overrides it,
+// e.g. with Cloudflare's test key 1x00000000000000000000AA for local testing.
+const SITE_KEY = "0x4AAAAAAFOAs13rqrJZF0b9";
+const TURNSTILE_ACTION = "contact";   // must match `action` in assets/js/main.js
+const turnstileSiteKey = () => (process.env.TURNSTILE_SECRET_KEY ? process.env.TURNSTILE_SITE_KEY || SITE_KEY : null);
 async function checkTurnstile(token, req) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret || !process.env.TURNSTILE_SITE_KEY) return true;     // not switched on
+  if (!secret) return true;     // not switched on
   if (!token) return false;
   try {
     const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
@@ -52,8 +56,12 @@ async function checkTurnstile(token, req) {
       body: JSON.stringify({ secret, response: String(token).slice(0, 2048), remoteip: ipOf(req) }),
     });
     const d = await r.json();
-    return !!d.success;
+    if (!d.success) { console.warn("Turnstile rejected:", (d["error-codes"] || []).join(", ")); return false; }
+    // the token must come from the contact form's widget (tokens are single-use and expire after 5 minutes)
+    if (d.action && d.action !== TURNSTILE_ACTION) return false;
+    return true;
   } catch (e) {
+    console.warn("Turnstile unreachable:", e.message);
     return true;   // Cloudflare unreachable: don't lose real enquiries; the other checks still apply
   }
 }

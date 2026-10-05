@@ -77,6 +77,7 @@
     globe: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18",
     users: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6",
     star: "M12 3l2.6 5.6L20 9.3l-4 4 1 5.7-5-2.8-5 2.8 1-5.7-4-4 5.4-.7z",
+    drive: "M8.5 3h7l6 10.5-3.5 6h-12L2.5 13.5zM8.5 3l6 10.5M15.5 3l-6 10.5M2.5 13.5h12M21.5 13.5L18 19.5",
   };
   const icon = (n) => { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "i"); s.innerHTML = `<path d="${PATHS[n] || ""}"/>`; return s; };
   const slugify = (t) => String(t || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 70);
@@ -437,11 +438,20 @@
   ];
   const isImg = (p) => /\.(jpe?g|png|webp|gif|avif|svg|ico)$/i.test(p);
   const isVid = (p) => /\.(mp4|webm)$/i.test(p) || /blob\.vercel-storage\.com/.test(p);
-  function folderOf(path) { return FOLDERS.find((f) => path.startsWith(f.key + "/") || (f.also && f.also.test(path))); }
+  function folderOf(path) {
+    if (/^https?:\/\//.test(path)) return isVid(path) ? FOLDERS[3] : null;   // a video in Blob storage
+    return FOLDERS.find((f) => path.startsWith(f.key + "/") || (f.also && f.also.test(path)));
+  }
+  // what a page field stores for a media item: "/assets/…" for site files, the full URL for Blob videos
+  const mediaRef = (path) => (/^https?:\/\//.test(path) ? path : "/" + path.replace(/^\//, ""));
+  async function loadBlobs() {
+    try { const r = await api("GET", "/api/blobs"); S.blobs = r.blobs || []; S.blobsEnabled = !!r.enabled; } catch (e) { S.blobs = S.blobs || []; }
+  }
   // the media library: one item per file name (a photo.jpg and its photo.webp are one item)
   function mediaItems() {
     const all = new Map();
     S.media.forEach((f) => all.set(f.path, { path: f.path, size: f.size }));
+    (S.blobs || []).forEach((b) => all.set(b.url, { path: b.url, size: b.size, remote: true }));
     for (const [p, d] of Object.entries(S.drafts.items)) {
       if (d.media) all.set(p, { path: p, size: d.media.size, pending: true });
       if (d.delete && all.has(p)) all.get(p).deleted = true;
@@ -455,7 +465,7 @@
     }
     return [...groups.values()].map((g) => {
       const main = g.files.find((f) => !/\.webp$/i.test(f.path) && !f.deleted) || g.files.find((f) => !f.deleted) || g.files[0];
-      return { path: main.path, files: g.files, size: main.size, pending: g.files.some((f) => f.pending), deleted: g.files.every((f) => f.deleted), name: g.stem.split("/").pop(), folder: folderOf(main.path) };
+      return { path: main.path, files: g.files, size: main.size, pending: g.files.some((f) => f.pending), deleted: g.files.every((f) => f.deleted), name: g.stem.split("/").pop(), folder: folderOf(main.path), remote: !!main.remote };
     }).filter((m) => m.folder);
   }
   function usages(item) {
@@ -511,6 +521,7 @@
       const { upload } = await import("https://esm.sh/@vercel/blob@2.8.0/client");
       const res = await upload(`videos/${stem}.mp4`, file, { access: "public", handleUploadUrl: "/api/upload", headers: { "X-OXE-Admin": "1" }, onUploadProgress: (p) => onProgress(p.percentage) });
       onProgress(100);
+      (S.blobs = S.blobs || []).push({ url: res.url, size: file.size });
       return res.url;
     }
     if (!/^image\//.test(file.type)) throw new Error("Please choose an image (JPG, PNG, WebP) or an MP4 video.");
@@ -539,6 +550,75 @@
     preview.syncAssets();
   }
 
+  // ---- import from Google Drive: the files are copied onto the site (photos into the website
+  // files, big videos into Vercel Blob); the site never loads anything from Drive itself
+  function driveImport({ folder, kind, onDone }) {
+    const photoFolders = FOLDERS.filter((f) => f.kind === "image");
+    let dest = photoFolders.find((f) => f.key === folder) || photoFolders[0];
+    const links = h("textarea", { rows: 4, placeholder: "https://drive.google.com/file/d/…/view\nhttps://drive.google.com/file/d/…/view\nor a folder: https://drive.google.com/drive/folders/…" });
+    const list = h("ul", { class: "drive-list" });
+    const btn = h("button", { class: "btn", onclick: () => run() }, icon("drive"), "Import");
+    const destSel = h("select", { onchange: (e) => { dest = photoFolders.find((f) => f.key === e.target.value); } }, photoFolders.map((f) => h("option", { value: f.key, selected: f === dest }, f.label)));
+    const refs = [];
+    let busy = false;
+    async function run() {
+      if (busy) return;
+      let lines = links.value.split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);
+      if (!lines.length) return links.focus();
+      busy = true; btn.disabled = true; list.innerHTML = "";
+      const jobs = [];
+      for (const line of lines) {
+        if (/\/folders\//.test(line)) {
+          const row = h("li", {}, h("span", { class: "spin" }), h("span", {}, "Reading the folder…"));
+          list.appendChild(row);
+          try { const r = await api("POST", "/api/drive", { action: "list", url: line }); row.remove(); r.files.forEach((f) => jobs.push({ id: f.id, label: f.name })); if (!r.files.length) toast("No photos or videos in that folder.", "bad"); }
+          catch (e) { row.className = "is-bad"; row.lastChild.textContent = e.message; row.firstChild.remove(); }
+        } else jobs.push({ id: line, label: line.replace(/^https?:\/\/(drive|docs)\.google\.com\//, "").slice(0, 60) });
+      }
+      for (const j of jobs) {
+        const status = h("small", {}, "Waiting…");
+        const row = h("li", {}, h("span", { class: "spin" }), h("div", {}, h("b", {}, j.label), status));
+        list.appendChild(row); j.row = row; j.status = status;
+      }
+      let ok = 0;
+      for (const j of jobs) {
+        j.status.textContent = "Copying from Google Drive…";
+        try {
+          const r = await api("POST", "/api/drive", { url: j.id });
+          j.row.querySelector("b").textContent = r.name;
+          let ref;
+          if (r.kind === "video") { (S.blobs = S.blobs || []).push({ url: r.url, size: r.size }); ref = r.url; }
+          else {
+            const bytes = Uint8Array.from(atob(r.data), (c) => c.charCodeAt(0));
+            const file = new File([bytes], r.name, { type: r.type });
+            j.status.textContent = "Adding to the media library…";
+            ref = await uploadFile(file, r.kind === "video-inline" ? "assets/video" : dest.key);
+          }
+          if (!kind || (kind === "video") === /\.(mp4|webm)$|blob\.vercel-storage/.test(ref)) refs.push(ref);
+          ok++;
+          j.row.className = "is-ok"; j.row.firstChild.replaceWith(h("span", { class: "tick" }, "✓"));
+          j.status.textContent = r.kind === "video" ? "Video stored in Vercel Blob" : "Added" + (r.kind === "image" ? ` to ${dest.label}` : "");
+        } catch (e) {
+          j.row.className = "is-bad"; j.row.firstChild.replaceWith(h("span", { class: "tick" }, "!"));
+          j.status.textContent = e.message;
+        }
+      }
+      busy = false; btn.disabled = false;
+      if (ok) { toast(`Imported ${ok} file${ok > 1 ? "s" : ""} from Google Drive. Use them on any page, then publish.`, "ok"); onDone && onDone(refs); }
+      if (ok === jobs.length && jobs.length) { links.value = ""; if (onDone && kind) m.close(); }
+    }
+    const m = modal({
+      title: "Import from Google Drive", wide: true,
+      body: [
+        h("div", { class: "callout callout--info" }, h("b", {}, "How to: "), "in Google Drive, right-click a file (or a folder) → ", h("b", {}, "Share"), " → set General access to ", h("b", {}, "“Anyone with the link”"), " → ", h("b", {}, "Copy link"), ". Paste one or more links below."),
+        h("div", { class: "field" }, h("label", {}, "Google Drive links ", h("span", { class: "opt" }, "one per line")), links),
+        h("div", { class: "form-2" }, h("div", { class: "field" }, h("label", {}, "Put photos in"), destSel),
+          h("p", { class: "hint", style: { alignSelf: "end", margin: 0 } }, "Photos are resized to fit 2000 px and converted to fast WebP. Videos must be MP4 (up to 300 MB) and are stored in Vercel Blob; put longer videos on YouTube.")),
+        list],
+      foot: [h("button", { class: "btn btn--ghost", onclick: () => m.close() }, "Close"), btn],
+    });
+  }
+
   // media picker (choose from the library, or upload)
   function pickMedia(folderKey, kind, onPick) {
     let tab = FOLDERS.find((f) => f.key === folderKey) || FOLDERS[kind === "video" ? 3 : 0];
@@ -549,7 +629,7 @@
       grid.innerHTML = "";
       const items = mediaItems().filter((m) => !m.deleted && m.folder === tab && (!q || m.name.includes(q)));
       if (!items.length) grid.appendChild(h("div", { class: "empty" }, h("b", {}, "Nothing here yet"), "Upload a file to use it."));
-      items.forEach((m) => grid.appendChild(mediaCard(m, () => { onPick("/" + m.path); mm.close(); })));
+      items.forEach((m) => grid.appendChild(mediaCard(m, () => { onPick(mediaRef(m.path)); mm.close(); })));
     };
     FOLDERS.filter((f) => (kind === "video") === (f.kind === "video")).forEach((f) => tabs.appendChild(h("button", { class: f === tab ? "is-active" : "", onclick: (e) => { tab = f; [...tabs.children].forEach((b) => b.classList.toggle("is-active", b === e.currentTarget)); draw(); } }, f.label)));
     const input = h("input", { type: "file", accept: kind === "video" ? "video/mp4" : "image/*", hidden: true, onchange: async () => {
@@ -559,6 +639,7 @@
     const mm = modal({
       title: kind === "video" ? "Choose a video" : "Choose an image", wide: true,
       body: [h("div", { class: "toolbar" }, tabs, h("div", { class: "search" }, icon("search"), h("input", { type: "search", placeholder: "Search by name", oninput: (e) => { q = slugify(e.target.value); draw(); } })),
+        h("button", { class: "btn btn--ghost", onclick: () => driveImport({ folder: tab.key, kind, onDone: (refs) => { if (refs.length) { onPick(refs[0]); mm.close(); } } }) }, icon("drive"), "From Google Drive"),
         h("button", { class: "btn", onclick: () => input.click() }, icon("upload"), "Upload new"), input), grid],
     });
     draw();
@@ -569,6 +650,7 @@
     if (vid) box.appendChild(h("video", { src: assetURL(m.path), muted: true, preload: "metadata" }));
     else box.style.backgroundImage = `url("${assetURL(m.path)}")`;
     if (m.pending) box.appendChild(h("span", { class: "badge badge--new" }, "New"));
+    if (m.remote) box.appendChild(h("span", { class: "badge", title: "Stored in Vercel Blob" }, "Cloud"));
     if (m.deleted) box.appendChild(h("span", { class: "badge badge--del" }, "Deleting"));
     return h("div", { class: "card media-item", tabindex: "0", role: "button", onclick: onClick, onkeydown: (e) => { if (e.key === "Enter") onClick(); } },
       box, h("div", { class: "media-item__body" }, h("b", { title: m.name }, m.name), h("small", {}, (m.path.split(".").pop() || "").toUpperCase() + (m.size ? " · " + kb(m.size) : ""))));
@@ -1168,7 +1250,10 @@
     const grid = h("div", { class: "media-grid" });
     const tabs = h("div", { class: "tabs" });
     const input = h("input", { type: "file", multiple: true, hidden: true, onchange: () => { uploadMany([...input.files]); input.value = ""; } });
-    const drop = h("div", { class: "drop" }, icon("upload"), h("b", {}, "Drop files here to upload"), h("span", {}, "Images are resized and converted to fast WebP automatically. Videos: MP4."), h("button", { class: "btn btn--soft btn--sm", onclick: () => input.click() }, "Choose files"), input);
+    const drop = h("div", { class: "drop" }, icon("upload"), h("b", {}, "Drop files here to upload"), h("span", {}, "Images are resized and converted to fast WebP automatically. Videos: MP4."),
+      h("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center" } },
+        h("button", { class: "btn btn--soft btn--sm", onclick: () => input.click() }, "Choose files"),
+        h("button", { class: "btn btn--ghost btn--sm", onclick: () => driveImport({ folder: tab.key === "assets/video" ? "assets/img/work" : tab.key, onDone: () => draw() }) }, icon("drive"), "Import from Google Drive")), input);
     drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("is-drop"); });
     drop.addEventListener("dragleave", () => drop.classList.remove("is-drop"));
     drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("is-drop"); uploadMany([...e.dataTransfer.files]); });
@@ -1205,8 +1290,12 @@
                  : h("div", { style: { aspectRatio: "16 / 10", borderRadius: "14px", background: `#eef1f8 url("${assetURL(m.path)}") center / contain no-repeat` } }),
         h("div", { class: "callout callout--info" }, h("b", {}, used.length ? `Used in ${used.length} place${used.length > 1 ? "s" : ""}` : "Not used on any page"),
           used.length ? h("ul", {}, used.map((p) => h("li", {}, h("a", { href: describe(p).href, onclick: () => mm.close() }, plainText(describe(p).label))))) : null),
-        h("p", { class: "hint", style: { margin: 0 } }, m.files.map((f) => f.path).join(" · ") + (m.size ? " · " + kb(m.size) : "")), input],
-      foot: [m.deleted ? h("button", { class: "btn btn--soft", onclick: () => { m.files.forEach((f) => { if (S.drafts.items[f.path] && S.drafts.items[f.path].delete) discard(f.path); }); mm.close(); redraw(); } }, "Undo delete")
+        h("p", { class: "hint", style: { margin: 0, wordBreak: "break-all" } }, (m.remote ? "Stored in Vercel Blob · " : "") + m.files.map((f) => f.path).join(" · ") + (m.size ? " · " + kb(m.size) : "")), input],
+      foot: [m.remote ? h("button", { class: "btn btn--danger", onclick: async () => {
+          if (!(await confirmBox("Delete this video from storage?", used.length ? `It's used in ${used.length} place(s), which will then show no video. Unlike other changes, this happens immediately and can't be undone.` : "It's not used on any page. This happens immediately and can't be undone.", "Delete video", true))) return;
+          try { await api("DELETE", "/api/blobs", { url: m.path }); S.blobs = (S.blobs || []).filter((b) => b.url !== m.path); mm.close(); redraw(); toast("Video deleted from storage.", "ok"); } catch (e) { toast(e.message, "bad"); }
+        } }, icon("trash"), "Delete")
+        : m.deleted ? h("button", { class: "btn btn--soft", onclick: () => { m.files.forEach((f) => { if (S.drafts.items[f.path] && S.drafts.items[f.path].delete) discard(f.path); }); mm.close(); redraw(); } }, "Undo delete")
         : h("button", { class: "btn btn--danger", onclick: async () => {
           if (used.length && !(await confirmBox("This file is in use", `It's used in ${used.length} place(s). Deleting it will leave those spots empty. Delete anyway?`, "Delete anyway", true))) return;
           if (!used.length && !(await confirmBox("Delete this file?", "It will be removed when you publish.", "Delete", true))) return;
@@ -1214,8 +1303,8 @@
           saveDrafts(); mm.close(); redraw();
         } }, icon("trash"), "Delete"),
         h("span", { style: { flex: 1 } }),
-        h("button", { class: "btn btn--ghost", onclick: () => { navigator.clipboard && navigator.clipboard.writeText("/" + m.path); toast("Path copied.", "ok"); } }, icon("copy"), "Copy path"),
-        h("button", { class: "btn", onclick: () => input.click() }, icon("upload"), "Replace")],
+        h("button", { class: "btn btn--ghost", onclick: () => { navigator.clipboard && navigator.clipboard.writeText(mediaRef(m.path)); toast("Path copied.", "ok"); } }, icon("copy"), "Copy path"),
+        m.remote ? null : h("button", { class: "btn", onclick: () => input.click() }, icon("upload"), "Replace")],
     });
   }
   function activityScreen() {
@@ -1702,6 +1791,8 @@
     if (path === "/api/repo/deploy") return { state: "success", description: "Demo" };
     if (path === "/api/upload") return { enabled: false };
     if (path === "/api/leads") return demoLeads(method, data || {});
+    if (path === "/api/blobs") return { enabled: false, blobs: [] };
+    if (path === "/api/drive") throw new Error("Importing from Google Drive isn't available in the demo.");
     throw new Error("Not available in the demo");
   }
   // demo leads: sample data kept in this browser only
@@ -2032,6 +2123,7 @@
     render();
     preview.start();    // warm up the preview engine in the background
     loadLeads();        // for the new-leads count on the Leads switch
+    loadBlobs().then(() => { if (location.hash === "#/media") render(); });   // videos stored in Vercel Blob
     if (S.lastPublish && S.lastPublish.state !== "success") trackDeploy();
   }
   window.addEventListener("hashchange", () => {

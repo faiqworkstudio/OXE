@@ -9,6 +9,7 @@
     "admin:dev": "node scripts/admin-dev-server.js"
   },
   "dependencies": {
-    "@vercel/blob": "^2.8.0"
+    "@vercel/blob": "^2.8.0",
+    "sharp": "^0.34.0"
   }
 }

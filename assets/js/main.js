@@ -489,7 +489,7 @@
     var foot = form.querySelector(".form-foot");
     // Spam protection: a signed token from the server (the form can't be sent instantly or
     // replayed) and, when switched on in Vercel, Cloudflare Turnstile's "I'm human" check.
-    var gate = { token: "", at: 0, widget: null };
+    var gate = { token: "", at: 0, widget: null, failed: false };
     var errorBox = document.createElement("p");
     errorBox.className = "form-error"; errorBox.setAttribute("role", "alert"); errorBox.hidden = true;
     var captcha = document.createElement("div");
@@ -505,11 +505,19 @@
             gate.widget = false;
             window.oxeTurnstileReady = function () {
               captcha.hidden = false;
-              gate.widget = window.turnstile.render(captcha, { sitekey: g.turnstile, theme: "light", size: "flexible", action: "contact" });
+              gate.widget = window.turnstile.render(captcha, {
+                sitekey: g.turnstile, theme: "light", size: "flexible", action: "contact",
+                "refresh-expired": "auto",
+                callback: function () { gate.failed = false; showError(""); },
+                // the check couldn't run (blocked network, unsupported browser…): don't trap the
+                // visitor; the message is handed to email / WhatsApp instead if the server refuses it
+                "error-callback": function () { gate.failed = true; return true; }
+              });
             };
             var sc = document.createElement("script");
             sc.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=oxeTurnstileReady&render=explicit";
             sc.async = true; sc.defer = true;
+            sc.onerror = function () { gate.failed = true; captcha.hidden = true; };
             document.head.appendChild(sc);
           }
         })
@@ -558,7 +566,7 @@
       if (!validateChips()) firstBad = chipSet.querySelector("input");
       if (firstBad) { firstBad.focus(); return; }
       var human = gate.widget && window.turnstile ? window.turnstile.getResponse(gate.widget) : "";
-      if (gate.widget && !human) { showError("Please tick the “I'm human” check above the button."); return; }
+      if (gate.widget && !human && !gate.failed) { showError("Please tick the “I'm human” check above the button."); return; }
       showError("");
 
       var d = new FormData(form);
@@ -636,7 +644,7 @@
       Promise.all([saved, mailed])
         .then(function (r) {
           if (r[0].ok || r[1]) return done();
-          if ((r[0].status === 400 || r[0].status === 429) && r[0].error) {
+          if ((r[0].status === 400 || r[0].status === 429) && r[0].error && !(gate.failed && /human/.test(r[0].error))) {
             showError(r[0].error);
             if (gate.widget && window.turnstile) window.turnstile.reset(gate.widget);
             if (/expired/.test(r[0].error)) getToken();
