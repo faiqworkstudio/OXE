@@ -121,17 +121,23 @@ Do these steps in order. Allow about 20 minutes. Each step names the exact place
 
 **5. Add them to Vercel.** Vercel → the project → **Settings → Environment Variables**. Add each one for **Production** (and Preview if you use previews), then **Deployments → ⋯ → Redeploy**:
 
-| Variable | Value |
-|---|---|
-| `SUPABASE_URL` | The Project URL |
-| `SUPABASE_ANON_KEY` | The publishable / anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | The secret / service_role key. Server-only, never sent to the browser. Mark it **Sensitive** in Vercel |
-| `SESSION_SECRET` | A random string of at least 32 characters. Create one at <https://generate-secret.vercel.app/32>, or run `openssl rand -base64 32`. Changing it later logs everyone out |
-| `ADMIN_EMAILS` *(optional)* | Comma-separated admin emails, e.g. `sales@oxemarketingth.com, faiq@…` |
-| `GITHUB_TOKEN` | A GitHub fine-grained token for **this repository only**, with **Contents: Read and write** and an expiry date. The admin publishes through it; it is never sent to the browser |
-| `GITHUB_BRANCH` *(optional)* | The branch Vercel deploys to production (default: `claude/website-design-requirements-89zc90`) |
-| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` *(recommended)* | Cloudflare Turnstile, the "I'm human" check on the contact form (step 6) |
-| `ADMIN_DEMO` *(set when live)* | `off` turns off the demo account. Do this once your real accounts work |
+🔒 **Secret**: gives access to something. In Vercel, tick **Sensitive** so it can't be read back. Never put it in code, chat, email or screenshots. If one leaks, create a new one at the source and replace it in Vercel.
+⚙️ **Config**: a setting. It's harmless if seen, so it doesn't need to be marked Sensitive.
+
+| Variable | Type | Value |
+|---|---|---|
+| `SUPABASE_URL` | ⚙️ Config | The Project URL |
+| `SUPABASE_ANON_KEY` | ⚙️ Config | The publishable / anon key. It's designed to be public: the tables are locked, so it can't read anything. It's only used on the server here anyway |
+| `SUPABASE_SERVICE_ROLE_KEY` | 🔒 **Secret** | The secret / service_role key. It can read and change all data, so mark it **Sensitive**. Server-only, never sent to the browser |
+| `SESSION_SECRET` | 🔒 **Secret** | A random string of at least 32 characters. Create one at <https://generate-secret.vercel.app/32>, or run `openssl rand -base64 32`. Changing it logs everyone out |
+| `GITHUB_TOKEN` | 🔒 **Secret** | A GitHub fine-grained token for **this repository only**, with **Contents: Read and write** and an expiry date. The admin publishes through it; it is never sent to the browser |
+| `TURNSTILE_SECRET_KEY` *(recommended)* | 🔒 **Secret** | Cloudflare Turnstile secret key (step 6) |
+| `BLOB_READ_WRITE_TOKEN` *(added automatically)* | 🔒 **Secret** | Vercel creates this when you connect Blob storage for large videos. Don't edit it |
+| `TURNSTILE_SITE_KEY` *(recommended)* | ⚙️ Config | Cloudflare Turnstile site key. It's public by design, because visitors' browsers use it |
+| `ADMIN_EMAILS` *(optional)* | ⚙️ Config | Comma-separated admin emails, e.g. `sales@oxemarketingth.com, faiq@…` |
+| `GITHUB_BRANCH` *(optional)* | ⚙️ Config | The branch Vercel deploys to production (default: `claude/website-design-requirements-89zc90`) |
+| `GITHUB_REPO` *(optional)* | ⚙️ Config | `owner/name` of the repository (default: `faiqworkstudio/OXE`) |
+| `ADMIN_DEMO` *(set when live)* | ⚙️ Config | `off` turns off the demo account. Do this once your real accounts work |
 
 **6. Turn on the "I'm human" check (free).**
 1. In your Cloudflare dashboard (sign up free at dash.cloudflare.com), open **Turnstile → Add widget**.
