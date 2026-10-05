@@ -1,12 +1,12 @@
 // Videos stored in Vercel Blob, for the admin's media library (login required).
 //   GET              -> { enabled, blobs: [{ url, pathname, size, uploadedAt }] }
 //   DELETE { url }   -> removes one video from Blob storage (immediately)
-const { requireUser } = require("./_lib/auth");
+const { requireAccess } = require("./_lib/auth");
 const { send, fail, body, methods } = require("./_lib/http");
 
 module.exports = async (req, res) => {
   if (!methods(req, res, ["GET", "DELETE"])) return;
-  if (!requireUser(req, res)) return;
+  if (!(await requireAccess(req, res, req.method === "DELETE" ? "media.delete" : "site.read"))) return;
   if (!process.env.BLOB_READ_WRITE_TOKEN) return send(res, 200, { enabled: false, blobs: [] });
   const { list, del } = require("@vercel/blob");
   try {

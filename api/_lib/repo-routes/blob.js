@@ -1,6 +1,6 @@
 // Upload one media file (base64) into the repository's storage. It becomes part of the
 // site when the change that uses it is published.
-const { requireUser } = require("../auth");
+const { requireAccess } = require("../auth");
 const { backend, checkPath } = require("../repo");
 const { send, fail, body, methods } = require("../http");
 
@@ -25,7 +25,7 @@ function matchesType(path, b) {
 }
 
 module.exports = async (req, res) => {
-  if (!methods(req, res, ["POST"]) || !requireUser(req, res)) return;
+  if (!methods(req, res, ["POST"]) || !(await requireAccess(req, res, "site.edit"))) return;
   const { path, content } = body(req);
   const bad = checkPath(path, false);
   if (bad) return fail(res, 400, bad);

@@ -9,12 +9,13 @@
 //   POST   { undelete: ids }                     bring leads back from "Recently deleted"
 //   DELETE { ids, forever? }                     move leads to "Recently deleted" (forever: remove now)
 const leads = require("./_lib/leads");
-const { requireUser } = require("./_lib/auth");
+const { requireAccess } = require("./_lib/auth");
+const roles = require("./_lib/roles");
 const { send, fail, body, methods } = require("./_lib/http");
 
 module.exports = async (req, res) => {
   if (!methods(req, res, ["GET", "POST", "PATCH", "DELETE"])) return;
-  const user = requireUser(req, res);
+  const user = await requireAccess(req, res, "leads");
   if (!user) return;
   const by = user.name || user.email;
   const d = body(req);
@@ -38,7 +39,11 @@ module.exports = async (req, res) => {
       if (d.activity_at) return send(res, 200, { lead: await leads.editActivity(d.id, d.activity_at, d.text) });
       return send(res, 200, { lead: await leads.update(d.id, d.changes, d.log, by) });
     }
-    if (req.method === "DELETE") return send(res, 200, await leads.remove(d.ids || d.id, !!d.forever));
+    if (req.method === "DELETE") {
+      // deleting for good can't be undone: master admins only (others move leads to the bin)
+      if (d.forever && !roles.can(user.role, "leads.purge")) return fail(res, 403, "Only a master admin can delete leads for good. Deleted leads stay in “Recently deleted” for 30 days.");
+      return send(res, 200, await leads.remove(d.ids || d.id, !!d.forever));
+    }
   } catch (e) {
     fail(res, e instanceof leads.LeadError ? e.status : 502, e instanceof leads.LeadError ? e.message : "The leads service couldn't be reached. Please try again.");
   }

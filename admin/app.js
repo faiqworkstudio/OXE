@@ -128,6 +128,8 @@
       body: data ? JSON.stringify(data) : undefined,
     });
     if (r.status === 401 && url !== "/api/session" && S.user) {
+      const peek = await r.clone().json().catch(() => ({}));
+      if (peek.code === "no_access") { S.user = null; shellEls = null; loginScreen(peek.error); throw Object.assign(new Error(peek.error), { status: 401 }); }
       await (reauth = reauth || loginAgain());
       reauth = null;
       return api(method, url, data);
@@ -172,6 +174,13 @@
     user: null, schema: null, head: null, files: {}, media: [], norm: {},
     drafts: { base: null, items: {} }, blobURLs: {}, route: "", lastPublish: null,
   };
+  // what the logged-in person may do (from their role; the server checks the same on every request)
+  const can = (perm) => !!(S.perms && S.perms.includes(perm));
+  function setMe(r) {
+    S.user = r.user; S.email = r.email || ""; S.role = r.role || "owner"; S.roleLabel = r.roleLabel || "Master admin";
+    S.perms = r.perms || ["site.read", "site.edit", "site.settings", "media.delete", "leads", "leads.purge", "team"];
+    S.weak = !!r.weak; S.temp = !!r.temp;
+  }
   const dkey = () => (S.demo ? "oxe-admin:demo-drafts:v1" : "oxe-admin:drafts:v1");
   const lkey = () => (S.demo ? "oxe-admin:demo-last" : "oxe-admin:last");
   function loadDrafts() { S.drafts = { base: null, items: {} }; try { const d = JSON.parse(localStorage.getItem(dkey())); if (d && d.items) S.drafts = d; } catch (e) { /* none */ } }
@@ -1220,7 +1229,7 @@
         h("div", { class: "card stat" }, h("small", {}, "Projects"), h("b", {}, projects.filter((p) => p.state !== "deleted").length), h("span", {}, "in the portfolio")),
         h("div", { class: "card stat" }, h("small", {}, "Media files"), h("b", {}, media.filter((m) => !m.deleted).length), h("span", {}, "photos, logos and videos")),
         h("div", { class: "card stat" }, h("small", {}, "Unpublished"), h("b", {}, n), h("span", {}, n ? "changes waiting" : "all live")),
-        L.configured && L.items ? h("a", { class: "card stat stat--btn" + (newLeadCount() ? " stat--hot" : ""), href: newLeadCount() ? "#/leads/view/new" : "#/leads" }, h("small", {}, "New leads"), h("b", {}, newLeadCount()),
+        can("leads") && L.configured && L.items ? h("a", { class: "card stat stat--btn" + (newLeadCount() ? " stat--hot" : ""), href: newLeadCount() ? "#/leads/view/new" : "#/leads" }, h("small", {}, "New leads"), h("b", {}, newLeadCount()),
           h("span", {}, newLeadCount() ? "waiting for a reply →" : "open the Leads workspace →")) : null),
       h("div", { class: "dash-grid" },
         h("div", { class: "card panel" }, h("h2", {}, "Quick actions"), h("div", { class: "quick" },
@@ -1228,8 +1237,9 @@
           h("a", { href: "#/blog", onclick: (e) => { e.preventDefault(); newEntity("blog"); } }, h("span", { class: "ico" }, icon("blog")), h("span", {}, h("b", {}, "Write an article"), h("small", {}, "New blog post"))),
           h("a", { href: "#/projects", onclick: (e) => { e.preventDefault(); newEntity("project"); } }, h("span", { class: "ico" }, icon("work")), h("span", {}, h("b", {}, "Add a project"), h("small", {}, "New case study"))),
           q("#/media", "media", "Media library", "Upload & manage files"),
-          q("#/page/settings", "cog", "Contact & settings", "Email, phone, logos"),
-          q("#/page/site", "menu", "Menu & footer", "Navigation and shared sections"))),
+          can("site.settings") ? q("#/page/settings", "cog", "Contact & settings", "Email, phone, logos") : null,
+          can("site.settings") ? q("#/page/site", "menu", "Menu & footer", "Navigation and shared sections") : null,
+          can("team") ? q("#/team", "users", "Team & roles", "Who can log in, and what they can do") : null)),
         h("div", { class: "card panel" }, h("h2", {}, "Recent activity", h("a", { href: "#/activity", class: "btn btn--ghost btn--sm" }, "All")), recent)));
   }
   function pagesScreen() {
@@ -1830,7 +1840,7 @@
               try { (await api("POST", "/api/leads", { undelete: [l.id] })).leads.forEach(upsertLead); L.items.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))); toast(`${l.name} restored.`, "ok"); load(); refreshChrome(); }
               catch (e) { toast(e.message, "bad"); }
             } }, icon("undo"), "Restore"),
-            h("button", { class: "btn btn--danger btn--sm", onclick: async () => {
+            !can("leads.purge") ? null : h("button", { class: "btn btn--danger btn--sm", onclick: async () => {
               if (!(await confirmBox(`Delete ${l.name} for good?`, "This can't be undone.", "Delete for good", true))) return;
               try { await api("DELETE", "/api/leads", { ids: [l.id], forever: true }); toast("Deleted for good.", "ok"); load(); } catch (e) { toast(e.message, "bad"); }
             } }, "Delete for good"))));
@@ -1849,6 +1859,111 @@
     const y = window.scrollY;
     render();
     window.scrollTo(0, y);
+  }
+
+  // ------------------------------------------------------------------ team & roles (master admins)
+  const ROLE_ORDER = ["owner", "developer", "editor", "leads"];
+  function teamScreen() {
+    const T = { roles: null, members: null };
+    const body = h("div", { class: "card leads" }, h("div", { class: "empty" }, h("div", { class: "spin", style: { margin: "0 auto 12px" } }), "Loading the team…"));
+    const legend = h("div", { class: "roles-grid" });
+    const fmtDate = (d) => (d ? ago(d) : "never");
+    async function load() {
+      try { Object.assign(T, await api("GET", "/api/team")); draw(); }
+      catch (e) { body.innerHTML = ""; body.appendChild(h("div", { class: "empty" }, h("b", {}, "The team couldn't be loaded"), e.message)); }
+    }
+    function showPassword(email, password, intro) {
+      const m = modal({ title: "Temporary password", body: [
+        h("p", { style: { margin: 0 } }, intro),
+        h("div", { class: "temp-pass" }, h("code", {}, password), h("button", { class: "btn btn--soft btn--sm", onclick: () => { navigator.clipboard && navigator.clipboard.writeText(password); toast("Password copied.", "ok"); } }, icon("copy"), "Copy")),
+        h("div", { class: "callout callout--info" }, h("b", {}, "Send them: "), `the address ${liveSite()}/admin, their email (${email}) and this password, ideally in two separate messages. They'll choose their own password the first time they log in.`),
+        h("p", { class: "hint", style: { margin: 0 } }, "This password is shown only once. If it's lost, use “New password” again.")],
+        foot: [h("button", { class: "btn", onclick: () => m.close() }, "Done")] });
+    }
+    function addModal() {
+      const email = h("input", { type: "email", placeholder: "name@oxemarketingth.com" });
+      const name = h("input", { type: "text", placeholder: "First name (shown in History)" });
+      let role = "editor";
+      const choice = h("div", { class: "role-pick" }, ROLE_ORDER.map((k) => h("label", { class: "role-opt" },
+        h("input", { type: "radio", name: "role", value: k, checked: k === role, onchange: () => { role = k; } }),
+        h("span", {}, h("b", {}, T.roles[k].label), h("small", {}, T.roles[k].about)))));
+      const err = h("p", { class: "err", hidden: true });
+      const btn = h("button", { class: "btn", onclick: async () => {
+        err.hidden = true; btn.disabled = true;
+        try { const r = await api("POST", "/api/team", { email: email.value, name: name.value, role }); m.close(); await load(); showPassword(r.member.email, r.password, `${r.member.email} can now log in as ${T.roles[role].label}.`); }
+        catch (e) { err.textContent = e.message; err.hidden = false; btn.disabled = false; }
+      } }, icon("plus"), "Add person");
+      const m = modal({ title: "Add a person", body: [
+        h("div", { class: "form-2" }, h("div", { class: "field" }, h("label", {}, "Email"), email), h("div", { class: "field" }, h("label", {}, "Name ", h("span", { class: "opt" }, "optional")), name)),
+        h("div", { class: "field" }, h("div", { class: "label" }, "Role"), choice), err],
+        foot: [h("button", { class: "btn btn--ghost", onclick: () => m.close() }, "Cancel"), btn] });
+    }
+    function draw() {
+      legend.innerHTML = "";
+      ROLE_ORDER.forEach((k) => legend.appendChild(h("div", { class: "card role-card role-card--" + k }, h("b", {}, T.roles[k].label), h("p", {}, T.roles[k].about))));
+      body.innerHTML = "";
+      const people = T.members.filter((p) => p.role), others = T.members.filter((p) => !p.role);
+      const row = (p) => {
+        const me = S.email && p.email === String(S.email).toLowerCase();
+        const fixed = me || p.locked;
+        const sel = h("select", { class: "stage", disabled: fixed, title: me ? "You can't change your own role" : p.locked ? "Master admin through ADMIN_EMAILS in Vercel" : "Change role",
+          onchange: async (e) => {
+            const v = e.target.value;
+            const label = v === "none" ? "remove their access" : `make them ${T.roles[v].label}`;
+            if (!(await confirmBox("Change role?", `This will ${label} (${p.email}). It takes effect within a minute, even if they're logged in now.`, v === "none" ? "Remove access" : "Change role", v === "none"))) { e.target.value = p.role || "none"; return; }
+            try { await api("PATCH", "/api/team", { id: p.id, role: v }); toast("Saved.", "ok"); load(); }
+            catch (x) { toast(x.message, "bad"); e.target.value = p.role || "none"; }
+          } },
+          ROLE_ORDER.map((k) => h("option", { value: k, selected: p.role === k }, T.roles[k].label)), h("option", { value: "none", selected: !p.role }, "No access"));
+        return h("div", { class: "lrow lrow--team" },
+          h("div", { class: "lrow__who" }, h("span", { class: "avatar avatar--" + ({ owner: "won", developer: "qualified", editor: "contacted", leads: "proposal" }[p.role] || "lost") }, initials(p.name || p.email)),
+            h("div", {}, h("b", {}, p.name || p.email.split("@")[0], me ? h("span", { class: "co" }, " · you") : null),
+              h("small", {}, [p.email, "last login " + fmtDate(p.lastSignIn), p.mustChange ? "hasn't set their own password yet" : "", p.locked ? "master admin through ADMIN_EMAILS" : ""].filter(Boolean).join(" · ")))),
+          sel,
+          h("div", { class: "lrow__acts" }, me ? null : h("button", { class: "btn btn--ghost btn--sm", title: "Give them a new temporary password", onclick: async () => {
+            if (!(await confirmBox("New temporary password?", `${p.email}'s current password stops working, and they'll choose a new one at their next login.`, "Create new password"))) return;
+            try { const r = await api("PATCH", "/api/team", { id: p.id, reset: true }); showPassword(p.email, r.password, `New temporary password for ${p.email}.`); load(); } catch (x) { toast(x.message, "bad"); }
+          } }, icon("key"), "New password")));
+      };
+      body.appendChild(h("div", { class: "lrow lrow--head lrow--team" }, h("span", {}, `${people.length} ${people.length === 1 ? "person" : "people"} with access`), h("span", {}, "Role"), h("span", {}, "")));
+      people.forEach((p) => body.appendChild(row(p)));
+      if (others.length) {
+        body.appendChild(h("div", { class: "lrow lrow--head lrow--team" }, h("span", {}, `${others.length} other account${others.length === 1 ? "" : "s"} without access`), h("span", {}), h("span", {})));
+        others.forEach((p) => body.appendChild(row(p)));
+      }
+    }
+    load();
+    return h("div", {},
+      h("div", { class: "page-head" }, h("div", {}, h("span", { class: "eyebrow" }, "Admin"), h("h1", { html: 'Team &amp; <span class="hl">roles</span>' }),
+        h("p", {}, "Who can log in to the admin, and what each person can do. Changes take effect within a minute, even for people who are logged in.")),
+        h("div", { class: "page-head__actions" }, h("button", { class: "btn", onclick: () => (T.roles ? addModal() : null) }, icon("plus"), "Add person"))),
+      legend, body);
+  }
+  // demo: a sample team kept in this browser
+  function demoTeam(method, d) {
+    const KEY = "oxe-admin:demo-team:v1";
+    let list; try { list = JSON.parse(localStorage.getItem(KEY)); } catch (e) { list = null; }
+    if (!Array.isArray(list)) list = [
+      { id: "00000000-0000-4000-9000-000000000001", email: "demo", name: "Demo", role: "owner", lastSignIn: new Date().toISOString() },
+      { id: "00000000-0000-4000-9000-000000000002", email: "developer@example.com", name: "Sample Developer", role: "developer", lastSignIn: new Date(Date.now() - 2 * 86400000).toISOString() },
+      { id: "00000000-0000-4000-9000-000000000003", email: "editor@example.com", name: "Sample Editor", role: "editor", lastSignIn: new Date(Date.now() - 5 * 86400000).toISOString() },
+      { id: "00000000-0000-4000-9000-000000000004", email: "sales@example.com", name: "Sample Lead Manager", role: "leads", lastSignIn: null, mustChange: true },
+    ];
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { /* full */ } };
+    const R = { owner: ["Master admin", "Everything: all pages and settings, leads, and the team (who can log in, and their roles)."], developer: ["Developer", "All website content, media and site-wide settings (menu, footer, contact details, brand images, form options). No leads, no team."], editor: ["Website editor", "Pages, blog articles, portfolio projects, client logos and media. Not the menu, footer or site settings. No leads."], leads: ["Lead manager", "Only the Leads workspace: view, contact, update and delete leads (deleted leads stay restorable). Can't change the website."] };
+    const pw = () => "Demo-" + Math.random().toString(36).slice(2, 8) + "!7Q";
+    if (method === "GET") return { members: list, roles: Object.fromEntries(Object.entries(R).map(([k, [label, about]]) => [k, { label, about }])) };
+    if (method === "POST") {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || "")) throw new Error("Please enter a valid email address.");
+      if (list.some((m) => m.email === d.email.toLowerCase())) throw new Error("This email already has an account. Find it in the list and change its role instead.");
+      const m = { id: "demo-" + Date.now(), email: d.email.toLowerCase(), name: d.name || "", role: d.role, lastSignIn: null, mustChange: true };
+      list.push(m); save(); return { member: m, password: pw() };
+    }
+    const m = list.find((x) => x.id === d.id); if (!m) throw new Error("That person doesn't exist anymore.");
+    if (d.reset) { m.mustChange = true; save(); return { member: m, password: pw() }; }
+    if (m.email === "demo") throw new Error("You can't change your own role. Ask another master admin.");
+    if (m.role === "owner" && d.role !== "owner" && list.filter((x) => x.role === "owner").length <= 1) throw new Error("There must always be at least one master admin.");
+    m.role = d.role === "none" ? null : d.role; save(); return { member: m };
   }
 
   // ------------------------------------------------------------------ login (Supabase) & demo
@@ -1879,6 +1994,7 @@
     if (path === "/api/upload") return { enabled: false };
     if (path === "/api/leads") return demoLeads(method, data || {}, q);
     if (path === "/api/blobs") return { enabled: false, blobs: [] };
+    if (path === "/api/team") return demoTeam(method, data || {});
     if (path === "/api/drive") throw new Error("Importing from Google Drive isn't available in the demo.");
     throw new Error("Not available in the demo");
   }
@@ -1941,7 +2057,7 @@
     throw new Error("Not available in the demo");
   }
   function enterDemo() {
-    S.demo = true; S.user = "Demo";
+    S.demo = true; setMe({ user: "Demo", role: "owner", roleLabel: "Master admin (demo)" });
     try { sessionStorage.setItem("oxe-admin:demo", "1"); } catch (e) { /* private mode */ }
     start();
   }
@@ -1964,7 +2080,7 @@
     const form = h("form", { onsubmit: async (e) => {
       e.preventDefault(); note.hidden = true; btn.disabled = true; btn.textContent = "Checking…";
       if (await isDemo(email.value, pass.value)) return enterDemo();
-      try { const r = await api("POST", "/api/session", { email: email.value, password: pass.value }); S.user = r.user; S.weak = !!r.weak; start(); }
+      try { const r = await api("POST", "/api/session", { email: email.value, password: pass.value }); setMe(r); start(); }
       catch (x) { note.className = "callout callout--bad"; note.textContent = x.message; note.hidden = false; btn.disabled = false; btn.textContent = "Log in"; pass.select(); }
     } },
       h("div", { class: "field" }, h("label", { for: "u" }, "Email"), email),
@@ -2046,7 +2162,9 @@
   // logged in with a password that's in a data breach or too simple: change it before anything else
   function forcedPasswordScreen() {
     return new Promise((resolve) => {
-      authLayout("Choose a stronger password", "Your current password has appeared in a known data breach or is too simple, so it isn't safe for the admin. Please choose a new one to continue.", passwordForm(resolve, true));
+      authLayout(S.temp ? "Choose your own password" : "Choose a stronger password", S.temp
+        ? "You logged in with a temporary password from your administrator. Please choose your own now. Use the temporary one as the current password."
+        : "Your current password has appeared in a known data breach or is too simple, so it isn't safe for the admin. Please choose a new one to continue.", passwordForm(() => { S.temp = false; resolve(); }, true));
     });
   }
   function loginAgain() {
@@ -2108,7 +2226,10 @@
       return false;
     };
     const leadsMode = isLeadsRoute(hash);
-    (leadsMode ? NAV_LEADS : NAV).forEach(([label, links]) => {
+    const allowedLink = (href) => !(/^#\/page\/(site|settings)$/.test(href) && !can("site.settings"));
+    const groups = (leadsMode ? NAV_LEADS : NAV).map(([label, links]) => [label, links.filter(([href]) => allowedLink(href))]).filter(([, links]) => links.length);
+    if (can("team")) groups.push(["Admin", [["#/team", "users", "Team & roles"]]]);
+    groups.forEach(([label, links]) => {
       if (label) nav.appendChild(h("div", { class: "side__label" }, label));
       links.forEach(([href, ic, text, count, tone]) => {
         const active = leadsMode
@@ -2120,7 +2241,7 @@
           n ? h("span", { class: "side__n" + (tone ? " side__n--" + tone : "") }, n) : null));
       });
     });
-    nav.appendChild(h("div", { class: "side__user" }, h("span", { class: "side__avatar" }, (S.user || "?").slice(0, 1).toUpperCase()), h("div", {}, h("b", {}, S.user), h("small", {}, S.demo ? "Demo account" : "Administrator")),
+    nav.appendChild(h("div", { class: "side__user" }, h("span", { class: "side__avatar" }, (S.user || "?").slice(0, 1).toUpperCase()), h("div", {}, h("b", {}, S.user), h("small", {}, S.demo ? "Demo account" : S.roleLabel || "Administrator")),
       S.demo ? null : h("button", { title: "Change password", "aria-label": "Change password", onclick: changePasswordModal }, icon("key")),
       h("button", { title: "Log out", "aria-label": "Log out", onclick: logout }, icon("out"))));
     const n = draftCount();
@@ -2133,10 +2254,12 @@
         onclick: () => { if (leadsMode) location.hash = S.lastSite || "#/"; } }, icon("globe"), h("span", {}, "Website"), n ? h("i", { class: "ws__dot ws__dot--warn", title: "Unpublished changes" }) : null),
       h("button", { role: "tab", "aria-selected": String(leadsMode), class: leadsMode ? "is-on" : "", title: "Manage enquiries and clients",
         onclick: () => { if (!leadsMode) location.hash = S.lastLeads || "#/leads"; } }, icon("users"), h("span", {}, "Leads"), fresh ? h("i", { class: "ws__n", title: `${fresh} new lead${fresh > 1 ? "s" : ""}` }, fresh) : null));
+    if (!can("site.edit")) ws.firstChild.remove();
+    if (!can("leads")) ws.lastChild.remove();
     add(top, [
       h("button", { class: "btn btn--ghost btn--icon top__menu", "aria-label": "Menu", onclick: () => document.body.classList.toggle("menu-open") }, icon("menu")),
       h("div", { class: "top__title" }, h("small", {}, "OXE Marketing"), h("b", {}, titleFor(hash))),
-      ws,
+      ws.children.length > 1 ? ws : null,
       leadsMode ? h("div", { class: "top__actions" },
         S.demo ? h("span", { class: "badge badge--new hide-sm", title: "Sample leads, stored in this browser only" }, "Demo · sample leads") : null,
         h("span", { class: "pending pending--clear hide-sm" }, "Changes save instantly"),
@@ -2160,6 +2283,7 @@
       m = hash.match(/^#\/leads\/(.+)$/); if (m) { const l = leadById(m[1]); return l ? l.name : "Lead"; }
       return "Leads";
     }
+    if (hash === "#/team") return "Team & roles";
     return { "#/blog": "Blog articles", "#/projects": "Portfolio projects", "#/media": "Media library", "#/pages": "Pages", "#/activity": "Activity" }[hash] || "Dashboard";
   }
   function render() {
@@ -2169,7 +2293,14 @@
     preview.listeners = [];
     let view;
     let m;
-    if ((m = hash.match(/^#\/page\/(.+)$/))) { const e = pageEntity(m[1]); view = e ? editor(e) : h("div", { class: "card empty" }, h("b", {}, "Page not found")); }
+    // land each role where it can work; never show a screen the role can't use
+    if (!isLeadsRoute(hash) && hash !== "#/team" && !can("site.edit") && can("leads")) { location.replace("#/leads"); return; }
+    if (isLeadsRoute(hash) && !can("leads")) { location.replace("#/"); return; }
+    const noAccess = (what) => h("div", { class: "card empty" }, h("span", { class: "empty__ico" }, icon("lock")), h("b", {}, "Not available for your role"),
+      `${S.roleLabel} can't ${what}. Ask a master admin if you need it.`, h("p", {}, h("a", { href: "#/" }, "Back to the dashboard")));
+    if (hash === "#/team") view = can("team") ? teamScreen() : noAccess("manage the team");
+    else if ((m = hash.match(/^#\/page\/(site|settings)$/)) && !can("site.settings")) view = noAccess("change the menu, footer or site settings");
+    else if ((m = hash.match(/^#\/page\/(.+)$/))) { const e = pageEntity(m[1]); view = e ? editor(e) : h("div", { class: "card empty" }, h("b", {}, "Page not found")); }
     else if ((m = hash.match(/^#\/blog\/(.+)$/))) { const e = folderEntities("blog").find((x) => x.id === m[1]); view = e ? editor(e) : notFound({ path: `content/blog/${m[1]}.md` }); }
     else if ((m = hash.match(/^#\/project\/(.+)$/))) { const e = folderEntities("projects").find((x) => x.id === m[1]); view = e ? editor(e) : notFound({ path: `content/projects/${m[1]}.yml` }); }
     else if (hash === "#/pages") view = pagesScreen();
@@ -2194,7 +2325,7 @@
     if (draftCount() && !(await confirmBox("Log out?", "Your unpublished changes stay saved in this browser, ready for next time.", "Log out"))) return;
     await api("DELETE", "/api/session").catch(() => {});
     if (S.demo) { try { sessionStorage.removeItem("oxe-admin:demo"); } catch (e) { /* ignore */ } }
-    S.user = null; S.demo = false; S.weak = false; shellEls = null; idb.db = null;
+    S.user = null; S.demo = false; S.weak = false; S.perms = null; S.role = null; shellEls = null; idb.db = null;
     L.items = null; L.error = null; L.configured = true; L.at = 0; LS.selected.clear(); LS.q = ""; LS.service = "";
     if (preview.worker) { preview.worker.terminate(); preview.worker = null; preview.ready = false; }
     loginScreen();
@@ -2220,9 +2351,9 @@
     try { S.lastPublish = JSON.parse(localStorage.getItem(lkey())); } catch (e) { S.lastPublish = null; }
     shell();
     render();
-    preview.start();    // warm up the preview engine in the background
+    if (can("site.edit")) preview.start();    // warm up the preview engine in the background
     measureMissing();
-    loadLeads();        // for the new-leads count on the Leads switch
+    if (can("leads")) loadLeads();        // for the new-leads count on the Leads switch
     loadBlobs().then(() => { if (location.hash === "#/media") render(); });   // videos stored in Vercel Blob
     if (S.lastPublish && S.lastPublish.state !== "success") trackDeploy();
   }
@@ -2231,6 +2362,21 @@
     if (hp.get("type") === "recovery" && hp.get("access_token")) { const t = hp.get("access_token"); history.replaceState(null, "", location.pathname); S.user = null; shellEls = null; return resetScreen(t); }
     render();
   });
+  // Every minute (and when the tab comes back): is this person still allowed in, with the same
+  // role? A removed person is sent to the login screen; a changed role reloads the admin.
+  async function checkAccess() {
+    if (!S.user || S.demo || !shellEls) return;
+    try {
+      const me = await api("GET", "/api/session");
+      if (me.role && S.role && me.role !== S.role) { toast(`Your role changed to ${me.roleLabel}. Reloading…`, "ok"); setTimeout(() => location.reload(), 1500); }
+    } catch (e) {
+      if (e.status !== 401) return;   // offline for a moment: try again later
+      S.user = null; shellEls = null;
+      loginScreen(e.data && e.data.removed ? "Your access to the admin has been removed. Ask a master admin if this is a mistake." : "Your session has ended. Please log in again. Unpublished changes are still saved in this browser.");
+    }
+  }
+  setInterval(checkAccess, 60000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkAccess(); });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible" || !S.user || !L.items) return;
     loadLeads(true).then(() => {
@@ -2253,7 +2399,7 @@
     }
     if (hp.get("error_description")) { history.replaceState(null, "", location.pathname); return loginScreen(hp.get("error_description").replace(/\+/g, " ")); }
     try { if (sessionStorage.getItem("oxe-admin:demo") === "1") return enterDemo(); } catch (e) { /* private mode */ }
-    try { const me = await api("GET", "/api/session"); S.user = me.user; S.weak = !!me.weak; start(); }
+    try { const me = await api("GET", "/api/session"); setMe(me); start(); }
     catch (e) { loginScreen(e.data && e.data.configured === false ? "The login isn't connected to Supabase yet. You can still explore with the demo account." : "", "info"); }
   })();
 })();

@@ -1,12 +1,13 @@
 // Publish: all pending changes in one commit. Vercel then rebuilds the site.
 // changes: [{ path, text }] | [{ path, sha }] (uploaded media) | [{ path, delete: true }]
-const { requireUser } = require("../auth");
+const { requireAccess } = require("../auth");
+const roles = require("../roles");
 const { backend, checkPath, Conflict } = require("../repo");
 const { send, fail, body, methods } = require("../http");
 
 module.exports = async (req, res) => {
   if (!methods(req, res, ["POST"])) return;
-  const user = requireUser(req, res);
+  const user = await requireAccess(req, res, "site.edit");
   if (!user) return;
   const { message, base, changes } = body(req);
   if (!Array.isArray(changes) || !changes.length) return fail(res, 400, "Nothing to publish");
@@ -17,6 +18,9 @@ module.exports = async (req, res) => {
     const bad = checkPath(c.path, !!c.delete);
     if (bad) return fail(res, 400, bad);
     if (seen.has(c.path)) return fail(res, 400, `Duplicate change for ${c.path}`);
+    // site-wide settings (menu, footer, contact details, keys) need the "site.settings" permission
+    if (roles.SETTINGS_FILES.test(c.path) && !roles.can(user.role, "site.settings")) return fail(res, 403, `Your role (${roles.ROLES[user.role].label}) can't change the menu, footer or site settings. Discard that change, or ask a developer or master admin.`, { paths: [c.path] });
+    if (c.delete && !roles.can(user.role, "media.delete") && /^assets\//.test(c.path)) return fail(res, 403, "Your role can't delete media files.");
     seen.add(c.path);
     if (c.delete) list.push({ path: c.path, delete: true });
     else if (typeof c.text === "string") list.push({ path: c.path, buffer: Buffer.from(c.text, "utf8") });

@@ -9,7 +9,7 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") return fail(res, 405, "Method not allowed");
   if (!process.env.BLOB_READ_WRITE_TOKEN) return fail(res, 503, "Large uploads need Vercel Blob storage: Vercel → Storage → Create → Blob, connect it to this project, then redeploy.");
   const data = body(req);
-  if (data.type === "blob.generate-client-token" && !auth.requireUser(req, res)) return;
+  if (data.type === "blob.generate-client-token" && !(await auth.requireAccess(req, res, "site.edit"))) return;
   try {
     const { handleUpload } = require("@vercel/blob/client");
     const result = await handleUpload({

@@ -1,11 +1,11 @@
 // All content files (pages, articles, projects) in one response, for the admin's lists
 // and live preview: { head, files: { "content/home.yml": "<text>", ... } }.
-const { requireUser } = require("../auth");
+const { requireAccess } = require("../auth");
 const { backend } = require("../repo");
 const { send, fail, methods } = require("../http");
 
 module.exports = async (req, res) => {
-  if (!methods(req, res, ["GET"]) || !requireUser(req, res)) return;
+  if (!methods(req, res, ["GET"]) || !(await requireAccess(req, res, "site.read"))) return;
   try {
     const tree = await backend.tree();
     const paths = tree.files.filter((f) => /^content\/.+\.(yml|md)$/.test(f.path)).map((f) => f.path);

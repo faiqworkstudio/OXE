@@ -7,6 +7,10 @@
 //   DELETE  log out
 const auth = require("./_lib/auth");
 const sec = require("./_lib/security");
+const roles = require("./_lib/roles");
+
+// what the admin app needs to know about the logged-in person
+const who = (u) => ({ user: u.name, email: u.email, role: u.role, roleLabel: roles.ROLES[u.role] ? roles.ROLES[u.role].label : "", perms: roles.permsOf(u.role), weak: !!u.weak, temp: !!u.mustChange });
 const { send, fail, body, methods } = require("./_lib/http");
 
 const NOT_SET_UP = "The admin login isn't set up yet: add SUPABASE_URL, SUPABASE_ANON_KEY and SESSION_SECRET in Vercel → Settings → Environment Variables, then redeploy.";
@@ -16,7 +20,10 @@ module.exports = async (req, res) => {
   if (req.method === "GET") {
     let user = null;
     try { user = auth.readSession(req); } catch (e) { /* not configured */ }
-    return user ? send(res, 200, { user: user.name, email: user.email, expires: user.expires, weak: user.weak }) : send(res, 401, { configured: auth.configured() });
+    if (!user) return send(res, 401, { configured: auth.configured() });
+    user.role = await roles.freshRole(user.id, user.role);
+    if (!user.role) { auth.setCookie(req, res, "", 0); return send(res, 401, { configured: true, removed: true }); }
+    return send(res, 200, Object.assign(who(user), { expires: user.expires }));
   }
   if (req.method === "DELETE") {
     auth.setCookie(req, res, "", 0);
@@ -53,6 +60,9 @@ module.exports = async (req, res) => {
       try { current = await auth.verifyCredentials(me.email, data.password); }
       catch (e) { if (e instanceof auth.AuthError && e.status === 401) { await sec.record("login_fail", [mine, ip]); throw new auth.AuthError("Your current password isn't right.", 401); } throw e; }
       await auth.setPassword(current.token, data.new_password);
+      if (current.mustChange && roles.adminConfigured()) {   // the temporary password has been replaced
+        await roles.adminApi("PUT", `/users/${current.id}`, { app_metadata: { must_change: false } }).catch(() => {});
+      }
       auth.setCookie(req, res, auth.createSession(Object.assign({}, current, { weak: false })), auth.SESSION_HOURS * 3600);
       return send(res, 200, { ok: true, message: "Your password has been changed." });
     }
@@ -66,9 +76,10 @@ module.exports = async (req, res) => {
     catch (e) { if (e instanceof auth.AuthError && e.status === 401) await sec.record("login_fail", [email, ip]); throw e; }   // 403 = right password, not an admin: not a guess
     // free alternative to Supabase's (paid) leaked-password protection: flag passwords that are
     // in a known data breach or too simple, so the admin asks the user to change them
-    user.weak = !!auth.strongEnough(data.password) || (await auth.breached(data.password));
+    // a temporary password from Admin → Team must be replaced at the first login
+    user.weak = user.mustChange || !!auth.strongEnough(data.password) || (await auth.breached(data.password));
     auth.setCookie(req, res, auth.createSession(user), auth.SESSION_HOURS * 3600);
-    send(res, 200, { user: user.name, email: user.email, weak: user.weak });
+    send(res, 200, who(user));
   } catch (e) {
     if (e instanceof auth.AuthError) {
       if (e.status === 401) await new Promise((r) => setTimeout(r, 300));

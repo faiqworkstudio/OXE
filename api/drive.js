@@ -7,7 +7,7 @@
 //               (a small video can come back to the admin instead when Blob isn't connected)
 // Files must be shared as "Anyone with the link". The website never loads anything from Drive:
 // Drive isn't built for serving websites (limits, slow, breaks if a file is moved).
-const { requireUser } = require("./_lib/auth");
+const { requireAccess } = require("./_lib/auth");
 const { send, fail, body, methods } = require("./_lib/http");
 
 const MAX_IMAGE = 60 * 1024 * 1024;     // original photo size we accept
@@ -110,7 +110,7 @@ async function listFolder(id) {
 
 module.exports = async (req, res) => {
   if (!methods(req, res, ["POST"])) return;
-  if (!requireUser(req, res)) return;
+  if (!(await requireAccess(req, res, "site.edit"))) return;
   const d = body(req);
   try {
     if (d.action === "list") {

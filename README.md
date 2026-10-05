@@ -51,6 +51,22 @@ The switch at the top of the admin moves between two workspaces:
 - **Two editors at once.** If someone else publishes the same item while you're editing, the admin tells you and lets you keep theirs or yours.
 - **Sessions** last 12 hours. If one ends while you work, you log in again in a pop-up and keep your drafts.
 
+### Team & roles
+
+A master admin manages who can log in under **Admin → Team & roles**: add a person, change their role, give them a new temporary password, or remove their access (*No access*).
+
+| Role | Can do |
+|---|---|
+| **Master admin** | Everything: all pages and settings, leads, and the team. Only master admins can delete leads for good |
+| **Developer** | All website content and media, plus site-wide settings (menu, footer, contact details, brand images, form options). No leads, no team |
+| **Website editor** | Pages, blog articles, portfolio projects, client logos and media. Not the menu, footer or site settings. No leads |
+| **Lead manager** | Only the Leads workspace: view, contact, update and delete leads (they stay restorable). Can't change the website |
+
+- **Adding someone** creates their login with a 16-character temporary password, shown once, for you to send them. At their first login they must choose their own password.
+- **Changes take effect within a minute**, even for someone who is logged in. A removed person is sent back to the login screen.
+- **Safety rules:** you can't change your own role, there must always be at least one master admin, and emails in `ADMIN_EMAILS` are always master admins.
+- **The server checks every request against the role.** Hiding buttons in the admin is only for convenience; it isn't what keeps people out.
+
 ### Leads
 
 Every enquiry sent through the website's contact form is saved as a lead, together with the page it came from and the campaign (UTM) or referring website. Lead changes save instantly; there is nothing to publish.
@@ -63,7 +79,7 @@ Every enquiry sent through the website's contact form is saved as a lead, togeth
 | **A lead** | One-tap **Email**, **Call** and **WhatsApp** buttons. Each opens a ready-written greeting, notes the contact in the lead's activity, and moves a New lead to Contacted (with Undo). Pipeline stepper; follow-up date (Today, Tomorrow, In 3 days…); notes you can edit or delete; editable details (saved when you leave a field); the full enquiry and where it came from |
 | **Add lead** | Add enquiries that came by phone, WhatsApp, LINE, email or in person |
 
-Deleting a lead shows **Undo** for a few seconds. With a Web3Forms key set, each enquiry is also emailed to you. Leads need one-time setup: see *Setting up the admin*, steps 1 and 5.
+Deleting a lead moves it to **Recently deleted** (with Undo right away). It can be restored there for 30 days, then it's removed for good automatically. With a Web3Forms key set, each enquiry is also emailed to you. Leads need one-time setup: see *Setting up the admin*, steps 1 and 5.
 
 In headings, wrap words in `*asterisks*` to show them in the italic serif accent, e.g. `Our *Services*`.
 
@@ -104,9 +120,9 @@ Do these steps in order. Allow about 20 minutes. Each step names the exact place
    - Leave Supabase's own **CAPTCHA protection off**. The website runs its own checks (step 6), and Supabase's CAPTCHA would block the admin login.
 4. **Authentication → Emails → SMTP Settings**: connect your own email sender, such as Hostinger email for `sales@oxemarketingth.com`, Resend or Brevo. Supabase's built-in sender only delivers to your Supabase team members and only a few emails an hour, so password resets need this.
 
-**3. Create the admin accounts**
-1. **Authentication → Users → Add user → Create new user**. Enter the email and a strong password, and tick **Auto Confirm User**. Repeat for each editor.
-2. Make each account an admin. Either list the emails in `ADMIN_EMAILS` (step 5), or run this in the SQL Editor:
+**3. Create the first master admin.** After this, add everyone else from the admin itself (*Team & roles*, below).
+1. **Authentication → Users → Add user → Create new user**. Enter your email and a strong password, and tick **Auto Confirm User**.
+2. Make the account a master admin. Either list the email in `ADMIN_EMAILS` (step 5), or run this in the SQL Editor:
 
    ```sql
    -- replace the email below with the exact login email, then Run
@@ -118,7 +134,7 @@ Do these steps in order. Allow about 20 minutes. Each step names the exact place
    select email, raw_app_meta_data from auth.users order by created_at;
    ```
 
-   If the update says *0 rows*, the email didn't match an account. Accounts that aren't admins are refused, even with the right password. A role change takes effect at the next login.
+   If the update says *0 rows*, the email didn't match an account. Accounts without a role are refused, even with the right password.
 
 **4. Copy the keys.** Supabase → **Project Settings → API Keys** (the Project URL is under **Data API**, or the **Connect** button at the top). You need:
 - the **Project URL**: `https://xxxx.supabase.co`;
@@ -137,7 +153,9 @@ Do these steps in order. Allow about 20 minutes. Each step names the exact place
 | `SUPABASE_SERVICE_ROLE_KEY` | 🔒 **Secret** | The secret / service_role key. It can read and change all data, so mark it **Sensitive**. Server-only, never sent to the browser |
 | `SESSION_SECRET` | 🔒 **Secret** | A random string of at least 32 characters. Create one at <https://generate-secret.vercel.app/32>, or run `openssl rand -base64 32`. Changing it logs everyone out |
 | `GITHUB_TOKEN` | 🔒 **Secret** | A GitHub fine-grained token for **this repository only**, with **Contents: Read and write** and an expiry date. The admin publishes through it; it is never sent to the browser |
-| `TURNSTILE_SECRET_KEY` *(recommended)* | 🔒 **Secret** | Cloudflare Turnstile secret key (step 6). Setting it switches the "I'm human" check on |
+| `TURNSTILE_SECRET` *(recommended)* | 🔒 **Secret** | Cloudflare Turnstile secret key (step 6). Setting it switches the "I'm human" check on. The older name `TURNSTILE_SECRET_KEY` also works |
+| `TURNSTILE_HOSTNAMES` *(optional)* | ⚙️ Config | Websites the "I'm human" check is accepted from. Default: `oxemarketingth.com,www.oxemarketingth.com`. Add a `….vercel.app` address only to test on a preview. Never put `localhost` here |
+| `CRON_SECRET` *(recommended)* | 🔒 **Secret** | Any long random string. Protects the daily job that keeps Supabase awake (Vercel sends it automatically) |
 | `GOOGLE_API_KEY` *(optional)* | 🔒 **Secret** | Only needed to import a **whole Drive folder** at once (single files work without it). Google Cloud Console → APIs & Services → enable **Google Drive API** → Credentials → Create API key → restrict it to the Google Drive API |
 | `BLOB_READ_WRITE_TOKEN` *(added automatically)* | 🔒 **Secret** | Vercel creates this when you connect Blob storage for large videos. Don't edit it |
 | `TURNSTILE_SITE_KEY` *(optional)* | ⚙️ Config | Not needed: the site key `0x4AAAAAAFOAs13rqrJZF0b9` is built in (it's public by design). Set it only to use a different widget, e.g. Cloudflare's test key `1x00000000000000000000AA` when testing locally |
@@ -148,15 +166,15 @@ Do these steps in order. Allow about 20 minutes. Each step names the exact place
 
 **6. Turn on the "I'm human" check (free).** The Cloudflare Turnstile widget already exists, and its site key `0x4AAAAAAFOAs13rqrJZF0b9` is built into the site.
 1. In Cloudflare → **Turnstile** → the widget → **Settings**, make sure the **Hostnames** include `oxemarketingth.com` and `www.oxemarketingth.com`. Also add your `….vercel.app` address if you want to test on Vercel preview links. On any other address the widget shows an error and visitors fall back to email/WhatsApp.
-2. Copy the widget's **Secret key** into Vercel as `TURNSTILE_SECRET_KEY` (mark it Sensitive), then redeploy. That switches it on.
+2. Copy the widget's **Secret key** into Vercel as `TURNSTILE_SECRET` (mark it Sensitive), then redeploy. That switches it on. Paste it only into Vercel, never into a chat or email.
 3. Test: open the Contact page. An "I'm human" box appears above the send button, usually ticking itself. Send a test enquiry and check it appears in Leads.
 
 Most visitors never see a puzzle; Cloudflare decides in the background.
 
 How it works:
 - The widget gives the form a one-time token.
-- The server checks that token with Cloudflare, confirms it came from the contact form (`action: contact`), and refuses reused or expired tokens.
-- If the widget can't load at all (blocked by a browser extension or network), the visitor isn't stuck: their message is handed to email or WhatsApp instead.
+- The server checks it with Cloudflare (siteverify) and requires that it is valid, came from the contact form (`action: contact`), and was issued on one of the `TURNSTILE_HOSTNAMES`. Reused and expired tokens are refused.
+- If the widget can't load (blocked by a browser extension or network), or Cloudflare can't be reached, the enquiry isn't saved, but the visitor isn't stuck: their message is handed to email or WhatsApp instead.
 
 **7. Test it**
 1. Open `/admin` and log in with your new account.
@@ -212,6 +230,19 @@ The admin and `/api` are hidden from search engines.
 - If the site is ever attacked, switch on **Attack Challenge Mode** there.
 - Under **Settings → Deployment Protection**, keep preview deployments protected.
 - In GitHub, turn on **two-factor authentication** for every account with access to this repository and to Vercel.
+
+### Backups
+
+- **Website content and media:** every publish is a commit in GitHub, so the full history is kept. Restore any page, article or project from its **History** in the admin.
+- **Videos in Vercel Blob:** keep the originals in Google Drive (or similar) too.
+- **Leads:** Supabase's free plan has no automatic backups, so a GitHub job backs them up every Monday, encrypted, and keeps each backup for 90 days. To switch it on:
+  1. Make up a long passphrase (16+ characters) and save it in your password manager. Without it, backups can't be opened.
+  2. GitHub → this repository → **Settings → Secrets and variables → Actions → New repository secret**. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `BACKUP_PASSPHRASE` (the passphrase).
+  3. Check it: **Actions → Back up leads → Run workflow**. The run says how many leads it saved, never the leads themselves.
+
+  To restore: open the run → **Artifacts** → download `leads-backup`, unzip it, then run `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in leads-DATE.json.gz.enc | gunzip > leads.json`, enter the passphrase, and import `leads.json` in Supabase. For a quick copy any time, use **Leads → Export** (CSV).
+- **Keeping Supabase awake:** free Supabase projects pause after about a week without use, which would stop logins and leads. A daily Vercel job (`vercel.json` → `crons`) makes a tiny request so it never pauses.
+- **After updates to `supabase/setup.sql`, run it again** in the SQL Editor. It's safe to re-run, and it adds new things like the *Recently deleted* bin.
 
 ### Content rule
 

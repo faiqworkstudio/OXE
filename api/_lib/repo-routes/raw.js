@@ -1,14 +1,14 @@
 // A photo or video straight from the repository, for the admin while the website hasn't been
 // rebuilt with it yet (just published, or the admin is open on an older deployment).
 //   GET ?path=assets/img/work/photo.webp
-const { requireUser } = require("../auth");
+const { requireAccess } = require("../auth");
 const { backend } = require("../repo");
 const { fail, methods } = require("../http");
 
 const TYPES = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", avif: "image/avif", svg: "image/svg+xml", ico: "image/x-icon", mp4: "video/mp4", webm: "video/webm" };
 
 module.exports = async (req, res) => {
-  if (!methods(req, res, ["GET"]) || !requireUser(req, res)) return;
+  if (!methods(req, res, ["GET"]) || !(await requireAccess(req, res, "site.read"))) return;
   const path = String((req.query && req.query.path) || "").replace(/^\/+/, "");
   const ext = (path.match(/\.([a-z0-9]+)$/i) || [])[1];
   if (!/^assets\/(img|video)\//.test(path) || path.includes("..") || !TYPES[String(ext).toLowerCase()]) return fail(res, 400, "Invalid path");

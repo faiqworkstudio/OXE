@@ -1,10 +1,10 @@
 // One file's content (base64), at the latest version or at an older one (?ref=<commit>).
-const { requireUser } = require("../auth");
+const { requireAccess } = require("../auth");
 const { backend } = require("../repo");
 const { send, fail, methods } = require("../http");
 
 module.exports = async (req, res) => {
-  if (!methods(req, res, ["GET"]) || !requireUser(req, res)) return;
+  if (!methods(req, res, ["GET"]) || !(await requireAccess(req, res, "site.read"))) return;
   const { path, ref } = req.query || {};
   if (!path || !/^(content|assets\/img|assets\/video)\//.test(path) || path.includes("..")) return fail(res, 400, "Invalid path");
   try {

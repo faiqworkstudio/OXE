@@ -8,9 +8,11 @@
 //   SUPABASE_URL       https://<project>.supabase.co
 //   SUPABASE_ANON_KEY  the project's anon / publishable key (Supabase → Project Settings → API)
 //   SESSION_SECRET     long random string (at least 32 characters) that signs sessions
-//   ADMIN_EMAILS       optional: comma-separated emails allowed into the admin.
-//                      Users whose app_metadata.role is "admin" are always allowed.
+//   ADMIN_EMAILS       optional: comma-separated emails that are always master admins.
+//   Other people get a role (Master admin, Developer, Website editor, Lead manager) in
+//   Admin → Team, stored as app_metadata.role in Supabase. See api/_lib/roles.js.
 const crypto = require("crypto");
+const roles = require("./roles");
 
 const COOKIE = "oxe_admin";
 const SESSION_HOURS = 12;
@@ -28,17 +30,6 @@ function configured() {
   return !!(SB_URL() && SB_KEY() && (process.env.SESSION_SECRET || "").length >= 32);
 }
 
-function allowedEmails() {
-  // tolerant of spaces, semicolons and quotes pasted into Vercel
-  return String(process.env.ADMIN_EMAILS || "").split(/[,;\s]+/).map((e) => e.replace(/["'<>]/g, "").trim().toLowerCase()).filter(Boolean);
-}
-
-function isAdmin(user) {
-  if (!user) return false;
-  const m = user.app_metadata || {};
-  if (String(m.role || "").toLowerCase() === "admin" || m.admin === true || (Array.isArray(m.roles) && m.roles.includes("admin"))) return true;
-  return allowedEmails().includes(String(user.email || "").toLowerCase());
-}
 
 async function supabase(method, path, body, token) {
   const r = await fetch(`${SB_URL()}/auth/v1${path}`, {
@@ -69,9 +60,11 @@ async function verifyCredentials(email, password) {
     if (/confirm/i.test(msg)) throw new AuthError("Please confirm your email address first (check your inbox).", 401);
     throw new AuthError("That email and password don't match.", 401);
   }
-  if (!isAdmin(r.data.user)) throw new AuthError(`The password is right, but ${r.data.user.email} isn't an admin yet. Add this email to ADMIN_EMAILS in Vercel (then redeploy), or give it the admin role in Supabase (see the README, “Create the admin accounts”).`, 403);
+  const role = roles.roleOf(r.data.user);
+  if (!role) throw new AuthError(`The password is right, but ${r.data.user.email} doesn't have access to the admin. A master admin can add it in Admin → Team (or list it in ADMIN_EMAILS in Vercel).`, 403);
   // the short-lived Supabase token is only kept in memory, for "change password"
-  return { id: r.data.user.id, email: r.data.user.email, name: displayName(r.data.user), token: r.data.access_token };
+  return { id: r.data.user.id, email: r.data.user.email, name: displayName(r.data.user), token: r.data.access_token, role,
+    mustChange: !!(r.data.user.app_metadata && r.data.user.app_metadata.must_change) };
 }
 
 // "Forgot password": Supabase emails a reset link that returns to /admin.
@@ -131,7 +124,7 @@ function sign(data) {
 }
 
 function createSession(user) {
-  const payload = Buffer.from(JSON.stringify({ u: user.name, e: user.email, id: user.id, w: user.weak ? 1 : 0, exp: Date.now() + SESSION_HOURS * 3600 * 1000 })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ u: user.name, e: user.email, id: user.id, r: user.role, w: user.weak ? 1 : 0, exp: Date.now() + SESSION_HOURS * 3600 * 1000 })).toString("base64url");
   return `${payload}.${sign(payload)}`;
 }
 
@@ -144,7 +137,7 @@ function readSession(req) {
     if (!safeEqual(sig, sign(payload))) return null;
     const data = JSON.parse(Buffer.from(payload, "base64url").toString());
     if (!data.exp || data.exp < Date.now()) return null;
-    return { name: data.u, email: data.e, id: data.id, weak: !!data.w, expires: data.exp };
+    return { name: data.u, email: data.e, id: data.id, role: roles.normalize(data.r) || (data.r === undefined ? "owner" : null), weak: !!data.w, expires: data.exp };
   } catch (e) {
     return null;
   }
@@ -159,26 +152,38 @@ function setCookie(req, res, value, maxAge) {
   res.setHeader("Set-Cookie", `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure(req) ? "; Secure" : ""}`);
 }
 
-// For API handlers: returns the user, or answers 401 and returns null.
+function deny(res, status, error, code) {
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.end(JSON.stringify(Object.assign({ error }, code ? { code } : {})));
+  return null;
+}
+
+// For API handlers: the logged-in user allowed to do `perm`, or answers 401/403 and returns null.
+// The role is re-read from Supabase (cached for a minute), so a removed or changed role takes
+// effect right away rather than when the 12-hour session ends.
+async function requireAccess(req, res, perm) {
+  let user = null;
+  try { user = readSession(req); } catch (e) { /* SESSION_SECRET missing */ }
+  if (!user) return deny(res, 401, "Please log in again.");
+  if (user.weak) return deny(res, 403, "Please change your password first.", "weak_password");
+  const role = await roles.freshRole(user.id, user.role);
+  if (!role) return deny(res, 401, "Your access to the admin has been removed. Ask a master admin if this is a mistake.", "no_access");
+  user.role = role;
+  if (perm && !roles.can(role, perm)) return deny(res, 403, `Your role (${roles.ROLES[role].label}) can't do this. Ask a master admin if you need it.`, "forbidden");
+  return user;
+}
+
+// Older synchronous check (session only, no role): kept for the upload callback.
 function requireUser(req, res) {
   let user = null;
   try { user = readSession(req); } catch (e) { /* SESSION_SECRET missing */ }
-  if (!user) {
-    res.statusCode = 401;
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ error: "Please log in again." }));
-    return null;
-  }
-  if (user.weak) {   // a breached or too-simple password: nothing works until it's changed
-    res.statusCode = 403;
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ error: "Please change your password first.", code: "weak_password" }));
-    return null;
-  }
+  if (!user) return deny(res, 401, "Please log in again.");
+  if (user.weak) return deny(res, 403, "Please change your password first.", "weak_password");
   return user;
 }
 
 module.exports = {
   COOKIE, SESSION_HOURS, AuthError, configured, verifyCredentials, sendReset, resetPassword,
-  createSession, readSession, setCookie, requireUser, setPassword, strongEnough, breached,
+  createSession, readSession, setCookie, requireUser, requireAccess, setPassword, strongEnough, breached,
 };
