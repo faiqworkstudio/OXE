@@ -65,6 +65,17 @@
     video: "M3 6h12v12H3zM15 10l6-3v10l-6-3",
     check: "M5 12l5 5 9-11",
     link: "M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1",
+    mail: "M3 5h18v14H3zM3 6l9 7 9-7",
+    call: "M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2z",
+    wa: "M3.5 20.5l1.3-4.3A8.6 8.6 0 1 1 7.9 19.3zM9 8.4c0 3.6 3 6.6 6.6 6.6l1-1.7-2-1-1 .8a5 5 0 0 1-2.3-2.3l.8-1-1-2z",
+    inbox: "M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5",
+    board: "M4 4h4v16H4zM10 4h4v10h-4zM16 4h4v13h-4z",
+    cal: "M4 6h16v15H4zM4 10h16M8 3v4M16 3v4",
+    download: "M12 4v12M7 11l5 5 5-5M4 20h16",
+    note: "M5 4h14v11l-5 5H5zM14 20v-5h5M8 9h8M8 13h4",
+    globe: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18",
+    users: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6",
+    star: "M12 3l2.6 5.6L20 9.3l-4 4 1 5.7-5-2.8-5 2.8 1-5.7-4-4 5.4-.7z",
   };
   const icon = (n) => { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "i"); s.innerHTML = `<path d="${PATHS[n] || ""}"/>`; return s; };
   const slugify = (t) => String(t || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 70);
@@ -74,9 +85,11 @@
 
   // ------------------------------------------------------------------ toasts & dialogs
   function toast(text, kind, link) {
-    const t = h("div", { class: "toast" + (kind ? " toast--" + kind : "") }, text, link ? h("a", { href: link.href, target: "_blank", rel: "noopener" }, link.text) : null);
+    const t = h("div", { class: "toast" + (kind ? " toast--" + kind : "") }, h("span", {}, text),
+      link && link.onClick ? h("button", { class: "toast__act", onclick: () => { t.remove(); link.onClick(); } }, link.text)
+        : link ? h("a", { href: link.href, target: "_blank", rel: "noopener" }, link.text) : null);
     $("#toasts").appendChild(t);
-    setTimeout(() => t.remove(), kind === "bad" ? 9000 : 5000);
+    setTimeout(() => t.remove(), kind === "bad" ? 9000 : link && link.onClick ? 8000 : 5000);
   }
   function modal({ title, body, foot, wide, onClose }) {
     const close = () => { ov.remove(); document.removeEventListener("keydown", key); onClose && onClose(); };
@@ -88,7 +101,7 @@
         foot ? h("div", { class: "modal__foot" }, foot) : null));
     document.body.appendChild(ov);
     document.addEventListener("keydown", key);
-    setTimeout(() => { const f = ov.querySelector("input, textarea, select, .modal__foot .btn"); f && f.focus(); }, 50);
+    setTimeout(() => { const f = ov.querySelector("input, textarea, select, .modal__foot .btn"); if (f && !ov.contains(document.activeElement)) f.focus(); }, 50);
     return { close, el: ov };
   }
   function confirmBox(title, text, okLabel, danger) {
@@ -1068,7 +1081,9 @@
         h("div", { class: "card stat" }, h("small", {}, "Articles"), h("b", {}, posts.length), h("span", {}, `${live} live · ${posts.length - live} hidden`)),
         h("div", { class: "card stat" }, h("small", {}, "Projects"), h("b", {}, projects.filter((p) => p.state !== "deleted").length), h("span", {}, "in the portfolio")),
         h("div", { class: "card stat" }, h("small", {}, "Media files"), h("b", {}, media.filter((m) => !m.deleted).length), h("span", {}, "photos, logos and videos")),
-        h("div", { class: "card stat" }, h("small", {}, "Unpublished"), h("b", {}, n), h("span", {}, n ? "changes waiting" : "all live"))),
+        h("div", { class: "card stat" }, h("small", {}, "Unpublished"), h("b", {}, n), h("span", {}, n ? "changes waiting" : "all live")),
+        L.configured && L.items ? h("a", { class: "card stat stat--btn" + (newLeadCount() ? " stat--hot" : ""), href: newLeadCount() ? "#/leads/view/new" : "#/leads" }, h("small", {}, "New leads"), h("b", {}, newLeadCount()),
+          h("span", {}, newLeadCount() ? "waiting for a reply →" : "open the Leads workspace →")) : null),
       h("div", { class: "dash-grid" },
         h("div", { class: "card panel" }, h("h2", {}, "Quick actions"), h("div", { class: "quick" },
           q("#/page/home", "home", "Edit the home page", "Hero, sections, photos"),
@@ -1214,6 +1229,449 @@
       h("div", { class: "card panel" }, list));
   }
 
+  // ------------------------------------------------------------------ leads workspace
+  // Enquiries from the website's contact form (and leads added by hand), stored in Supabase.
+  // Unlike website content, lead changes are saved immediately: no drafts, no publishing.
+  const STAGES = [
+    { k: "new", label: "New", hint: "Not contacted yet" },
+    { k: "contacted", label: "Contacted", hint: "First reply sent" },
+    { k: "qualified", label: "Qualified", hint: "Good fit, talking" },
+    { k: "proposal", label: "Proposal sent", hint: "Waiting on a decision" },
+    { k: "won", label: "Won", hint: "Became a client" },
+    { k: "lost", label: "Lost", hint: "Not going ahead" },
+  ];
+  const stageLabel = (k) => (STAGES.find((s) => s.k === k) || { label: k }).label;
+  const SOURCES = ["Added by hand", "Phone call", "WhatsApp", "LINE", "Email", "Social media", "Referral", "Event", "Walk-in", "Website form", "Other"];
+  const LEAD_VIEWS = {
+    all: { label: "All leads", test: () => true },
+    new: { label: "New", test: (l) => l.status === "new" },
+    followup: { label: "Follow-ups due", test: (l) => isDue(l) },
+    open: { label: "In progress", test: (l) => ["contacted", "qualified", "proposal"].includes(l.status) },
+    won: { label: "Won", test: (l) => l.status === "won" },
+    lost: { label: "Lost", test: (l) => l.status === "lost" },
+  };
+  const L = { items: null, configured: true, error: null, loading: null, at: 0 };
+  const LS = { q: "", service: "", sort: "new", selected: new Set() };
+  const isoDay = (d) => { d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return isoDay(d); };
+  const isOpenLead = (l) => l.status !== "won" && l.status !== "lost";
+  const isDue = (l) => isOpenLead(l) && !!l.follow_up && l.follow_up <= isoDay();
+  const money = (n) => (Number(n) ? "฿" + Number(n).toLocaleString("en-US") : "");
+  const sumValue = (list) => list.reduce((s, l) => s + (Number(l.value) || 0), 0);
+  const dayLabel = (iso) => {
+    if (!iso) return "";
+    if (iso === isoDay()) return "Today"; if (iso === addDays(1)) return "Tomorrow"; if (iso === addDays(-1)) return "Yesterday";
+    return new Date(iso + "T12:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short", year: iso.slice(0, 4) === String(new Date().getFullYear()) ? undefined : "numeric" });
+  };
+  const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "there";
+  const initials = (n) => String(n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  const newLeadCount = () => (L.items || []).filter((l) => l.status === "new").length;
+  const leadById = (id) => (L.items || []).find((l) => l.id === id);
+  function upsertLead(lead) {
+    if (!L.items) L.items = [];
+    const i = L.items.findIndex((x) => x.id === lead.id);
+    if (i > -1) L.items[i] = lead; else L.items.unshift(lead);
+  }
+  async function loadLeads(force) {
+    if (L.loading) return L.loading;
+    if (!force && L.items && Date.now() - L.at < 30000) return L.items;
+    L.loading = api("GET", "/api/leads").then((r) => {
+      L.items = r.leads || []; L.configured = r.configured !== false; L.error = null; L.at = Date.now();
+    }).catch((e) => { L.error = e.message; if (!L.items) L.items = null; }).finally(() => { L.loading = null; refreshChrome(); });
+    return L.loading;
+  }
+  // form options (services, budgets) come from the site's settings, so they always match the contact form
+  function formOptions() {
+    const d = parseDoc("content/settings.yml", current("content/settings.yml")) || {};
+    return { services: (d.form_services || []).map(plainText), budgets: (d.form_budgets || []).map(plainText) };
+  }
+
+  // ---- contacting a lead: one tap to email, call or WhatsApp
+  function waNumber(phone) {
+    let d = String(phone || "").replace(/[^\d+]/g, "");
+    if (!d) return "";
+    if (d.startsWith("+")) return d.slice(1);
+    if (d.startsWith("00")) return d.slice(2);
+    if (d.startsWith("0")) return "66" + d.slice(1);   // Thai local number
+    return d;
+  }
+  function contactChannels(l) {
+    const svc = (l.services || []).join(", ");
+    const hello = `Hi ${firstName(l.name)},`;
+    return [
+      { k: "email", icon: "mail", label: "Email", value: l.email,
+        href: l.email && `mailto:${l.email}?subject=${encodeURIComponent("Your enquiry to OXE Marketing" + (svc ? ": " + svc : ""))}&body=${encodeURIComponent(`${hello}\n\nThank you for contacting OXE Marketing${svc ? " about " + svc : ""}.\n\n`)}`,
+        log: "Email started" },
+      { k: "call", icon: "call", label: "Call", value: l.phone, href: l.phone && "tel:" + String(l.phone).replace(/[^\d+]/g, ""), log: "Call started" },
+      { k: "whatsapp", icon: "wa", label: "WhatsApp", value: l.phone, href: waNumber(l.phone) && `https://wa.me/${waNumber(l.phone)}?text=${encodeURIComponent(`${hello} this is OXE Marketing following up on your enquiry${svc ? " about " + svc : ""}.`)}`, log: "WhatsApp chat opened", blank: true },
+    ];
+  }
+  function contactIcons(l, big) {
+    const wrap = h("div", { class: "cicons" + (big ? " cicons--big" : "") });
+    contactChannels(l).forEach((c) => {
+      const title = c.href ? `${c.label} ${c.value}` : `No ${c.k === "email" ? "email" : "phone number"} for this lead`;
+      wrap.appendChild(c.href
+        ? h("a", { class: "cicon cicon--" + c.k, href: c.href, target: c.blank ? "_blank" : null, rel: c.blank ? "noopener" : null, title, "aria-label": title,
+            onclick: (e) => { e.stopPropagation(); contacted(l, c); } }, icon(c.icon), big ? h("span", {}, h("b", {}, c.label), h("small", {}, c.value)) : null)
+        : h("span", { class: "cicon cicon--" + c.k + " is-off", title, "aria-label": title }, icon(c.icon), big ? h("span", {}, h("b", {}, c.label), h("small", {}, "Not given")) : null));
+    });
+    return wrap;
+  }
+  // log the contact, and move a New lead to Contacted (with Undo)
+  async function contacted(l, c) {
+    try {
+      const moving = l.status === "new";
+      const lead = await saveLead(l.id, moving ? { status: "contacted" } : null, { type: c.k, text: c.log + (moving ? " · moved to Contacted" : "") });
+      if (moving) toast(`${lead.name} moved to Contacted.`, "ok", { text: "Undo", onClick: () => setStage(lead, "new", true) });
+      if (/^#\/leads/.test(location.hash) && !document.querySelector(".overlay")) softRender();
+    } catch (e) { /* contacting still works; logging failed quietly */ }
+  }
+  async function saveLead(id, changes, log) {
+    const r = await api("PATCH", "/api/leads", { id, changes: changes || undefined, log: log || undefined });
+    upsertLead(r.lead); refreshChrome();
+    return r.lead;
+  }
+  async function setStage(l, status, quiet) {
+    if (l.status === status) return l;
+    const from = l.status;
+    try {
+      const lead = await saveLead(l.id, { status }, { type: "status", text: `Status: ${stageLabel(from)} → ${stageLabel(status)}` });
+      if (!quiet) toast(`${lead.name}: ${stageLabel(status)}.`, "ok", { text: "Undo", onClick: () => setStage(lead, from, true) });
+      softRender();
+      return lead;
+    } catch (e) { toast(e.message, "bad"); return l; }
+  }
+  async function deleteLeads(list) {
+    const one = list.length === 1;
+    if (!(await confirmBox(one ? `Delete ${list[0].name}?` : `Delete ${list.length} leads?`, `${one ? "This lead and its notes" : "These leads and their notes"} will be removed. You can undo right after.`, "Delete", true))) return false;
+    try {
+      await api("DELETE", "/api/leads", { ids: list.map((l) => l.id) });
+      const gone = new Set(list.map((l) => l.id));
+      L.items = L.items.filter((l) => !gone.has(l.id));
+      toast(one ? `${list[0].name} deleted.` : `${list.length} leads deleted.`, "ok", { text: "Undo", onClick: async () => {
+        for (const l of list) { try { upsertLead((await api("POST", "/api/leads", { restore: l })).lead); } catch (e) { toast(e.message, "bad"); } }
+        L.items.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+        softRender(); toast("Restored.", "ok");
+      } });
+      return true;
+    } catch (e) { toast(e.message, "bad"); return false; }
+  }
+  function exportCSV(list) {
+    const cols = [["created_at", "Received"], ["name", "Name"], ["company", "Company"], ["email", "Email"], ["phone", "Phone"], ["services", "Services"], ["budget", "Budget"], ["method", "Preferred contact"], ["status", "Status"], ["value", "Value (THB)"], ["follow_up", "Follow-up"], ["source", "Source"], ["message", "Message"]];
+    const cell = (v) => { v = Array.isArray(v) ? v.join("; ") : v == null ? "" : String(v); return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
+    const rows = [cols.map((c) => c[1]).join(",")].concat(list.map((l) => cols.map(([k]) => cell(k === "status" ? stageLabel(l[k]) : k === "created_at" ? String(l[k] || "").slice(0, 16).replace("T", " ") : l[k])).join(",")));
+    const url = URL.createObjectURL(new Blob(["﻿" + rows.join("\n")], { type: "text/csv;charset=utf-8" }));
+    const a = h("a", { href: url, download: `oxe-leads-${isoDay()}.csv` }); document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast(`Exported ${list.length} lead${list.length === 1 ? "" : "s"}.`, "ok");
+  }
+  function stagePill(l, onChange) {
+    return h("select", { class: "stage stage--" + l.status, title: "Change status", "aria-label": "Status", onclick: (e) => e.stopPropagation(),
+      onchange: async (e) => { e.stopPropagation(); const lead = await setStage(l, e.target.value); onChange && onChange(lead); } },
+      STAGES.map((s) => h("option", { value: s.k, selected: s.k === l.status }, s.label)));
+  }
+
+  // ---- add a lead by hand
+  function leadModal() {
+    const o = formOptions();
+    const v = { services: [] };
+    const inp = (k, type, ph) => h("input", { type: type || "text", placeholder: ph || "", oninput: (e) => { v[k] = e.target.value; } });
+    const name = inp("name", "text", "Full name");
+    const err = h("p", { class: "err", hidden: true });
+    const chips = h("div", { class: "chips" }, o.services.map((s) => h("button", { type: "button", onclick: (e) => { const i = v.services.indexOf(s); if (i > -1) v.services.splice(i, 1); else v.services.push(s); e.currentTarget.classList.toggle("is-on"); } }, s)));
+    const sel = (k, opts, first) => h("select", { onchange: (e) => { v[k] = e.target.value; } }, first ? h("option", { value: "" }, first) : null, opts.map((x) => h("option", { value: x }, x)));
+    v.source = "Added by hand";
+    const source = sel("source", SOURCES); source.value = v.source;
+    const f = (label, el, opt) => h("div", { class: "field" }, h("label", {}, label, opt ? h("span", { class: "opt" }, "optional") : null), el);
+    const save = async () => {
+      if (!String(v.name || "").trim()) { err.textContent = "Please enter a name."; err.hidden = false; name.focus(); return; }
+      btn.disabled = true; btn.textContent = "Saving…";
+      try {
+        const r = await api("POST", "/api/leads", { lead: v });
+        upsertLead(r.lead); m.close(); toast("Lead added.", "ok"); location.hash = "#/leads/" + r.lead.id;
+      } catch (e) { err.textContent = e.message; err.hidden = false; btn.disabled = false; btn.textContent = "Add lead"; }
+    };
+    const btn = h("button", { class: "btn", onclick: save }, icon("plus"), "Add lead");
+    const m = modal({
+      title: "Add a lead",
+      body: [h("p", { class: "hint", style: { margin: 0 } }, "For enquiries that came by phone, WhatsApp, LINE, email or in person. Website enquiries are added automatically."),
+        h("div", { class: "form-2" }, f("Name", name), f("Company", inp("company", "text", "Company name"), true), f("Email", inp("email", "email", "name@company.com"), true), f("Phone", inp("phone", "tel", "+66 …"), true)),
+        f("Services", chips, true),
+        h("div", { class: "form-2" }, f("Budget", sel("budget", o.budgets, "Not given"), true), f("Where did it come from?", source)),
+        f("Notes about the enquiry", h("textarea", { rows: 3, placeholder: "What do they need?", oninput: (e) => { v.message = e.target.value; } }), true), err],
+      foot: [h("button", { class: "btn btn--ghost", onclick: () => m.close() }, "Cancel"), btn],
+    });
+  }
+
+  // ---- screens
+  function leadsGate(draw) {
+    if (L.items === null && !L.error) {
+      loadLeads().then(() => { if (/^#\/leads/.test(location.hash || "")) render(); });
+      return h("div", { class: "card empty" }, h("div", { class: "spin", style: { margin: "0 auto 12px" } }), "Loading your leads…");
+    }
+    if (L.error && L.items === null) {
+      return h("div", { class: "card empty" }, h("b", {}, "Leads couldn't be loaded"), h("p", {}, L.error), h("button", { class: "btn btn--soft btn--sm", onclick: () => { L.error = null; render(); } }, "Try again"));
+    }
+    if (!L.configured) return leadsSetup();
+    return draw();
+  }
+  function leadsSetup() {
+    return h("div", {}, h("div", { class: "page-head" }, h("div", {}, h("span", { class: "eyebrow" }, "Leads"), h("h1", { html: 'Connect your <span class="hl">leads</span>' }),
+      h("p", {}, "Every enquiry from the website's contact form will be saved here, ready to follow up. It takes three steps, once."))),
+      h("div", { class: "card panel setup" }, h("ol", {},
+        h("li", {}, h("b", {}, "Create the leads table. "), "In Supabase, open SQL Editor → New query, paste the contents of ", h("code", {}, "supabase/leads.sql"), " from the website's code, and press Run."),
+        h("li", {}, h("b", {}, "Add the secret key to Vercel. "), "Copy the ", h("code", {}, "service_role"), " (or secret) key from Supabase → Project Settings → API, and add it in Vercel → Settings → Environment Variables as ", h("code", {}, "SUPABASE_SERVICE_ROLE_KEY"), "."),
+        h("li", {}, h("b", {}, "Redeploy. "), "Vercel → Deployments → ⋯ → Redeploy. Then come back here.")),
+        h("div", { class: "callout callout--info" }, "Until then, enquiries keep arriving by email (Web3Forms) or open the visitor's email / WhatsApp, as before.")));
+  }
+  function leadsListScreen(viewKey) {
+    return leadsGate(() => {
+      const o = formOptions();
+      const st = LS;                       // search, filter, sort and selection survive quick updates
+      const view = LEAD_VIEWS[viewKey] ? viewKey : "all";
+      const selected = st.selected;
+      const body = h("div", { class: "card leads" });
+      const bulk = h("div", { class: "bulk", hidden: true });
+      const all = () => L.items;
+      const filtered = () => {
+        let items = all().filter(LEAD_VIEWS[view].test);
+        if (st.service) items = items.filter((l) => (l.services || []).includes(st.service));
+        const q = st.q;
+        if (q) items = items.filter((l) => [l.name, l.email, l.phone, l.company, l.message, (l.services || []).join(" ")].join(" ").toLowerCase().includes(q));
+        const by = {
+          new: (a, b) => String(b.created_at).localeCompare(String(a.created_at)),
+          old: (a, b) => String(a.created_at).localeCompare(String(b.created_at)),
+          follow: (a, b) => (a.follow_up || "9999").localeCompare(b.follow_up || "9999"),
+          value: (a, b) => (Number(b.value) || 0) - (Number(a.value) || 0),
+          name: (a, b) => String(a.name).localeCompare(String(b.name)),
+        }[st.sort];
+        return items.sort(by);
+      };
+      function drawBulk() {
+        bulk.hidden = !selected.size; bulk.innerHTML = "";
+        if (!selected.size) return;
+        const list = all().filter((l) => selected.has(l.id));
+        add(bulk, [h("b", {}, `${selected.size} selected`),
+          h("select", { "aria-label": "Move selected to", onchange: async (e) => {
+            const status = e.target.value; if (!status) return;
+            try { const r = await api("PATCH", "/api/leads", { ids: [...selected], status }); r.leads.forEach(upsertLead); toast(`Moved ${r.leads.length} to ${stageLabel(status)}.`, "ok"); selected.clear(); draw(); refreshChrome(); }
+            catch (x) { toast(x.message, "bad"); }
+          } }, h("option", { value: "" }, "Move to…"), STAGES.map((s) => h("option", { value: s.k }, s.label))),
+          h("button", { class: "btn btn--ghost btn--sm", onclick: () => exportCSV(list) }, icon("download"), "Export"),
+          h("button", { class: "btn btn--danger btn--sm", onclick: async () => { if (await deleteLeads(list)) { selected.clear(); draw(); refreshChrome(); } } }, icon("trash"), "Delete"),
+          h("button", { class: "btn btn--ghost btn--sm", onclick: () => { selected.clear(); draw(); } }, "Clear")]);
+      }
+      function draw() {
+        body.innerHTML = "";
+        const items = filtered();
+        [...selected].forEach((id) => { if (!items.some((l) => l.id === id)) selected.delete(id); });
+        if (!items.length) {
+          body.appendChild(h("div", { class: "empty" }, h("span", { class: "empty__ico" }, icon("inbox")),
+            h("b", {}, st.q || st.service ? "No leads match" : view === "all" ? "No leads yet" : `Nothing in “${LEAD_VIEWS[view].label}”`),
+            st.q || st.service ? "Try another search or filter." : view === "all" ? "Enquiries from the website's contact form appear here automatically. You can also add one by hand." : view === "followup" ? "You're all caught up. 🎉" : "Leads appear here when they reach this stage."));
+          drawBulk(); return;
+        }
+        const head = h("div", { class: "lrow lrow--head" },
+          h("label", { class: "lcheck", title: "Select all" }, h("input", { type: "checkbox", checked: items.every((l) => selected.has(l.id)), onchange: (e) => { items.forEach((l) => (e.target.checked ? selected.add(l.id) : selected.delete(l.id))); draw(); } })),
+          h("span", {}, `${items.length} lead${items.length === 1 ? "" : "s"}`), h("span", { class: "hide-md" }, "Status"), h("span", { class: "hide-md" }, "Follow-up"), h("span", { class: "hide-md" }, "Contact"));
+        body.appendChild(head);
+        items.forEach((l) => {
+          const open = () => { location.hash = "#/leads/" + l.id; };
+          const due = isDue(l);
+          body.appendChild(h("div", { class: "lrow" + (l.status === "new" ? " is-new" : "") + (selected.has(l.id) ? " is-sel" : ""), tabindex: "0", role: "link", onclick: open, onkeydown: (e) => { if (e.key === "Enter" && e.target === e.currentTarget) open(); } },
+            h("label", { class: "lcheck", onclick: (e) => e.stopPropagation() }, h("input", { type: "checkbox", "aria-label": "Select " + l.name, checked: selected.has(l.id), onchange: (e) => { e.target.checked ? selected.add(l.id) : selected.delete(l.id); draw(); } })),
+            h("div", { class: "lrow__who" }, h("span", { class: "avatar avatar--" + l.status }, initials(l.name)),
+              h("div", {}, h("b", {}, l.name, l.company ? h("span", { class: "co" }, " · " + l.company) : null),
+                h("small", {}, [(l.services || []).join(", ") || (l.message ? String(l.message).slice(0, 70) : ""), ago(l.created_at)].filter(Boolean).join(" · ")))),
+            h("div", { class: "lrow__stage" }, stagePill(l, () => draw()), l.value ? h("small", { class: "val" }, money(l.value)) : null),
+            h("div", { class: "lrow__fu" }, l.follow_up && isOpenLead(l) ? h("span", { class: "due" + (due ? " is-due" : "") }, icon("cal"), dayLabel(l.follow_up)) : h("span", { class: "muted" }, "—")),
+            contactIcons(l)));
+        });
+        drawBulk();
+      }
+      const tabs = h("div", { class: "tabs" }, Object.entries(LEAD_VIEWS).map(([k, v]) => {
+        const n = all().filter(v.test).length;
+        return h("button", { class: k === view ? "is-active" : "", onclick: () => { location.hash = k === "all" ? "#/leads" : "#/leads/view/" + k; } }, v.label, k !== "all" && n ? h("span", { class: "tabs__n" }, n) : null);
+      }));
+      const items = all();
+      const open = items.filter((l) => ["contacted", "qualified", "proposal"].includes(l.status));
+      const won = items.filter((l) => l.status === "won");
+      const month = isoDay().slice(0, 7);
+      const stat = (k, label, value, sub, tone) => h("button", { class: "card stat stat--btn" + (view === k ? " is-active" : "") + (tone ? " stat--" + tone : ""), onclick: () => { location.hash = "#/leads/view/" + k; } }, h("small", {}, label), h("b", {}, value), h("span", {}, sub));
+      draw();
+      return h("div", {},
+        h("div", { class: "page-head" }, h("div", {}, h("span", { class: "eyebrow" }, "Leads"), h("h1", { html: view === "all" ? 'Your <span class="hl">leads</span>' : esc(LEAD_VIEWS[view].label) }),
+          h("p", {}, "Every enquiry in one place. Reach people with one tap, move them through your pipeline and never miss a follow-up. Changes save instantly.")),
+          h("div", { class: "page-head__actions" },
+            h("button", { class: "btn btn--ghost btn--icon", title: "Refresh", "aria-label": "Refresh", onclick: async () => { await loadLeads(true); render(); } }, icon("refresh")),
+            h("button", { class: "btn btn--ghost", onclick: () => exportCSV(filtered()) }, icon("download"), h("span", { class: "hide-sm" }, "Export")),
+            h("button", { class: "btn", onclick: leadModal }, icon("plus"), "Add lead"))),
+        h("div", { class: "stats stats--leads" },
+          stat("new", "New", items.filter((l) => l.status === "new").length, "waiting for a first reply", newLeadCount() ? "hot" : ""),
+          stat("followup", "Follow-ups due", items.filter(isDue).length, "today or overdue", items.some(isDue) ? "warn" : ""),
+          stat("open", "In progress", open.length, sumValue(open) ? money(sumValue(open)) + " in the pipeline" : "contacted, qualified, proposal"),
+          stat("won", "Won", won.length, `${won.filter((l) => String(l.updated_at || "").slice(0, 7) === month).length} this month` + (sumValue(won) ? " · " + money(sumValue(won)) : ""))),
+        h("div", { class: "toolbar" }, h("div", { class: "search" }, icon("search"), h("input", { type: "search", value: st.q, placeholder: "Search name, email, phone, company…", oninput: (e) => { st.q = e.target.value.toLowerCase().trim(); draw(); } })),
+          h("select", { class: "input select-sm", "aria-label": "Filter by service", onchange: (e) => { st.service = e.target.value; draw(); } }, h("option", { value: "" }, "All services"), o.services.map((s) => h("option", { value: s, selected: s === st.service }, s))),
+          h("select", { class: "input select-sm", "aria-label": "Sort", onchange: (e) => { st.sort = e.target.value; draw(); } }, [["new", "Newest first"], ["old", "Oldest first"], ["follow", "Follow-up date"], ["value", "Highest value"], ["name", "Name A–Z"]].map(([k, t]) => h("option", { value: k, selected: k === st.sort }, t)))),
+        h("div", { class: "toolbar" }, tabs),
+        bulk, body);
+    });
+  }
+  function boardScreen() {
+    return leadsGate(() => {
+      const board = h("div", { class: "board" });
+      let dragId = null;
+      STAGES.forEach((s) => {
+        const items = L.items.filter((l) => l.status === s.k).sort((a, b) => (a.follow_up || "9999").localeCompare(b.follow_up || "9999") || String(b.created_at).localeCompare(String(a.created_at)));
+        const total = items.reduce((sum, l) => sum + (Number(l.value) || 0), 0);
+        const col = h("section", { class: "col col--" + s.k, "data-stage": s.k },
+          h("header", {}, h("b", {}, s.label), h("span", { class: "col__n" }, items.length), h("small", {}, total ? money(total) : s.hint)));
+        const list = h("div", { class: "col__list" });
+        if (!items.length) list.appendChild(h("p", { class: "col__empty" }, "Drop a lead here"));
+        items.forEach((l) => list.appendChild(h("article", { class: "kcard", draggable: "true", tabindex: "0",
+          ondragstart: (e) => { dragId = l.id; e.dataTransfer.setData("text/plain", l.id); e.dataTransfer.effectAllowed = "move"; e.currentTarget.classList.add("is-drag"); },
+          ondragend: (e) => e.currentTarget.classList.remove("is-drag"),
+          onclick: () => { location.hash = "#/leads/" + l.id; }, onkeydown: (e) => { if (e.key === "Enter" && e.target === e.currentTarget) location.hash = "#/leads/" + l.id; } },
+          h("div", { class: "kcard__top" }, h("span", { class: "avatar avatar--" + l.status }, initials(l.name)), h("div", {}, h("b", {}, l.name), h("small", {}, l.company || ago(l.created_at)))),
+          (l.services || []).length ? h("p", {}, (l.services || []).join(", ")) : null,
+          h("div", { class: "kcard__foot" },
+            l.value ? h("span", { class: "val" }, money(l.value)) : null,
+            l.follow_up && isOpenLead(l) ? h("span", { class: "due" + (isDue(l) ? " is-due" : "") }, icon("cal"), dayLabel(l.follow_up)) : null,
+            contactIcons(l)),
+          stagePill(l))));
+        col.appendChild(list);
+        col.addEventListener("dragover", (e) => { e.preventDefault(); col.classList.add("is-over"); });
+        col.addEventListener("dragleave", (e) => { if (!col.contains(e.relatedTarget)) col.classList.remove("is-over"); });
+        col.addEventListener("drop", async (e) => {
+          e.preventDefault(); col.classList.remove("is-over");
+          const l = leadById(e.dataTransfer.getData("text/plain") || dragId);
+          if (l && l.status !== s.k) await setStage(l, s.k);
+        });
+        board.appendChild(col);
+      });
+      return h("div", {},
+        h("div", { class: "page-head" }, h("div", {}, h("span", { class: "eyebrow" }, "Leads"), h("h1", { html: 'Pipeline <span class="hl">board</span>' }),
+          h("p", {}, "Drag a card to move a lead to the next stage, or use the menu on the card. Totals use each lead's expected value.")),
+          h("div", { class: "page-head__actions" }, h("button", { class: "btn btn--ghost btn--icon", title: "Refresh", "aria-label": "Refresh", onclick: async () => { await loadLeads(true); render(); } }, icon("refresh")),
+            h("button", { class: "btn", onclick: leadModal }, icon("plus"), "Add lead"))),
+        board);
+    });
+  }
+  const ACT_ICON = { created: "inbox", note: "note", status: "board", email: "mail", call: "call", whatsapp: "wa", followup: "cal", edit: "page" };
+  function leadScreen(id) {
+    return leadsGate(() => {
+      const l = leadById(id);
+      if (!l) return h("div", { class: "card empty" }, h("b", {}, "This lead doesn't exist (anymore)"), h("a", { href: "#/leads" }, "Back to all leads"));
+      const o = formOptions();
+      const saved = h("span", { class: "saved" });
+      const flash = (t, bad) => { saved.textContent = t; saved.className = "saved is-on" + (bad ? " is-bad" : ""); clearTimeout(flash.t); flash.t = setTimeout(() => { saved.className = "saved"; }, 2200); };
+      // a field saves itself when you leave it
+      async function field(k, value, log) {
+        if (String(l[k] == null ? "" : l[k]) === String(value == null ? "" : value)) return;
+        flash("Saving…");
+        try { const lead = await saveLead(l.id, { [k]: value }, log); Object.assign(l, lead); flash("Saved"); headName.textContent = l.name; }
+        catch (e) { flash(e.message, true); toast(e.message, "bad"); }
+      }
+      const input = (k, type, ph, opts) => h("input", Object.assign({ type: type || "text", value: l[k] == null ? "" : l[k], placeholder: ph || "", onchange: (e) => field(k, e.target.value) }, opts || {}));
+      const F = (label, el, hint) => h("div", { class: "field" }, h("label", {}, label), el, hint ? h("p", { class: "hint" }, hint) : null);
+      const svc = l.services ? l.services.slice() : [];
+      const chips = h("div", { class: "chips" }, [...new Set(o.services.concat(svc))].map((s) => h("button", { type: "button", class: svc.includes(s) ? "is-on" : "", onclick: (e) => {
+        const i = svc.indexOf(s); if (i > -1) svc.splice(i, 1); else svc.push(s);
+        e.currentTarget.classList.toggle("is-on"); field("services", svc.slice());
+      } }, s)));
+      const selectOf = (k, opts, none) => h("select", { onchange: (e) => field(k, e.target.value) }, none ? h("option", { value: "" }, none) : null,
+        [...new Set(opts.concat(l[k] && !opts.includes(l[k]) ? [l[k]] : []))].map((x) => h("option", { value: x, selected: x === l[k] }, x)));
+      const headName = h("span", {}, l.name);
+
+      // pipeline stepper
+      const stepper = h("div", { class: "stepper" }, STAGES.map((s, i) => h("button", { class: "step step--" + s.k + (s.k === l.status ? " is-on" : "") + (STAGES.findIndex((x) => x.k === l.status) > i && l.status !== "lost" && s.k !== "lost" ? " is-done" : ""), title: s.hint,
+        onclick: async () => { await setStage(l, s.k); } }, h("i", {}, s.k === "won" ? "✓" : s.k === "lost" ? "×" : i + 1), h("span", {}, s.label))));
+
+      // follow-up
+      const fuInput = h("input", { type: "date", value: l.follow_up || "", onchange: (e) => setFU(e.target.value) });
+      async function setFU(d) {
+        await field("follow_up", d || null, { type: "followup", text: d ? `Follow-up set for ${dayLabel(d)} (${d})` : "Follow-up cleared" });
+        softRender();
+      }
+      const followUp = h("div", { class: "card panel" }, h("h2", {}, "Next follow-up"),
+        l.follow_up ? h("p", { class: "fu-now" + (isDue(l) ? " is-due" : "") }, icon("cal"), h("b", {}, dayLabel(l.follow_up)), isDue(l) ? h("span", {}, l.follow_up < isoDay() ? "overdue" : "due today") : null) : h("p", { class: "hint", style: { margin: "0 0 10px" } }, "Set a date and the lead shows up in “Follow-ups due” on that day."),
+        h("div", { class: "chips" }, [["Today", 0], ["Tomorrow", 1], ["In 3 days", 3], ["Next week", 7], ["In 2 weeks", 14]].map(([t, n]) => h("button", { type: "button", class: l.follow_up === addDays(n) ? "is-on" : "", onclick: () => setFU(addDays(n)) }, t))),
+        h("div", { class: "fu-pick" }, fuInput, l.follow_up ? h("button", { class: "btn btn--ghost btn--sm", onclick: () => setFU("") }, "Clear") : null));
+
+      // notes & activity
+      const note = h("textarea", { rows: 3, placeholder: "Add a note: what you talked about, what they need, next step…",
+        onkeydown: (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") addNote(); } });
+      const noteBtn = h("button", { class: "btn btn--sm", onclick: () => addNote() }, icon("plus"), "Add note");
+      async function addNote() {
+        const t = note.value.trim(); if (!t) return note.focus();
+        noteBtn.disabled = true;
+        try { await saveLead(l.id, null, { type: "note", text: t }); note.value = ""; softRender(); }
+        catch (e) { toast(e.message, "bad"); }
+        noteBtn.disabled = false;
+      }
+      const timeline = h("ul", { class: "acts" });
+      (l.activity || []).slice().reverse().forEach((a) => {
+        const editable = a.type === "note";
+        timeline.appendChild(h("li", { class: "act act--" + (a.type || "note") }, h("span", { class: "act__ico" }, icon(ACT_ICON[a.type] || "note")),
+          h("div", { class: "act__body" }, editable ? h("p", {}, a.text) : h("b", {}, a.text),
+            h("small", {}, [a.by, ago(a.at), a.edited ? "edited" : ""].filter(Boolean).join(" · ")),
+            editable ? h("div", { class: "act__tools" },
+              h("button", { onclick: () => editNote(a) }, "Edit"),
+              h("button", { onclick: async () => { if (await confirmBox("Delete this note?", a.text.slice(0, 140), "Delete", true)) { try { upsertLead((await api("PATCH", "/api/leads", { id: l.id, activity_at: a.at, text: null })).lead); softRender(); } catch (e) { toast(e.message, "bad"); } } } }, "Delete")) : null)));
+      });
+      if (!(l.activity || []).length) timeline.appendChild(h("li", { class: "act" }, h("span", { class: "act__ico" }, icon("note")), h("div", { class: "act__body" }, h("small", {}, "No activity yet."))));
+      function editNote(a) {
+        const ta = h("textarea", { rows: 5 }); ta.value = a.text;
+        const m = modal({ title: "Edit note", body: h("div", { class: "field" }, ta), foot: [h("button", { class: "btn btn--ghost", onclick: () => m.close() }, "Cancel"),
+          h("button", { class: "btn", onclick: async () => { if (!ta.value.trim()) return; try { upsertLead((await api("PATCH", "/api/leads", { id: l.id, activity_at: a.at, text: ta.value.trim() })).lead); m.close(); softRender(); } catch (e) { toast(e.message, "bad"); } } }, "Save")] });
+      }
+
+      const u = l.utm || {};
+      const origin = [l.source, l.page && l.page !== "/" ? "page " + l.page.replace(/\.html$/, "") : l.page === "/" ? "home page" : "", u.utm_source && `${u.utm_source}${u.utm_medium ? " / " + u.utm_medium : ""}${u.utm_campaign ? " · " + u.utm_campaign : ""}`, u.referrer && "from " + u.referrer.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]].filter(Boolean).join(" · ");
+      const idx = (L.items || []).indexOf(l);
+      const sib = (d) => L.items[idx + d];
+      return h("div", { class: "lead" },
+        h("div", { class: "lead__nav" }, h("a", { href: "#/leads", class: "btn btn--ghost btn--sm" }, "← All leads"),
+          h("span", { style: { flex: 1 } }),
+          h("button", { class: "btn btn--ghost btn--sm btn--icon", title: "Newer lead", "aria-label": "Newer lead", disabled: !sib(-1), onclick: () => { location.hash = "#/leads/" + sib(-1).id; } }, "‹"),
+          h("button", { class: "btn btn--ghost btn--sm btn--icon", title: "Older lead", "aria-label": "Older lead", disabled: !sib(1), onclick: () => { location.hash = "#/leads/" + sib(1).id; } }, "›")),
+        h("div", { class: "card lead__hero" },
+          h("span", { class: "avatar avatar--lg avatar--" + l.status }, initials(l.name)),
+          h("div", { class: "lead__id" }, h("h1", {}, headName), h("p", {}, [l.company, `Received ${new Date(l.created_at).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`].filter(Boolean).join(" · ")),
+            origin ? h("small", {}, origin) : null),
+          h("div", { class: "lead__hero-tools" }, saved, stagePill(l), h("button", { class: "btn btn--danger btn--sm btn--icon", title: "Delete lead", "aria-label": "Delete lead", onclick: async () => { if (await deleteLeads([l])) location.hash = "#/leads"; } }, icon("trash"))),
+          contactIcons(l, true)),
+        h("div", { class: "card panel" }, h("h2", {}, "Pipeline"), stepper),
+        h("div", { class: "lead__grid" },
+          h("div", { class: "lead__col" },
+            l.message || (l.services || []).length ? h("div", { class: "card panel enquiry" }, h("h2", {}, "Their enquiry"),
+              l.message ? h("blockquote", {}, l.message) : null,
+              h("dl", {}, (l.services || []).length ? [h("dt", {}, "Services"), h("dd", {}, l.services.join(", "))] : null,
+                l.budget ? [h("dt", {}, "Budget"), h("dd", {}, l.budget)] : null,
+                l.method ? [h("dt", {}, "Prefers"), h("dd", {}, l.method)] : null)) : null,
+            h("div", { class: "card panel" }, h("h2", {}, "Details ", h("small", { class: "muted" }, "saved automatically")),
+              h("div", { class: "form-2" }, F("Name", input("name", "text", "", { required: true })), F("Company", input("company")),
+                F("Email", input("email", "email")), F("Phone", input("phone", "tel", "+66 …"))),
+              F("Services", chips),
+              h("div", { class: "form-2" }, F("Budget", selectOf("budget", o.budgets, "Not given")), F("Prefers to be contacted by", selectOf("method", ["Email", "Phone", "WhatsApp", "LINE"], "No preference")),
+                F("Expected value (THB)", input("value", "number", "e.g. 45000", { min: 0, step: 1000 }), "Used for pipeline totals."), F("Source", selectOf("source", SOURCES, "Not set"))),
+              F("Enquiry / message", h("textarea", { rows: 4, onchange: (e) => field("message", e.target.value) }, l.message || "")))),
+          h("div", { class: "lead__col" },
+            followUp,
+            h("div", { class: "card panel" }, h("h2", {}, "Notes & activity"),
+              h("div", { class: "note-box" }, note, h("div", { class: "note-box__foot" }, h("small", { class: "muted" }, "Ctrl + Enter to add"), noteBtn)),
+              timeline))));
+    });
+  }
+  // re-render a leads screen in place (keeps scroll), used after quick actions
+  function softRender() {
+    if (!/^#\/leads/.test(location.hash || "") || !shellEls) return;
+    const y = window.scrollY;
+    render();
+    window.scrollTo(0, y);
+  }
+
   // ------------------------------------------------------------------ login (Supabase) & demo
   // Demo account: explore the whole admin with a copy of the site content. Publishing is
   // simulated, so the demo can never change the website. Only a hash is kept here.
@@ -1240,6 +1698,60 @@
     if (path === "/api/repo/commit") { await new Promise((r) => setTimeout(r, 600)); return { sha: fake() }; }
     if (path === "/api/repo/deploy") return { state: "success", description: "Demo" };
     if (path === "/api/upload") return { enabled: false };
+    if (path === "/api/leads") return demoLeads(method, data || {});
+    throw new Error("Not available in the demo");
+  }
+  // demo leads: sample data kept in this browser only
+  const DEMO_LEADS = "oxe-admin:demo-leads:v1";
+  function demoLeadStore(list) {
+    if (list) { try { localStorage.setItem(DEMO_LEADS, JSON.stringify(list)); } catch (e) { /* full */ } return list; }
+    try { const saved = JSON.parse(localStorage.getItem(DEMO_LEADS)); if (Array.isArray(saved)) return saved; } catch (e) { /* none */ }
+    const t = (days, hours) => new Date(Date.now() - (days * 24 + (hours || 0)) * 3600 * 1000).toISOString();
+    const act = (at, by, type, text) => ({ at, by, type, text });
+    const mk = (i, o) => Object.assign({ id: `00000000-0000-4000-8000-00000000000${i}`, email: null, phone: null, company: null, services: [], budget: null, method: "Email", message: null, status: "new", value: null, follow_up: null, source: "Website form", page: "/contact", utm: {}, activity: [] }, o, { updated_at: o.created_at });
+    return demoLeadStore([
+      mk(1, { created_at: t(0, 2), name: "Sample Lead One", company: "Sample Café (demo)", email: "lead.one@example.com", phone: "081 234 5678", services: ["Social Media Marketing", "Photography"], budget: "฿30,000 – ฿80,000", method: "WhatsApp", message: "Demo data: we're opening a second branch next month and need social media content and food photos.", activity: [act(t(0, 2), "Website", "created", "Enquiry sent from the website form")], utm: { utm_source: "instagram", utm_medium: "social" } }),
+      mk(2, { created_at: t(1, 5), name: "Sample Lead Two", company: "Example Hotel (demo)", email: "lead.two@example.com", phone: "+66 89 765 4321", services: ["Website Design & Development"], budget: "฿80,000 – ฿150,000", message: "Demo data: our website is slow and not mobile friendly. Looking for a redesign with online booking.", activity: [act(t(1, 5), "Website", "created", "Enquiry sent from the website form")] }),
+      mk(3, { created_at: t(3), name: "Sample Lead Three", company: "Demo Clinic", email: "lead.three@example.com", phone: "02 123 4567", status: "contacted", services: ["Video Production"], method: "Phone", follow_up: isoDay(), message: "Demo data: a short brand video for our clinic.", activity: [act(t(3), "Website", "created", "Enquiry sent from the website form"), act(t(2), "Demo", "call", "Call started · moved to Contacted"), act(t(2), "Demo", "note", "Wants a 60-second video. Asked for two concepts and a quote.")] }),
+      mk(4, { created_at: t(6), name: "Sample Lead Four", company: "Demo Real Estate", email: "lead.four@example.com", status: "proposal", value: 120000, services: ["Branding & Creative Design", "Website Design & Development"], follow_up: addDays(-1), source: "Referral", page: null, activity: [act(t(6), "Demo", "created", "Lead added in the admin"), act(t(4), "Demo", "status", "Status: New → Proposal sent")] }),
+      mk(5, { created_at: t(9), name: "Sample Lead Five", company: "Example Fitness", phone: "091 111 2222", status: "qualified", value: 45000, services: ["Social Media Marketing"], method: "WhatsApp", source: "WhatsApp", page: null, follow_up: addDays(3), activity: [act(t(9), "Demo", "created", "Lead added in the admin")] }),
+      mk(6, { created_at: t(20), name: "Sample Lead Six", company: "Demo Boutique", email: "lead.six@example.com", status: "won", value: 60000, services: ["Photography"], activity: [act(t(20), "Website", "created", "Enquiry sent from the website form"), act(t(12), "Demo", "status", "Status: Proposal sent → Won")] }),
+    ]);
+  }
+  function demoLeads(method, d) {
+    let list = demoLeadStore();
+    const now = new Date().toISOString();
+    const LBL = (k) => stageLabel(k);
+    const find = (id) => { const l = list.find((x) => x.id === id); if (!l) throw new Error("This lead doesn't exist anymore."); return l; };
+    const tidy = (src) => {
+      const o = {};
+      ["name", "email", "phone", "company", "services", "budget", "method", "message", "status", "value", "follow_up", "source"].forEach((k) => { if (k in src) o[k] = src[k] === "" ? null : src[k]; });
+      if ("value" in o && o.value != null) o.value = Number(o.value) || null;
+      if ("name" in o && !String(o.name || "").trim()) throw new Error("Please enter a name.");
+      if (o.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) throw new Error("That email address doesn't look right.");
+      return o;
+    };
+    if (method === "GET") return { configured: true, leads: list.slice().sort((a, b) => b.created_at.localeCompare(a.created_at)) };
+    if (method === "POST") {
+      const lead = d.restore ? Object.assign({}, d.restore) : Object.assign({ id: crypto.randomUUID ? crypto.randomUUID() : "demo-" + Date.now(), created_at: now, updated_at: now, status: "new", services: [], utm: {}, page: null,
+        activity: [{ at: now, by: "Demo", type: "created", text: "Lead added in the admin" }] }, tidy(d.lead || {}), { source: (d.lead && d.lead.source) || "Added by hand" });
+      if (!String(lead.name || "").trim()) throw new Error("Please enter a name.");
+      list.unshift(lead); demoLeadStore(list); return { lead };
+    }
+    if (method === "PATCH") {
+      if (Array.isArray(d.ids)) {
+        const out = d.ids.map((id) => { const l = find(id); if (l.status !== d.status) { l.activity = (l.activity || []).concat({ at: now, by: "Demo", type: "status", text: `Status: ${LBL(l.status)} → ${LBL(d.status)}` }); l.status = d.status; l.updated_at = now; } return l; });
+        demoLeadStore(list); return { leads: out };
+      }
+      const l = find(d.id);
+      if (d.activity_at) l.activity = (l.activity || []).map((a) => (a.at === d.activity_at ? (d.text == null ? null : Object.assign({}, a, { text: d.text, edited: now })) : a)).filter(Boolean);
+      else {
+        Object.assign(l, tidy(d.changes || {}));
+        if (d.log && d.log.text) l.activity = (l.activity || []).concat({ at: now, by: "Demo", type: d.log.type || "note", text: d.log.text });
+      }
+      l.updated_at = now; demoLeadStore(list); return { lead: Object.assign({}, l) };
+    }
+    if (method === "DELETE") { const ids = new Set(d.ids || [d.id]); list = list.filter((l) => !ids.has(l.id)); demoLeadStore(list); return { deleted: ids.size }; }
     throw new Error("Not available in the demo");
   }
   function enterDemo() {
@@ -1335,6 +1847,13 @@
     app.appendChild(h("div", { class: "shell" }, nav, h("div", { class: "main" }, top, view)));
     shellEls = { nav, top, view };
   }
+  const isLeadsRoute = (hash) => /^#\/leads(\/|$)/.test(hash || "");
+  const NAV_LEADS = [
+    ["", [["#/leads", "inbox", "All leads", () => (L.items || []).length], ["#/leads/board", "board", "Pipeline board"]]],
+    ["Views", [["#/leads/view/new", "star", "New", newLeadCount, "hot"], ["#/leads/view/followup", "cal", "Follow-ups due", () => (L.items || []).filter(isDue).length, "warn"],
+      ["#/leads/view/open", "users", "In progress", () => (L.items || []).filter(LEAD_VIEWS.open.test).length], ["#/leads/view/won", "check", "Won", () => (L.items || []).filter(LEAD_VIEWS.won.test).length],
+      ["#/leads/view/lost", "x", "Lost", () => (L.items || []).filter(LEAD_VIEWS.lost.test).length]]],
+  ];
   const NAV = [
     ["", [["#/", "dash", "Dashboard"]]],
     ["Pages", [["#/page/home", "home", "Home"], ["#/page/services", "page", "Services"], ["#/page/portfolio", "work", "Portfolio"], ["#/page/about", "page", "About"], ["#/page/blog-page", "blog", "Blog page"], ["#/page/contact", "page", "Contact"]]],
@@ -1354,11 +1873,17 @@
       if (href === "#/media") return Object.keys(S.drafts.items).some((p) => p.startsWith("assets/"));
       return false;
     };
-    NAV.forEach(([label, links]) => {
+    const leadsMode = isLeadsRoute(hash);
+    (leadsMode ? NAV_LEADS : NAV).forEach(([label, links]) => {
       if (label) nav.appendChild(h("div", { class: "side__label" }, label));
-      links.forEach(([href, ic, text]) => {
-        const active = href === "#/" ? hash === "#/" || hash === "#" : hash === href || hash.startsWith(href + "/") || (href === "#/blog" && hash.startsWith("#/blog/")) || (href === "#/projects" && hash.startsWith("#/project/"));
-        nav.appendChild(h("a", { href, class: active ? "is-active" : "", onclick: () => document.body.classList.remove("menu-open") }, icon(ic), text, dirty(href) ? h("span", { class: "dot", title: "Unpublished changes" }) : null));
+      links.forEach(([href, ic, text, count, tone]) => {
+        const active = leadsMode
+          ? hash === href || (href === "#/leads" && /^#\/leads\/[0-9a-z-]{8,}$/i.test(hash) && !/^#\/leads\/(board|view)/.test(hash))
+          : href === "#/" ? hash === "#/" || hash === "#" : hash === href || hash.startsWith(href + "/") || (href === "#/blog" && hash.startsWith("#/blog/")) || (href === "#/projects" && hash.startsWith("#/project/"));
+        const n = count ? count() : 0;
+        nav.appendChild(h("a", { href, class: active ? "is-active" : "", onclick: () => document.body.classList.remove("menu-open") }, icon(ic), text,
+          !leadsMode && dirty(href) ? h("span", { class: "dot", title: "Unpublished changes" }) : null,
+          n ? h("span", { class: "side__n" + (tone ? " side__n--" + tone : "") }, n) : null));
       });
     });
     nav.appendChild(h("div", { class: "side__user" }, h("span", { class: "side__avatar" }, (S.user || "?").slice(0, 1).toUpperCase()), h("div", {}, h("b", {}, S.user), h("small", {}, S.demo ? "Demo account" : "Administrator")),
@@ -1367,9 +1892,20 @@
     const last = S.lastPublish;
     const deploying = last && (last.state === "pending" || last.state === "waiting");
     top.innerHTML = "";
+    const fresh = newLeadCount();
+    const ws = h("div", { class: "ws", role: "tablist", "aria-label": "Workspace" },
+      h("button", { role: "tab", "aria-selected": String(!leadsMode), class: leadsMode ? "" : "is-on", title: "Edit the website: pages, articles, projects, media",
+        onclick: () => { if (leadsMode) location.hash = S.lastSite || "#/"; } }, icon("globe"), h("span", {}, "Website"), n ? h("i", { class: "ws__dot ws__dot--warn", title: "Unpublished changes" }) : null),
+      h("button", { role: "tab", "aria-selected": String(leadsMode), class: leadsMode ? "is-on" : "", title: "Manage enquiries and clients",
+        onclick: () => { if (!leadsMode) location.hash = S.lastLeads || "#/leads"; } }, icon("users"), h("span", {}, "Leads"), fresh ? h("i", { class: "ws__n", title: `${fresh} new lead${fresh > 1 ? "s" : ""}` }, fresh) : null));
     add(top, [
       h("button", { class: "btn btn--ghost btn--icon top__menu", "aria-label": "Menu", onclick: () => document.body.classList.toggle("menu-open") }, icon("menu")),
       h("div", { class: "top__title" }, h("small", {}, "OXE Marketing"), h("b", {}, titleFor(hash))),
+      ws,
+      leadsMode ? h("div", { class: "top__actions" },
+        S.demo ? h("span", { class: "badge badge--new hide-sm", title: "Sample leads, stored in this browser only" }, "Demo · sample leads") : null,
+        h("span", { class: "pending pending--clear hide-sm" }, "Changes save instantly"),
+        h("button", { class: "btn btn--sm", onclick: leadModal }, icon("plus"), h("span", { class: "hide-sm" }, "Add lead"))) :
       h("div", { class: "top__actions" },
         S.demo ? h("span", { class: "badge badge--new", title: "Nothing you do in the demo changes the real website" }, "Demo mode · changes stay in this browser") : null,
         deploying && !S.demo ? h("span", { class: "deploy hide-sm" }, h("span", { class: "spin" }), "Updating the live site…") : null,
@@ -1382,6 +1918,12 @@
     let m = hash.match(/^#\/page\/(.+)$/); if (m) { const e = pageEntity(m[1]); return e ? e.label : "Page"; }
     m = hash.match(/^#\/blog\/(.+)$/); if (m) return "Article";
     m = hash.match(/^#\/project\/(.+)$/); if (m) return "Project";
+    if (isLeadsRoute(hash)) {
+      if (hash === "#/leads/board") return "Pipeline board";
+      m = hash.match(/^#\/leads\/view\/(\w+)$/); if (m) return LEAD_VIEWS[m[1]] ? LEAD_VIEWS[m[1]].label : "Leads";
+      m = hash.match(/^#\/leads\/(.+)$/); if (m) { const l = leadById(m[1]); return l ? l.name : "Lead"; }
+      return "Leads";
+    }
     return { "#/blog": "Blog articles", "#/projects": "Portfolio projects", "#/media": "Media library", "#/pages": "Pages", "#/activity": "Activity" }[hash] || "Dashboard";
   }
   function render() {
@@ -1399,7 +1941,13 @@
     else if (hash === "#/projects") view = projectsScreen();
     else if (hash === "#/media") view = mediaScreen();
     else if (hash === "#/activity") view = activityScreen();
+    else if (hash === "#/leads") view = leadsListScreen("all");
+    else if (hash === "#/leads/board") view = boardScreen();
+    else if ((m = hash.match(/^#\/leads\/view\/(\w+)$/))) view = leadsListScreen(m[1]);
+    else if ((m = hash.match(/^#\/leads\/([^/]+)$/))) view = leadScreen(m[1]);
     else view = dashboard();
+    if (isLeadsRoute(hash)) S.lastLeads = hash; else S.lastSite = hash;
+    document.body.classList.toggle("ws-leads", isLeadsRoute(hash));
     shellEls.view.innerHTML = "";
     shellEls.view.appendChild(view);
     refreshChrome();
@@ -1410,6 +1958,7 @@
     await api("DELETE", "/api/session").catch(() => {});
     if (S.demo) { try { sessionStorage.removeItem("oxe-admin:demo"); } catch (e) { /* ignore */ } }
     S.user = null; S.demo = false; shellEls = null; idb.db = null;
+    L.items = null; L.error = null; L.configured = true; L.at = 0; LS.selected.clear(); LS.q = ""; LS.service = "";
     if (preview.worker) { preview.worker.terminate(); preview.worker = null; preview.ready = false; }
     loginScreen();
   }
@@ -1433,12 +1982,21 @@
     shell();
     render();
     preview.start();    // warm up the preview engine in the background
+    loadLeads();        // for the new-leads count on the Leads switch
     if (S.lastPublish && S.lastPublish.state !== "success") trackDeploy();
   }
   window.addEventListener("hashchange", () => {
     const hp = new URLSearchParams(location.hash.replace(/^#/, ""));
     if (hp.get("type") === "recovery" && hp.get("access_token")) { const t = hp.get("access_token"); history.replaceState(null, "", location.pathname); S.user = null; shellEls = null; return resetScreen(t); }
     render();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !S.user || !L.items) return;
+    loadLeads(true).then(() => {
+      const hash = location.hash || "";
+      // refresh lists in place; never under an open dialog or while typing on a lead
+      if ((hash === "#/leads" || hash === "#/leads/board" || /^#\/leads\/view\//.test(hash)) && !document.querySelector(".overlay")) softRender();
+    });
   });
   document.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); if (S.user) toast("Your changes are saved as drafts automatically. Publish when ready.", "ok"); }

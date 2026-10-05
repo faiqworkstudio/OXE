@@ -5,6 +5,17 @@
   var CONTACT_EMAIL = "Sales@oxemarketingth.com";
   var WHATSAPP_NUMBER = "66824480050";
 
+  /* ---------- Where visitors came from (shown with their enquiry in the admin's Leads) ---------- */
+  try {
+    var qs = new URLSearchParams(location.search), seen = JSON.parse(sessionStorage.getItem("oxe-utm") || "null");
+    if (!seen) {
+      seen = {};
+      ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"].forEach(function (k) { if (qs.get(k)) seen[k] = qs.get(k); });
+      if (document.referrer && document.referrer.indexOf(location.host) === -1) seen.referrer = document.referrer;
+      sessionStorage.setItem("oxe-utm", JSON.stringify(seen));
+    }
+  } catch (err) { /* storage blocked */ }
+
   /* ---------- Header: compact on scroll + mobile menu ---------- */
   var header = document.querySelector(".site-header");
   var toggle = document.querySelector(".nav-toggle");
@@ -469,8 +480,9 @@
 
   /* ---------- Contact form ----------
      Pre-selects the service from ?service=web|social|video|photo|strategy,
-     validates, then sends it with Web3Forms (key set in Admin → Contact details & settings).
-     Without a key, or if sending fails, it opens the visitor's email app or WhatsApp instead.
+     validates, saves it as a lead (Admin → Leads) and, when a key is set in Admin → Contact
+     details & settings, emails it with Web3Forms. If neither works, it opens the visitor's
+     email app or WhatsApp instead.
      On WordPress this is replaced by the Elementor Pro Form widget. */
   document.querySelectorAll("[data-contact-form]").forEach(function (form) {
     var success = form.querySelector(".form-success");
@@ -537,19 +549,33 @@
       function fallback() {
         var wa = form.getAttribute("data-wa") || WHATSAPP_NUMBER, mail = form.getAttribute("data-email") || CONTACT_EMAIL;
         if (d.get("method") === "WhatsApp") {
-          window.open("https://wa.me/" + wa + "?text=" + encodeURIComponent("Hi OXE Marketing!\n\n" + text), "_blank", "noopener");
+          var waUrl = "https://wa.me/" + wa + "?text=" + encodeURIComponent("Hi OXE Marketing!\n\n" + text);
+          var win = window.open(waUrl, "_blank");
+          if (win) win.opener = null; else window.location.href = waUrl;   // pop-up blocked: go there directly
         } else {
           window.location.href = "mailto:" + mail + "?subject=" + encodeURIComponent("New enquiry: " + d.getAll("service").join(", ")) + "&body=" + encodeURIComponent(text);
         }
         done();
       }
-      var accessKey = d.get("access_key");
-      if (!accessKey) { fallback(); return; }
       if (d.get("botcheck")) { done(); return; }   // spam bot filled the hidden field
 
       var btn = form.querySelector('[type="submit"]');
       if (btn) btn.disabled = true;
-      fetch(form.action, {
+      var accessKey = d.get("access_key");
+      // 1) save the enquiry as a lead in the admin (Leads workspace)
+      var utm = {};
+      try { utm = JSON.parse(sessionStorage.getItem("oxe-utm") || "{}"); } catch (err) { /* private mode */ }
+      var saved = fetch("/api/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          name: d.get("name"), email: d.get("email"), phone: d.get("phone") || "", company: d.get("company") || "",
+          services: d.getAll("service"), budget: d.get("budget") || "", method: d.get("method") || "Email",
+          details: d.get("details"), page: location.pathname, utm: utm
+        })
+      }).then(function (res) { return res.ok; }).catch(function () { return false; });
+      // 2) email notification with Web3Forms, when a key is set
+      var mailed = !accessKey ? Promise.resolve(false) : fetch(form.action, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
@@ -563,8 +589,11 @@
           message: text
         })
       }).then(function (res) { return res.json(); })
-        .then(function (r) { if (r && r.success) done(); else fallback(); })
-        .catch(fallback)
+        .then(function (r) { return !!(r && r.success); })
+        .catch(function () { return false; });
+      // received by either one: done; by neither: hand it to email or WhatsApp
+      Promise.all([saved, mailed])
+        .then(function (r) { if (r[0] || r[1]) done(); else fallback(); })
         .then(function () { if (btn) btn.disabled = false; });
     });
   });

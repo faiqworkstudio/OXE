@@ -27,6 +27,11 @@ The site is hosted on Vercel, and all content is edited in the branded admin at 
 
 Go to **https://www.oxemarketingth.com/admin** and log in with your email and password. The admin uses the OXE look and is built for this site, and nothing goes live until you publish.
 
+The switch at the top of the admin moves between two workspaces:
+
+- **Website**: edit the site, with live preview and publishing (below).
+- **Leads**: manage enquiries. The red number on the switch is how many new leads are waiting for a reply.
+
 | Area | What you can do |
 |---|---|
 | **Dashboard** | See unpublished changes, live/hidden articles, projects and media at a glance; quick actions; recent activity |
@@ -46,6 +51,20 @@ Go to **https://www.oxemarketingth.com/admin** and log in with your email and pa
 - **Two editors at once.** If someone else publishes the same item while you're editing, the admin tells you and lets you keep theirs or yours.
 - **Sessions** last 12 hours. If one ends while you work, you log in again in a pop-up and keep your drafts.
 
+### Leads
+
+Every enquiry sent through the website's contact form is saved as a lead, together with the page it came from and the campaign (UTM) or referring website. Lead changes save instantly; there is nothing to publish.
+
+| Area | What you can do |
+|---|---|
+| **All leads** | Search by name, email, phone, company or message. Filter by service, sort by date, follow-up or value. Change a lead's status right in the list. Select several to move, export or delete them together. Export to CSV (opens in Excel or Google Sheets) |
+| **Views** | New · Follow-ups due (today or overdue) · In progress · Won · Lost, with counts in the menu |
+| **Pipeline board** | Columns for New → Contacted → Qualified → Proposal sent → Won / Lost. Drag a card to move it, with the total expected value per stage |
+| **A lead** | One-tap **Email**, **Call** and **WhatsApp** buttons. Each opens a ready-written greeting, notes the contact in the lead's activity, and moves a New lead to Contacted (with Undo). Pipeline stepper; follow-up date (Today, Tomorrow, In 3 days…); notes you can edit or delete; editable details (saved when you leave a field); the full enquiry and where it came from |
+| **Add lead** | Add enquiries that came by phone, WhatsApp, LINE, email or in person |
+
+Deleting a lead shows **Undo** for a few seconds. With a Web3Forms key set, each enquiry is also emailed to you. Leads need one-time setup: see *Setting up the admin*, step 4.
+
 In headings, wrap words in `*asterisks*` to show them in the italic serif accent, e.g. `Our *Services*`.
 
 ### Logging in
@@ -57,7 +76,7 @@ The admin login uses **Supabase Auth**. Supabase stores and checks passwords, li
 - email: `demo`
 - password: `OXE-demo-2026`
 
-The demo uses a copy of the site's content, and publishing in it is only simulated, so the real website is never changed. To turn the demo off, set `ADMIN_DEMO=off` in Vercel and redeploy.
+The demo uses a copy of the site's content, and publishing in it is only simulated, so the real website is never changed. Its Leads workspace shows sample leads that are kept in your browser only. To turn the demo off, set `ADMIN_DEMO=off` in Vercel and redeploy.
 
 ### Setting up the admin (once)
 
@@ -82,10 +101,13 @@ The demo uses a copy of the site's content, and publishing in it is only simulat
 | `ADMIN_EMAILS` *(optional)* | Comma-separated emails allowed into the admin, e.g. `sales@oxemarketingth.com, faiq@…` |
 | `GITHUB_TOKEN` | A GitHub fine-grained token for **this repository only**, with **Contents: Read and write**. The admin saves through it; it is never sent to the browser |
 | `GITHUB_BRANCH` *(optional)* | The branch Vercel deploys to production (default: `claude/website-design-requirements-89zc90`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | For leads: Supabase → Project Settings → API → the `service_role` / secret key. Server-only, never sent to the browser |
 | `ADMIN_DEMO` *(optional)* | `off` to disable the demo account |
 
+4. **Leads.** In Supabase, open **SQL Editor → New query**, paste the contents of `supabase/leads.sql` and press **Run**. This creates the `leads` table with Row Level Security on, so only the site's server can read it. Add `SUPABASE_SERVICE_ROLE_KEY` (above) and redeploy. Until then, the Leads workspace shows these steps, and enquiries are still emailed or handed to the visitor's email or WhatsApp app.
+
 - **Videos over 3.3 MB** are uploaded straight to Vercel Blob storage. Enable it once: **Vercel → Storage → Create → Blob**, then connect it to this project (this adds `BLOB_READ_WRITE_TOKEN`). Smaller videos and all images are stored in the repository.
-- **Contact form.** Paste a free Web3Forms key into *Contact & settings → Contact form key*. On web3forms.com, enter `Sales@oxemarketingth.com` and the key is emailed to you. Until a key is set, the form opens the visitor's email app or WhatsApp with their message.
+- **Contact form.** Paste a free Web3Forms key into *Contact & settings → Contact form key*. On web3forms.com, enter `Sales@oxemarketingth.com` and the key is emailed to you. Enquiries are saved to Leads either way; the key adds an email to your inbox for each one. If neither leads nor a key is set up, the form opens the visitor's email app or WhatsApp with their message.
 
 ### Content rule
 
@@ -106,6 +128,7 @@ Only use facts supplied by OXE or the client: no invented results, numbers or te
 - **API (Vercel functions in `api/`).**
   - `session` handles login, logout and password reset through Supabase Auth (`api/_lib/auth.js`).
   - `repo/*` provides `bundle`, `tree`, `file`, `blob` (upload), `commit` (atomic publish with a conflict check), `history` and `deploy` (status).
+  - `lead` (public) saves a contact-form enquiry; it checks origin, email, a spam honeypot and the rate of submissions. `leads` (login required) lists, adds, edits, re-stages, notes, deletes and restores leads. Both use `api/_lib/leads.js` and the `leads` table from `supabase/leads.sql`, through Supabase's REST API with the service role key.
   - `upload` issues Vercel Blob tokens for large videos.
   - Writes are limited to `content/` and `assets/img|video/`, and core page files can't be deleted.
 - **Build.** The build needs only Python 3.8 or newer: PyYAML and Markdown are bundled in `src/vendor/`, and Pillow is optional (WebP conversion).
@@ -128,7 +151,7 @@ Only use facts supplied by OXE or the client: no invented results, numbers or te
 
 ## Still to do before launch
 
-- [ ] Set up the admin (environment variables above) and the contact form key.
+- [ ] Set up the admin (environment variables above), the leads table and the contact form key.
 - [ ] Social media profile URLs: *Admin → Pages → Contact details & settings*. The icons link to `#` until these are filled in.
 - [ ] Screenshots of the Anthony Bespoke Tailor website. That card currently shows a branded placeholder.
 - [ ] Written case studies for Haji Café, Dh Foods, Gaia Tribe, Wirever, Wine Connection, event coverage and the corporate video. These currently show real media plus a "coming soon" note.
