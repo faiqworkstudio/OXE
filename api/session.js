@@ -3,6 +3,7 @@
 //   POST    { email, password }                     log in
 //   POST    { action: "recover", email }            email a password-reset link
 //   POST    { action: "reset", access_token, password }  set a new password from that link
+//   POST    { action: "change", password, new_password }  change your own password (logged in)
 //   DELETE  log out
 const auth = require("./_lib/auth");
 const sec = require("./_lib/security");
@@ -15,7 +16,7 @@ module.exports = async (req, res) => {
   if (req.method === "GET") {
     let user = null;
     try { user = auth.readSession(req); } catch (e) { /* not configured */ }
-    return user ? send(res, 200, { user: user.name, email: user.email, expires: user.expires }) : send(res, 401, { configured: auth.configured() });
+    return user ? send(res, 200, { user: user.name, email: user.email, expires: user.expires, weak: user.weak }) : send(res, 401, { configured: auth.configured() });
   }
   if (req.method === "DELETE") {
     auth.setCookie(req, res, "", 0);
@@ -41,6 +42,20 @@ module.exports = async (req, res) => {
       catch (e) { if (e instanceof auth.AuthError && e.status === 400) await sec.record("reset_fail", [ip]); throw e; }
       return send(res, 200, { ok: true, message: "Your password has been changed. You can log in now." });
     }
+    if (data.action === "change") {
+      const me = auth.readSession(req);
+      if (!me) return fail(res, 401, "Please log in again.");
+      const mine = "email:" + String(me.email).toLowerCase();
+      if (await sec.limited("login_fail", [[mine, 5], [ip, 20]], 15)) return fail(res, 429, "Too many wrong attempts. Please wait 15 minutes and try again.");
+      if (!data.password || !data.new_password) return fail(res, 400, "Please fill in your current and new password.");
+      if (data.password === data.new_password) return fail(res, 400, "The new password must be different from the current one.");
+      let current;
+      try { current = await auth.verifyCredentials(me.email, data.password); }
+      catch (e) { if (e instanceof auth.AuthError && e.status === 401) { await sec.record("login_fail", [mine, ip]); throw new auth.AuthError("Your current password isn't right.", 401); } throw e; }
+      await auth.setPassword(current.token, data.new_password);
+      auth.setCookie(req, res, auth.createSession(Object.assign({}, current, { weak: false })), auth.SESSION_HOURS * 3600);
+      return send(res, 200, { ok: true, message: "Your password has been changed." });
+    }
     // password guessing: lock an email after 5 wrong passwords, and an IP after 20, for 15 minutes
     if (await sec.limited("login_fail", [[email, 5], [ip, 20]], 15)) {
       await new Promise((r) => setTimeout(r, 500));
@@ -49,8 +64,11 @@ module.exports = async (req, res) => {
     let user;
     try { user = await auth.verifyCredentials(data.email || data.username, data.password); }
     catch (e) { if (e instanceof auth.AuthError && (e.status === 401 || e.status === 403)) await sec.record("login_fail", [email, ip]); throw e; }
+    // free alternative to Supabase's (paid) leaked-password protection: flag passwords that are
+    // in a known data breach or too simple, so the admin asks the user to change them
+    user.weak = !!auth.strongEnough(data.password) || (await auth.breached(data.password));
     auth.setCookie(req, res, auth.createSession(user), auth.SESSION_HOURS * 3600);
-    send(res, 200, { user: user.name, email: user.email });
+    send(res, 200, { user: user.name, email: user.email, weak: user.weak });
   } catch (e) {
     if (e instanceof auth.AuthError) {
       if (e.status === 401) await new Promise((r) => setTimeout(r, 300));

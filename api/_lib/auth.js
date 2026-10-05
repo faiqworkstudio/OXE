@@ -68,7 +68,8 @@ async function verifyCredentials(email, password) {
     throw new AuthError("That email and password don't match.", 401);
   }
   if (!isAdmin(r.data.user)) throw new AuthError("This account doesn't have access to the admin. Ask an administrator to add you.", 403);
-  return { id: r.data.user.id, email: r.data.user.email, name: displayName(r.data.user) };
+  // the short-lived Supabase token is only kept in memory, for "change password"
+  return { id: r.data.user.id, email: r.data.user.email, name: displayName(r.data.user), token: r.data.access_token };
 }
 
 // "Forgot password": Supabase emails a reset link that returns to /admin.
@@ -104,11 +105,17 @@ function strongEnough(password) {
 // The reset link signs the user in for a moment; use that to set the new password.
 async function resetPassword(accessToken, password) {
   if (!accessToken) throw new AuthError("This reset link is invalid or has expired. Request a new one.", 400);
+  return setPassword(accessToken, password, "This reset link is invalid or has expired. Request a new one.");
+}
+
+// Set a new password with a Supabase user token (from a reset link, or a fresh login),
+// after the strength and data-breach checks. Works on every Supabase plan.
+async function setPassword(accessToken, password, failMessage) {
   const weak = strongEnough(password);
   if (weak) throw new AuthError(weak, 400);
   if (await breached(password)) throw new AuthError("This password has appeared in a known data breach, so it isn't safe. Please choose a different one.", 400);
   const r = await supabase("PUT", "/user", { password: String(password) }, accessToken);
-  if (!r.ok) throw new AuthError(r.data.msg || r.data.message || "This reset link is invalid or has expired. Request a new one.", 400);
+  if (!r.ok) throw new AuthError(r.data.msg || r.data.message || failMessage || "The password couldn't be changed. Please try again.", 400);
   return { email: r.data.email };
 }
 
@@ -122,7 +129,7 @@ function sign(data) {
 }
 
 function createSession(user) {
-  const payload = Buffer.from(JSON.stringify({ u: user.name, e: user.email, id: user.id, exp: Date.now() + SESSION_HOURS * 3600 * 1000 })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ u: user.name, e: user.email, id: user.id, w: user.weak ? 1 : 0, exp: Date.now() + SESSION_HOURS * 3600 * 1000 })).toString("base64url");
   return `${payload}.${sign(payload)}`;
 }
 
@@ -135,7 +142,7 @@ function readSession(req) {
     if (!safeEqual(sig, sign(payload))) return null;
     const data = JSON.parse(Buffer.from(payload, "base64url").toString());
     if (!data.exp || data.exp < Date.now()) return null;
-    return { name: data.u, email: data.e, id: data.id, expires: data.exp };
+    return { name: data.u, email: data.e, id: data.id, weak: !!data.w, expires: data.exp };
   } catch (e) {
     return null;
   }
@@ -158,11 +165,18 @@ function requireUser(req, res) {
     res.statusCode = 401;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.end(JSON.stringify({ error: "Please log in again." }));
+    return null;
+  }
+  if (user.weak) {   // a breached or too-simple password: nothing works until it's changed
+    res.statusCode = 403;
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify({ error: "Please change your password first.", code: "weak_password" }));
+    return null;
   }
   return user;
 }
 
 module.exports = {
   COOKIE, SESSION_HOURS, AuthError, configured, verifyCredentials, sendReset, resetPassword,
-  createSession, readSession, setCookie, requireUser,
+  createSession, readSession, setCookie, requireUser, setPassword, strongEnough, breached,
 };

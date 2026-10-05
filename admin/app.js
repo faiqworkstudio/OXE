@@ -62,6 +62,7 @@
     refresh: "M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5",
     search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3",
     lock: "M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4",
+    key: "M14.5 13a4.5 4.5 0 1 0-4.2-2.9L3 17.4V21h3.6v-2h2v-2h2l1.7-1.7a4.5 4.5 0 0 0 2.2.7zM16 7.5h.01",
     video: "M3 6h12v12H3zM15 10l6-3v10l-6-3",
     check: "M5 12l5 5 9-11",
     link: "M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1",
@@ -131,6 +132,7 @@
       return api(method, url, data);
     }
     const out = await r.json().catch(() => ({}));
+    if (r.status === 403 && out.code === "weak_password") { S.weak = true; shellEls = null; await forcedPasswordScreen(); location.reload(); return new Promise(() => {}); }
     if (!r.ok) { const e = new Error(out.error || `Request failed (${r.status})`); e.status = r.status; e.data = out; throw e; }
     return out;
   }
@@ -1779,7 +1781,7 @@
     const form = h("form", { onsubmit: async (e) => {
       e.preventDefault(); note.hidden = true; btn.disabled = true; btn.textContent = "Checking…";
       if (await isDemo(email.value, pass.value)) return enterDemo();
-      try { const r = await api("POST", "/api/session", { email: email.value, password: pass.value }); S.user = r.user; start(); }
+      try { const r = await api("POST", "/api/session", { email: email.value, password: pass.value }); S.user = r.user; S.weak = !!r.weak; start(); }
       catch (x) { note.className = "callout callout--bad"; note.textContent = x.message; note.hidden = false; btn.disabled = false; btn.textContent = "Log in"; pass.select(); }
     } },
       h("div", { class: "field" }, h("label", { for: "u" }, "Email"), email),
@@ -1819,6 +1821,50 @@
       h("div", { class: "field" }, h("label", { for: "p2" }, "Repeat new password"), p2), note, btn);
     authLayout("Choose a new password", "Set the password for your admin account.", form);
     p1.focus();
+  }
+  // ---- change password (free alternative to Supabase's paid leaked-password protection:
+  // the server refuses passwords found in data breaches, and asks for a stronger one)
+  const PW_RULES = [
+    [(p) => p.length >= 12, "At least 12 characters"],
+    [(p) => /[a-z]/.test(p) && /[A-Z]/.test(p), "Lowercase and uppercase letters"],
+    [(p) => /\d/.test(p), "A number"],
+    [(p) => /[^A-Za-z0-9]/.test(p), "A symbol, e.g. ! ? # @"],
+  ];
+  function passwordForm(onDone, forced) {
+    const cur = h("input", { type: "password", autocomplete: "current-password", required: true });
+    const p1 = h("input", { type: "password", autocomplete: "new-password", required: true });
+    const p2 = h("input", { type: "password", autocomplete: "new-password", required: true });
+    const rules = h("ul", { class: "pw-rules" });
+    const drawRules = () => { rules.innerHTML = ""; PW_RULES.forEach(([ok, t]) => rules.appendChild(h("li", { class: ok(p1.value) ? "is-ok" : "" }, t))); };
+    p1.addEventListener("input", drawRules); drawRules();
+    const note = h("div", { class: "callout callout--bad", hidden: true });
+    const btn = h("button", { class: "btn", type: "submit" }, "Change password");
+    const form = h("form", { onsubmit: async (e) => {
+      e.preventDefault(); note.hidden = true;
+      const bad = PW_RULES.find(([ok]) => !ok(p1.value));
+      if (bad) { note.textContent = "The new password needs: " + bad[1].toLowerCase() + "."; note.hidden = false; return; }
+      if (p1.value !== p2.value) { note.textContent = "The two new passwords don't match."; note.hidden = false; return; }
+      btn.disabled = true; btn.textContent = "Checking…";
+      try { const r = await api("POST", "/api/session", { action: "change", password: cur.value, new_password: p1.value }); S.weak = false; toast(r.message, "ok"); onDone(); }
+      catch (x) { note.textContent = x.message; note.hidden = false; btn.disabled = false; btn.textContent = "Change password"; }
+    } },
+      h("div", { class: "field" }, h("label", {}, "Current password"), cur),
+      h("div", { class: "field" }, h("label", {}, "New password"), p1, rules),
+      h("div", { class: "field" }, h("label", {}, "Repeat new password"), p2),
+      h("p", { class: "hint" }, "New passwords are checked privately against known data breaches (only a fragment of a scrambled version is sent, never the password). Tip: use a password manager."),
+      note, btn,
+      forced ? h("p", { style: { marginTop: "16px" } }, h("a", { href: "#", onclick: (e) => { e.preventDefault(); logout(); } }, "Log out instead")) : null);
+    setTimeout(() => cur.focus(), 60);
+    return form;
+  }
+  function changePasswordModal() {
+    const m = modal({ title: "Change your password", body: passwordForm(() => m.close()) });
+  }
+  // logged in with a password that's in a data breach or too simple: change it before anything else
+  function forcedPasswordScreen() {
+    return new Promise((resolve) => {
+      authLayout("Choose a stronger password", "Your current password has appeared in a known data breach or is too simple, so it isn't safe for the admin. Please choose a new one to continue.", passwordForm(resolve, true));
+    });
   }
   function loginAgain() {
     return new Promise((resolve) => {
@@ -1888,6 +1934,7 @@
       });
     });
     nav.appendChild(h("div", { class: "side__user" }, h("span", { class: "side__avatar" }, (S.user || "?").slice(0, 1).toUpperCase()), h("div", {}, h("b", {}, S.user), h("small", {}, S.demo ? "Demo account" : "Administrator")),
+      S.demo ? null : h("button", { title: "Change password", "aria-label": "Change password", onclick: changePasswordModal }, icon("key")),
       h("button", { title: "Log out", "aria-label": "Log out", onclick: logout }, icon("out"))));
     const n = draftCount();
     const last = S.lastPublish;
@@ -1958,7 +2005,7 @@
     if (draftCount() && !(await confirmBox("Log out?", "Your unpublished changes stay saved in this browser, ready for next time.", "Log out"))) return;
     await api("DELETE", "/api/session").catch(() => {});
     if (S.demo) { try { sessionStorage.removeItem("oxe-admin:demo"); } catch (e) { /* ignore */ } }
-    S.user = null; S.demo = false; shellEls = null; idb.db = null;
+    S.user = null; S.demo = false; S.weak = false; shellEls = null; idb.db = null;
     L.items = null; L.error = null; L.configured = true; L.at = 0; LS.selected.clear(); LS.q = ""; LS.service = "";
     if (preview.worker) { preview.worker.terminate(); preview.worker = null; preview.ready = false; }
     loginScreen();
@@ -1968,6 +2015,7 @@
     S.head = b.head; S.files = b.files; S.media = b.media; S.norm = {};
   }
   async function start() {
+    if (S.weak && !S.demo) await forcedPasswordScreen();
     $("#app").innerHTML = '<div class="boot"><div><div class="spin"></div>Loading your website content…</div></div>';
     try {
       const [schemaText] = await Promise.all([fetch("/admin/schema.yml", { cache: "no-cache" }).then((r) => r.text()), loadBundle()]);
@@ -2013,7 +2061,7 @@
     }
     if (hp.get("error_description")) { history.replaceState(null, "", location.pathname); return loginScreen(hp.get("error_description").replace(/\+/g, " ")); }
     try { if (sessionStorage.getItem("oxe-admin:demo") === "1") return enterDemo(); } catch (e) { /* private mode */ }
-    try { const me = await api("GET", "/api/session"); S.user = me.user; start(); }
+    try { const me = await api("GET", "/api/session"); S.user = me.user; S.weak = !!me.weak; start(); }
     catch (e) { loginScreen(e.data && e.data.configured === false ? "The login isn't connected to Supabase yet. You can still explore with the demo account." : "", "info"); }
   })();
 })();
