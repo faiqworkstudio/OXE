@@ -332,7 +332,7 @@
     // show everything at once: no entrance animations or scroll reveals while editing
     const still = "<style>.js .reveal,.js .reveal-clip,.js .split .w>span,.js .bstack__in,.js .ahero__lead,.js .ahero__meta,.js .phero__crumb{opacity:1!important;transform:none!important;clip-path:none!important;animation:none!important}.js .reveal-clip img,.js .reveal-clip video{transform:none!important}</style>";
     const base = `<base href="${location.origin}/">` + still;
-    const guard = `<script>document.addEventListener("click",function(e){var a=e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h.charAt(0)==="#")return;e.preventDefault();parent.postMessage({oxePreviewNav:a.href},"*")},true);document.addEventListener("submit",function(e){e.preventDefault()},true);<\/script>`;
+    const guard = `<script src="/admin/preview-guard.js"><\/script>`;   // a file, so the admin's strict CSP allows it
     return out.replace(/<head>/i, "<head>" + base).replace(/<\/body>/i, guard + "</body>");
   }
   function routeForURL(href) {
@@ -1358,7 +1358,8 @@
   }
   function exportCSV(list) {
     const cols = [["created_at", "Received"], ["name", "Name"], ["company", "Company"], ["email", "Email"], ["phone", "Phone"], ["services", "Services"], ["budget", "Budget"], ["method", "Preferred contact"], ["status", "Status"], ["value", "Value (THB)"], ["follow_up", "Follow-up"], ["source", "Source"], ["message", "Message"]];
-    const cell = (v) => { v = Array.isArray(v) ? v.join("; ") : v == null ? "" : String(v); return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
+    // a leading = + - @ would run as a formula in Excel / Sheets: keep it as text
+    const cell = (v) => { v = Array.isArray(v) ? v.join("; ") : v == null ? "" : String(v); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
     const rows = [cols.map((c) => c[1]).join(",")].concat(list.map((l) => cols.map(([k]) => cell(k === "status" ? stageLabel(l[k]) : k === "created_at" ? String(l[k] || "").slice(0, 16).replace("T", " ") : l[k])).join(",")));
     const url = URL.createObjectURL(new Blob(["﻿" + rows.join("\n")], { type: "text/csv;charset=utf-8" }));
     const a = h("a", { href: url, download: `oxe-leads-${isoDay()}.csv` }); document.body.appendChild(a); a.click(); a.remove();
@@ -1419,7 +1420,7 @@
     return h("div", {}, h("div", { class: "page-head" }, h("div", {}, h("span", { class: "eyebrow" }, "Leads"), h("h1", { html: 'Connect your <span class="hl">leads</span>' }),
       h("p", {}, "Every enquiry from the website's contact form will be saved here, ready to follow up. It takes three steps, once."))),
       h("div", { class: "card panel setup" }, h("ol", {},
-        h("li", {}, h("b", {}, "Create the leads table. "), "In Supabase, open SQL Editor → New query, paste the contents of ", h("code", {}, "supabase/leads.sql"), " from the website's code, and press Run."),
+        h("li", {}, h("b", {}, "Create the leads table. "), "In Supabase, open SQL Editor → New query, paste the contents of ", h("code", {}, "supabase/setup.sql"), " from the website's code, and press Run."),
         h("li", {}, h("b", {}, "Add the secret key to Vercel. "), "Copy the ", h("code", {}, "service_role"), " (or secret) key from Supabase → Project Settings → API, and add it in Vercel → Settings → Environment Variables as ", h("code", {}, "SUPABASE_SERVICE_ROLE_KEY"), "."),
         h("li", {}, h("b", {}, "Redeploy. "), "Vercel → Deployments → ⋯ → Redeploy. Then come back here.")),
         h("div", { class: "callout callout--info" }, "Until then, enquiries keep arriving by email (Web3Forms) or open the visitor's email / WhatsApp, as before.")));

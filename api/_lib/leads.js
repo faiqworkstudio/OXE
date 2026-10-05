@@ -1,4 +1,4 @@
-// Leads storage: the "leads" table in Supabase (see supabase/leads.sql), used through
+// Leads storage: the "leads" table in Supabase (see supabase/setup.sql), used through
 // Supabase's REST API with the service role key. Only these server functions use the key;
 // the table has Row Level Security on, so the public anon key can't read it.
 //
@@ -21,7 +21,7 @@ class LeadError extends Error {
 function configured() { return !!(SB_URL() && KEY()); }
 
 async function rest(method, path, body, prefer) {
-  if (!configured()) throw new LeadError("Leads aren't connected yet: add SUPABASE_SERVICE_ROLE_KEY in Vercel → Settings → Environment Variables, run supabase/leads.sql, then redeploy.", 503);
+  if (!configured()) throw new LeadError("Leads aren't connected yet: add SUPABASE_SERVICE_ROLE_KEY in Vercel → Settings → Environment Variables, run supabase/setup.sql, then redeploy.", 503);
   const headers = { apikey: KEY(), "Content-Type": "application/json" };
   // legacy service_role keys are JWTs and go in Authorization too; new sb_secret_ keys only in apikey
   if (/^eyJ/.test(KEY())) headers.Authorization = `Bearer ${KEY()}`;
@@ -32,7 +32,7 @@ async function rest(method, path, body, prefer) {
   try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
   if (!r.ok) {
     const msg = data && (data.message || data.hint) || `Supabase error ${r.status}`;
-    if (/relation .*leads.* does not exist|Could not find the table/i.test(msg)) throw new LeadError("The leads table doesn't exist yet: run supabase/leads.sql in Supabase → SQL Editor.", 503);
+    if (/does not exist|Could not find the table|column .* of relation/i.test(msg)) throw new LeadError("The database isn't set up yet: run supabase/setup.sql in Supabase → SQL Editor.", 503);
     throw new LeadError(msg, r.status >= 500 ? 502 : 400);
   }
   return data;
@@ -117,4 +117,4 @@ async function bulkStatus(ids, status, by) {
   return out;
 }
 
-module.exports = { STATUSES, LeadError, configured, clean, entry, list, get, create, update, editActivity, remove, bulkStatus, isEmail };
+module.exports = { rest, STATUSES, LeadError, configured, clean, entry, list, get, create, update, editActivity, remove, bulkStatus, isEmail };

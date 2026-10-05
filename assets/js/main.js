@@ -486,6 +486,36 @@
      On WordPress this is replaced by the Elementor Pro Form widget. */
   document.querySelectorAll("[data-contact-form]").forEach(function (form) {
     var success = form.querySelector(".form-success");
+    var foot = form.querySelector(".form-foot");
+    // Spam protection: a signed token from the server (the form can't be sent instantly or
+    // replayed) and, when switched on in Vercel, Cloudflare Turnstile's "I'm human" check.
+    var gate = { token: "", at: 0, widget: null };
+    var errorBox = document.createElement("p");
+    errorBox.className = "form-error"; errorBox.setAttribute("role", "alert"); errorBox.hidden = true;
+    var captcha = document.createElement("div");
+    captcha.className = "form-captcha"; captcha.hidden = true;
+    if (foot) { form.insertBefore(captcha, foot); form.insertBefore(errorBox, foot); }
+    function showError(msg) { errorBox.textContent = msg || ""; errorBox.hidden = !msg; }
+    function getToken() {
+      return fetch("/api/lead", { headers: { Accept: "application/json" }, cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .then(function (g) {
+          gate.token = g.token || ""; gate.at = Date.now();
+          if (g.turnstile && gate.widget === null) {
+            gate.widget = false;
+            window.oxeTurnstileReady = function () {
+              captcha.hidden = false;
+              gate.widget = window.turnstile.render(captcha, { sitekey: g.turnstile, theme: "light", size: "flexible", action: "contact" });
+            };
+            var sc = document.createElement("script");
+            sc.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=oxeTurnstileReady&render=explicit";
+            sc.async = true; sc.defer = true;
+            document.head.appendChild(sc);
+          }
+        })
+        .catch(function () { /* no API (e.g. a static preview): the form falls back to email/WhatsApp */ });
+    }
+    getToken();
     var key = new URLSearchParams(location.search).get("service");
     if (key) {
       var opt = form.querySelector('input[data-key="' + key.replace(/[^a-z]/g, "") + '"]');
@@ -527,6 +557,9 @@
       });
       if (!validateChips()) firstBad = chipSet.querySelector("input");
       if (firstBad) { firstBad.focus(); return; }
+      var human = gate.widget && window.turnstile ? window.turnstile.getResponse(gate.widget) : "";
+      if (gate.widget && !human) { showError("Please tick the “I'm human” check above the button."); return; }
+      showError("");
 
       var d = new FormData(form);
       var text = [
@@ -544,6 +577,9 @@
       function done() {
         if (success) success.classList.add("is-visible");
         form.reset();
+        showError("");
+        if (gate.widget && window.turnstile) window.turnstile.reset(gate.widget);
+        getToken();
       }
       // No form key yet, or sending failed: hand the message to email or WhatsApp
       function fallback() {
@@ -565,15 +601,19 @@
       // 1) save the enquiry as a lead in the admin (Leads workspace)
       var utm = {};
       try { utm = JSON.parse(sessionStorage.getItem("oxe-utm") || "{}"); } catch (err) { /* private mode */ }
-      var saved = fetch("/api/lead", {
+      var fresh = Date.now() - gate.at > 6 * 3600 * 1000 ? getToken() : Promise.resolve();   // page left open for hours
+      var saved = fresh.then(function () { return fetch("/api/lead", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           name: d.get("name"), email: d.get("email"), phone: d.get("phone") || "", company: d.get("company") || "",
           services: d.getAll("service"), budget: d.get("budget") || "", method: d.get("method") || "Email",
-          details: d.get("details"), page: location.pathname, utm: utm
+          details: d.get("details"), page: location.pathname, utm: utm,
+          token: gate.token, turnstile: human, botcheck: d.get("botcheck") ? "1" : ""
         })
-      }).then(function (res) { return res.ok; }).catch(function () { return false; });
+      }); }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (r) { return { ok: res.ok, status: res.status, error: r.error }; });
+      }).catch(function () { return { ok: false }; });
       // 2) email notification with Web3Forms, when a key is set
       var mailed = !accessKey ? Promise.resolve(false) : fetch(form.action, {
         method: "POST",
@@ -591,9 +631,19 @@
       }).then(function (res) { return res.json(); })
         .then(function (r) { return !!(r && r.success); })
         .catch(function () { return false; });
-      // received by either one: done; by neither: hand it to email or WhatsApp
+      // received by either one: done. Refused for a reason the visitor can fix (too many links,
+      // the human check, too many messages): say so. Otherwise hand it to email or WhatsApp.
       Promise.all([saved, mailed])
-        .then(function (r) { if (r[0] || r[1]) done(); else fallback(); })
+        .then(function (r) {
+          if (r[0].ok || r[1]) return done();
+          if ((r[0].status === 400 || r[0].status === 429) && r[0].error) {
+            showError(r[0].error);
+            if (gate.widget && window.turnstile) window.turnstile.reset(gate.widget);
+            if (/expired/.test(r[0].error)) getToken();
+            return;
+          }
+          fallback();
+        })
         .then(function () { if (btn) btn.disabled = false; });
     });
   });

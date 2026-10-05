@@ -225,6 +225,8 @@ def head(title, desc, page, og=None, schema=None, noindex=False, og_type="websit
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/style.css?v={ver("assets/css/style.css")}">{ld}
   <!-- Google Analytics (GA4): replace G-XXXXXXXXXX with the OXE measurement ID and uncomment.
+       The site's Content-Security-Policy (vercel.json) blocks inline scripts: also add the
+       snippet's hash to script-src (Chrome's console prints the exact 'sha256-…' value to add).
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
   -->

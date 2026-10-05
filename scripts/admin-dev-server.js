@@ -14,6 +14,13 @@ const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": 
   ".yml": "text/yaml; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
   ".webp": "image/webp", ".gif": "image/gif", ".mp4": "video/mp4", ".py": "text/plain; charset=utf-8", ".xml": "application/xml", ".txt": "text/plain" };
 
+// the headers from vercel.json (security headers, CSP, caching), so local tests match Vercel
+const HEADERS = (JSON.parse(fs.readFileSync(path.join(ROOT, "vercel.json"), "utf8")).headers || [])
+  .map((h) => ({ re: new RegExp("^" + h.source + "$"), headers: h.headers }));
+function vercelHeaders(res, pathname) {
+  HEADERS.forEach((h) => { if (h.re.test(pathname)) h.headers.forEach((x) => res.setHeader(x.key, x.value)); });
+}
+
 function api(req, res, url) {
   const file = path.join(ROOT, url.pathname.replace(/\/$/, "") + ".js");
   if (!file.startsWith(path.join(ROOT, "api")) || !fs.existsSync(file)) { res.statusCode = 404; return res.end("{}"); }
@@ -28,6 +35,7 @@ function api(req, res, url) {
 
 http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+  vercelHeaders(res, url.pathname);
   if (url.pathname.startsWith("/api/")) return api(req, res, url);
   let p = decodeURIComponent(url.pathname);
   let f = path.join(PUB, p);

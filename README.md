@@ -63,7 +63,7 @@ Every enquiry sent through the website's contact form is saved as a lead, togeth
 | **A lead** | One-tap **Email**, **Call** and **WhatsApp** buttons. Each opens a ready-written greeting, notes the contact in the lead's activity, and moves a New lead to Contacted (with Undo). Pipeline stepper; follow-up date (Today, Tomorrow, In 3 days…); notes you can edit or delete; editable details (saved when you leave a field); the full enquiry and where it came from |
 | **Add lead** | Add enquiries that came by phone, WhatsApp, LINE, email or in person |
 
-Deleting a lead shows **Undo** for a few seconds. With a Web3Forms key set, each enquiry is also emailed to you. Leads need one-time setup: see *Setting up the admin*, step 4.
+Deleting a lead shows **Undo** for a few seconds. With a Web3Forms key set, each enquiry is also emailed to you. Leads need one-time setup: see *Setting up the admin*, steps 1 and 5.
 
 In headings, wrap words in `*asterisks*` to show them in the italic serif accent, e.g. `Our *Services*`.
 
@@ -78,36 +78,116 @@ The admin login uses **Supabase Auth**. Supabase stores and checks passwords, li
 
 The demo uses a copy of the site's content, and publishing in it is only simulated, so the real website is never changed. Its Leads workspace shows sample leads that are kept in your browser only. To turn the demo off, set `ADMIN_DEMO=off` in Vercel and redeploy.
 
-### Setting up the admin (once)
+### Setting up the admin (once): connecting Supabase
 
-1. **Supabase.** Create a project at supabase.com (the free plan is fine).
-   - In **Authentication → Sign In / Providers**, keep **Email** on, and turn off **Allow new users to sign up**, so only people you invite get accounts.
-   - In **Authentication → URL Configuration**, set the Site URL to `https://www.oxemarketingth.com` and add `https://www.oxemarketingth.com/admin` to the redirect URLs, for password-reset links.
-   - In **Authentication → Users**, use **Add user** or **Invite user** for each editor.
-2. **Who can open the admin.** Either list the editors' emails in `ADMIN_EMAILS`, or give a user the admin role in Supabase's SQL editor:
+Do these steps in order. Allow about 20 minutes. Each step names the exact place to click.
+
+**1. Create the database tables**
+1. Supabase → your project → **SQL Editor** → **New query**.
+2. Open `supabase/setup.sql` from this repository, copy all of it, paste it in, and press **Run**. You should see *Success. No rows returned*. This creates:
+   - the `leads` table;
+   - a `security_events` table that counts failed logins.
+
+   Both are locked with Row Level Security, so the public key can't read them. It's safe to run again after future updates.
+3. Check: **Advisors → Security Advisor** should show no errors for `leads` or `security_events`.
+
+**2. Lock down sign-ups and logins**
+1. **Authentication → Sign In / Providers**:
+   - Keep **Email** enabled.
+   - Turn **off** "Allow new users to sign up". Only people you add can have an account.
+2. **Authentication → URL Configuration**:
+   - **Site URL**: `https://www.oxemarketingth.com`
+   - **Redirect URLs**: add `https://www.oxemarketingth.com/admin`. Password-reset links only ever go to addresses on this list.
+3. **Authentication → Attack Protection** (names can vary by plan):
+   - Set the minimum password length to **12**, and require lowercase, uppercase, digits and symbols.
+   - Turn on **leaked password protection** if your plan offers it.
+   - Leave Supabase's own **CAPTCHA protection off**. The website runs its own checks (step 6), and Supabase's CAPTCHA would block the admin login.
+4. **Authentication → Emails → SMTP Settings**: connect your own email sender, such as Hostinger email for `sales@oxemarketingth.com`, Resend or Brevo. Supabase's built-in sender only delivers to your Supabase team members and only a few emails an hour, so password resets need this.
+
+**3. Create the admin accounts**
+1. **Authentication → Users → Add user → Create new user**. Enter the email and a strong password, and tick **Auto Confirm User**. Repeat for each editor.
+2. Make each account an admin. Either list the emails in `ADMIN_EMAILS` (step 5), or run this in the SQL Editor:
 
    ```sql
    update auth.users set raw_app_meta_data = raw_app_meta_data || '{"role":"admin"}' where email = 'you@oxemarketingth.com';
    ```
 
-   Other Supabase accounts are refused.
-3. **Vercel.** In **Settings → Environment Variables**, add the following, then redeploy:
+   Accounts that aren't admins are refused, even with the right password.
+
+**4. Copy the keys.** Supabase → **Project Settings → API Keys** (the Project URL is under **Data API**, or the **Connect** button at the top). You need:
+- the **Project URL**: `https://xxxx.supabase.co`;
+- the **publishable** key (`sb_publishable_…`), or the legacy **anon** key;
+- the **secret** key (`sb_secret_…`), or the legacy **service_role** key. **Never** paste this one anywhere except Vercel.
+
+**5. Add them to Vercel.** Vercel → the project → **Settings → Environment Variables**. Add each one for **Production** (and Preview if you use previews), then **Deployments → ⋯ → Redeploy**:
 
 | Variable | Value |
 |---|---|
-| `SUPABASE_URL` | Supabase → Project Settings → API → Project URL (`https://….supabase.co`) |
-| `SUPABASE_ANON_KEY` | Supabase → Project Settings → API → the `anon` / publishable key |
-| `SESSION_SECRET` | A long random string, at least 32 characters |
-| `ADMIN_EMAILS` *(optional)* | Comma-separated emails allowed into the admin, e.g. `sales@oxemarketingth.com, faiq@…` |
-| `GITHUB_TOKEN` | A GitHub fine-grained token for **this repository only**, with **Contents: Read and write**. The admin saves through it; it is never sent to the browser |
+| `SUPABASE_URL` | The Project URL |
+| `SUPABASE_ANON_KEY` | The publishable / anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | The secret / service_role key. Server-only, never sent to the browser. Mark it **Sensitive** in Vercel |
+| `SESSION_SECRET` | A random string of at least 32 characters. Create one at <https://generate-secret.vercel.app/32>, or run `openssl rand -base64 32`. Changing it later logs everyone out |
+| `ADMIN_EMAILS` *(optional)* | Comma-separated admin emails, e.g. `sales@oxemarketingth.com, faiq@…` |
+| `GITHUB_TOKEN` | A GitHub fine-grained token for **this repository only**, with **Contents: Read and write** and an expiry date. The admin publishes through it; it is never sent to the browser |
 | `GITHUB_BRANCH` *(optional)* | The branch Vercel deploys to production (default: `claude/website-design-requirements-89zc90`) |
-| `SUPABASE_SERVICE_ROLE_KEY` | For leads: Supabase → Project Settings → API → the `service_role` / secret key. Server-only, never sent to the browser |
-| `ADMIN_DEMO` *(optional)* | `off` to disable the demo account |
+| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` *(recommended)* | Cloudflare Turnstile, the "I'm human" check on the contact form (step 6) |
+| `ADMIN_DEMO` *(set when live)* | `off` turns off the demo account. Do this once your real accounts work |
 
-4. **Leads.** In Supabase, open **SQL Editor → New query**, paste the contents of `supabase/leads.sql` and press **Run**. This creates the `leads` table with Row Level Security on, so only the site's server can read it. Add `SUPABASE_SERVICE_ROLE_KEY` (above) and redeploy. Until then, the Leads workspace shows these steps, and enquiries are still emailed or handed to the visitor's email or WhatsApp app.
+**6. Turn on the "I'm human" check (free).**
+1. In your Cloudflare dashboard (sign up free at dash.cloudflare.com), open **Turnstile → Add widget**.
+2. Name it "OXE website", and add the hostnames `oxemarketingth.com` and `www.oxemarketingth.com`. Choose **Managed** mode.
+3. Copy the **Site key** and **Secret key** into the two Vercel variables above, then redeploy.
+
+Most visitors never see a puzzle; Cloudflare decides in the background.
+
+**7. Test it**
+1. Open `/admin` and log in with your new account.
+2. Send a test enquiry from the Contact page, wait a few seconds after the page loads, and check that it appears under **Leads**.
+3. Try **Forgot password?** once and check that the email arrives.
 
 - **Videos over 3.3 MB** are uploaded straight to Vercel Blob storage. Enable it once: **Vercel → Storage → Create → Blob**, then connect it to this project (this adds `BLOB_READ_WRITE_TOKEN`). Smaller videos and all images are stored in the repository.
-- **Contact form.** Paste a free Web3Forms key into *Contact & settings → Contact form key*. On web3forms.com, enter `Sales@oxemarketingth.com` and the key is emailed to you. Enquiries are saved to Leads either way; the key adds an email to your inbox for each one. If neither leads nor a key is set up, the form opens the visitor's email app or WhatsApp with their message.
+- **Email alerts for new enquiries (optional).** Paste a free Web3Forms key into *Contact & settings → Contact form key*. On web3forms.com, enter `Sales@oxemarketingth.com` and the key is emailed to you. Enquiries are saved to Leads either way. If neither leads nor a key is set up, the form opens the visitor's email app or WhatsApp with their message.
+
+### Security: what protects the site
+
+**Contact form (bots and spam)**, in layers:
+1. **Hidden honeypot field.** Bots fill it in and are silently ignored.
+2. **Signed time token.** The page must first fetch a token from the server, and the form is only accepted 3 seconds to 12 hours later. Instant bot posts and replays are dropped.
+3. **Cloudflare Turnstile** (when its keys are set).
+4. **Limits per sender.** At most 3 enquiries an hour and 10 a day, plus a per-minute brake.
+5. **Content checks.** No more than 3 links per message, and exact duplicates are ignored.
+6. **Origin check** and length limits on every field.
+
+Senders' IP addresses are never stored, only a keyed fingerprint used for the limits.
+
+**Admin login**
+- Passwords are checked by Supabase Auth.
+- An account is locked for 15 minutes after 5 wrong passwords, and an address after 20 attempts. Reset emails are limited to 3 per hour per email.
+- Only admin accounts get in, and sign-ups are off.
+- Sessions use a signed, HttpOnly, SameSite=Strict cookie that expires after 12 hours. To log everyone out immediately, change `SESSION_SECRET` and redeploy.
+- Every change request must come from the admin page itself (same-origin and custom-header checks against cross-site attacks).
+
+**Data**
+- Leads live in Supabase behind Row Level Security. The secret key exists only in Vercel's server functions.
+- The GitHub token is limited to this repository.
+- Lead details are always shown as plain text, never as HTML.
+- CSV exports are protected against spreadsheet formula tricks.
+
+**Browser security headers** (`vercel.json`), on every page:
+- A strict **Content-Security-Policy**: only this site's own scripts, plus named services (Google Fonts, Cloudflare, Web3Forms, and the admin's editor libraries) can run.
+- **HSTS**: HTTPS only.
+- **X-Frame-Options**: other sites can't embed the site to trick clicks.
+- **nosniff**, a strict **Referrer-Policy**, and a **Permissions-Policy** that blocks camera, microphone and location.
+
+The admin and `/api` are hidden from search engines.
+
+> If you add a new outside service later (a chat widget, a booking tool, Google Analytics' inline snippet), add its domain to the matching `Content-Security-Policy` in `vercel.json`, or the browser will block it.
+
+**Extra protection on Vercel (recommended).**
+- Under **Vercel → the project → Firewall**, turn on the **Bot Protection** / managed rules your plan offers.
+- If the site is ever attacked, switch on **Attack Challenge Mode** there.
+- Under **Settings → Deployment Protection**, keep preview deployments protected.
+- In GitHub, turn on **two-factor authentication** for every account with access to this repository and to Vercel.
 
 ### Content rule
 
@@ -128,7 +208,7 @@ Only use facts supplied by OXE or the client: no invented results, numbers or te
 - **API (Vercel functions in `api/`).**
   - `session` handles login, logout and password reset through Supabase Auth (`api/_lib/auth.js`).
   - `repo/*` provides `bundle`, `tree`, `file`, `blob` (upload), `commit` (atomic publish with a conflict check), `history` and `deploy` (status).
-  - `lead` (public) saves a contact-form enquiry; it checks origin, email, a spam honeypot and the rate of submissions. `leads` (login required) lists, adds, edits, re-stages, notes, deletes and restores leads. Both use `api/_lib/leads.js` and the `leads` table from `supabase/leads.sql`, through Supabase's REST API with the service role key.
+  - `lead` (public): `GET` hands out a signed form token, and `POST` saves a contact-form enquiry. `leads` (login required) lists, adds, edits, re-stages, notes, deletes and restores leads. Both use `api/_lib/leads.js` and the `leads` table from `supabase/setup.sql`, through Supabase's REST API with the service role key. Bot, spam and login protection is in `api/_lib/security.js`.
   - `upload` issues Vercel Blob tokens for large videos.
   - Writes are limited to `content/` and `assets/img|video/`, and core page files can't be deleted.
 - **Build.** The build needs only Python 3.8 or newer: PyYAML and Markdown are bundled in `src/vendor/`, and Pillow is optional (WebP conversion).

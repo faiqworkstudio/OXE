@@ -1319,3 +1319,7 @@ a.ctile:hover .ctile__go { transform: rotate(45deg); }
   .float-a, .float-b, .float-c { animation: none; }
   body { font-size: 12pt; }
 }
+
+/* contact form: spam check and error message (added by main.js) */
+.form-captcha { margin-top: var(--s-4); min-height: 65px; }
+.form-error { margin: var(--s-4) 0; padding: 12px 16px; border-radius: 12px; background: #fdecea; color: #8e2a1f; font-size: 14px; }
