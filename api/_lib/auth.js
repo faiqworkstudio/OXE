@@ -29,12 +29,14 @@ function configured() {
 }
 
 function allowedEmails() {
-  return String(process.env.ADMIN_EMAILS || "").split(/[,\s]+/).map((e) => e.trim().toLowerCase()).filter(Boolean);
+  // tolerant of spaces, semicolons and quotes pasted into Vercel
+  return String(process.env.ADMIN_EMAILS || "").split(/[,;\s]+/).map((e) => e.replace(/["'<>]/g, "").trim().toLowerCase()).filter(Boolean);
 }
 
 function isAdmin(user) {
   if (!user) return false;
-  if (user.app_metadata && user.app_metadata.role === "admin") return true;
+  const m = user.app_metadata || {};
+  if (String(m.role || "").toLowerCase() === "admin" || m.admin === true || (Array.isArray(m.roles) && m.roles.includes("admin"))) return true;
   return allowedEmails().includes(String(user.email || "").toLowerCase());
 }
 
@@ -67,7 +69,7 @@ async function verifyCredentials(email, password) {
     if (/confirm/i.test(msg)) throw new AuthError("Please confirm your email address first (check your inbox).", 401);
     throw new AuthError("That email and password don't match.", 401);
   }
-  if (!isAdmin(r.data.user)) throw new AuthError("This account doesn't have access to the admin. Ask an administrator to add you.", 403);
+  if (!isAdmin(r.data.user)) throw new AuthError(`The password is right, but ${r.data.user.email} isn't an admin yet. Add this email to ADMIN_EMAILS in Vercel (then redeploy), or give it the admin role in Supabase (see the README, “Create the admin accounts”).`, 403);
   // the short-lived Supabase token is only kept in memory, for "change password"
   return { id: r.data.user.id, email: r.data.user.email, name: displayName(r.data.user), token: r.data.access_token };
 }

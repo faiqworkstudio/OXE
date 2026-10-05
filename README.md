@@ -109,10 +109,16 @@ Do these steps in order. Allow about 20 minutes. Each step names the exact place
 2. Make each account an admin. Either list the emails in `ADMIN_EMAILS` (step 5), or run this in the SQL Editor:
 
    ```sql
-   update auth.users set raw_app_meta_data = raw_app_meta_data || '{"role":"admin"}' where email = 'you@oxemarketingth.com';
+   -- replace the email below with the exact login email, then Run
+   update auth.users
+   set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
+   where lower(email) = lower('you@oxemarketingth.com');
+
+   -- check: your email should show "role": "admin"
+   select email, raw_app_meta_data from auth.users order by created_at;
    ```
 
-   Accounts that aren't admins are refused, even with the right password.
+   If the update says *0 rows*, the email didn't match an account. Accounts that aren't admins are refused, even with the right password. A role change takes effect at the next login.
 
 **4. Copy the keys.** Supabase → **Project Settings → API Keys** (the Project URL is under **Data API**, or the **Connect** button at the top). You need:
 - the **Project URL**: `https://xxxx.supabase.co`;

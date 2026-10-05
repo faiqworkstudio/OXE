@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
     }
     let user;
     try { user = await auth.verifyCredentials(data.email || data.username, data.password); }
-    catch (e) { if (e instanceof auth.AuthError && (e.status === 401 || e.status === 403)) await sec.record("login_fail", [email, ip]); throw e; }
+    catch (e) { if (e instanceof auth.AuthError && e.status === 401) await sec.record("login_fail", [email, ip]); throw e; }   // 403 = right password, not an admin: not a guess
     // free alternative to Supabase's (paid) leaked-password protection: flag passwords that are
     // in a known data breach or too simple, so the admin asks the user to change them
     user.weak = !!auth.strongEnough(data.password) || (await auth.breached(data.password));
