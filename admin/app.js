@@ -225,7 +225,33 @@
     if (!path) return "";
     if (/^https?:\/\//.test(path)) return path;
     const p = path.replace(/^\//, "");
-    return S.blobURLs[p] || "/" + p;
+    if (S.blobURLs[p]) return S.blobURLs[p];
+    if (notDeployed(p)) return "/api/repo/raw?path=" + encodeURIComponent(p);
+    return "/" + p;
+  }
+  // A deployment link (project-<hash>-team.vercel.app) is a frozen snapshot: it never shows newer
+  // changes. The main address (and branch links, "-git-") always serve the latest version.
+  const MAIN_SITE = "https://www.oxemarketingth.com";
+  const isSnapshot = () => /\.vercel\.app$/.test(location.host) && /-[a-z0-9]{9}-/.test(location.host) && !/-git-/.test(location.host);
+  const liveSite = () => (isSnapshot() ? MAIN_SITE : location.origin);
+  // Files this copy of the website was built with (admin/engine/engine.json). A photo published
+  // since then isn't on this deployment yet (the rebuild takes a minute or two, and an old
+  // deployment link never gets it), so the admin shows it straight from the repository instead.
+  async function loadDeployed() {
+    try { const e = await (await fetch("/admin/engine/engine.json", { cache: "no-cache" })).json(); S.deployed = new Set(e.assets || []); }
+    catch (e) { S.deployed = null; }
+  }
+  function notDeployed(p) {
+    return !S.demo && !!S.deployed && /^assets\/(img|video)\//.test(p) && !S.deployed.has(p) && S.media.some((f) => f.path === p);
+  }
+  // image sizes for the preview builder, remembered for files uploaded in this browser
+  const DIMS_KEY = "oxe-admin:dims";
+  S.dims = (() => { try { return JSON.parse(localStorage.getItem(DIMS_KEY)) || {}; } catch (e) { return {}; } })();
+  function rememberDims(p, w, hgt) { if (!w || !hgt) return; S.dims[p] = [w, hgt]; try { localStorage.setItem(DIMS_KEY, JSON.stringify(S.dims)); } catch (e) { /* full */ } }
+  // measure published-but-not-deployed photos we don't know the size of, then refresh the preview
+  function measureMissing() {
+    const todo = S.media.map((f) => f.path).filter((p) => notDeployed(p) && /\.(jpe?g|png|webp|gif|avif)$/i.test(p) && !S.dims[p]);
+    todo.forEach((p) => { const im = new Image(); im.onload = () => { rememberDims(p, im.naturalWidth, im.naturalHeight); preview.syncAssets(); activePreview && activePreview.refresh(true); }; im.src = assetURL(p); });
   }
 
   // ------------------------------------------------------------------ entities (what can be edited)
@@ -323,6 +349,7 @@
       if (!this.worker) return;
       const paths = [], sizes = {};
       for (const [p, d] of Object.entries(S.drafts.items)) if (d.media) { paths.push(p); if (d.media.w) sizes[p] = [d.media.w, d.media.h]; }
+      S.media.forEach((f) => { if (notDeployed(f.path)) { paths.push(f.path); if (S.dims[f.path]) sizes[f.path] = S.dims[f.path]; } });
       this.worker.postMessage({ type: "assets", paths, sizes });
     },
     render(route) {
@@ -331,7 +358,11 @@
   };
   function previewHTML(html) {
     let out = html;
-    for (const [p, u] of Object.entries(S.blobURLs)) out = out.split(p).join(u);   // pending uploads
+    const swap = Object.assign({}, S.blobURLs);                                       // pending uploads
+    S.media.forEach((f) => { if (!swap[f.path] && notDeployed(f.path)) swap[f.path] = location.origin + "/api/repo/raw?path=" + encodeURIComponent(f.path); });
+    for (const [p, u] of Object.entries(swap)) {
+      out = out.replace(new RegExp("(?:\\.\\./)*/?" + p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), u);
+    }
     // show everything at once: no entrance animations or scroll reveals while editing
     const still = "<style>.js .reveal,.js .reveal-clip,.js .split .w>span,.js .bstack__in,.js .ahero__lead,.js .ahero__meta,.js .phero__crumb{opacity:1!important;transform:none!important;clip-path:none!important;animation:none!important}.js .reveal-clip img,.js .reveal-clip video{transform:none!important}</style>";
     const base = `<base href="${location.origin}/">` + still;
@@ -403,7 +434,7 @@
             note.hidden = true; status.textContent = "";
             const live = "/" + r.path.replace(/(^|\/)index\.html$/, "").replace(/\.html$/, "");
             url.textContent = location.host + live;
-            pane.querySelector("a.btn").href = live;
+            pane.querySelector("a.btn").href = liveSite() + live;
           }
           if (again) { again = false; api_.refresh(true); }
         }, now ? 0 : 450);
@@ -538,6 +569,7 @@
   }
   async function registerMedia(path, blob, meta, replaced) {
     S.drafts.items[path] = { media: meta };
+    rememberDims(path, meta.w, meta.h);
     if (!S.drafts.base) S.drafts.base = S.head;
     // replacing a photo: remove the old file(s) with the same name so the new one is used everywhere
     if (replaced) {
@@ -654,6 +686,13 @@
     if (m.deleted) box.appendChild(h("span", { class: "badge badge--del" }, "Deleting"));
     return h("div", { class: "card media-item", tabindex: "0", role: "button", onclick: onClick, onkeydown: (e) => { if (e.key === "Enter") onClick(); } },
       box, h("div", { class: "media-item__body" }, h("b", { title: m.name }, m.name), h("small", {}, (m.path.split(".").pop() || "").toUpperCase() + (m.size ? " · " + kb(m.size) : ""))));
+  }
+  // full-size view of a photo or video
+  function viewMedia(v) {
+    const u = assetURL(v);
+    modal({ title: String(v).split("/").pop(), wide: true,
+      body: isVid(v) ? h("video", { src: u, controls: true, autoplay: true, muted: true, style: { width: "100%", maxHeight: "75vh", borderRadius: "12px", background: "#000" } })
+        : h("div", { class: "viewer" }, h("img", { src: u, alt: "" })) });
   }
   function withProgress(name, fn) {
     const bar = h("i");
@@ -828,16 +867,24 @@
   function mediaField(f, data, ctx, path) {
     const kind = f.widget === "file" ? "video" : "image";
     const folder = String(f.media_folder || S.schema.media_folder || "assets/img/work").replace(/^\//, "");
-    const thumb = h("div", { class: "media-field__thumb" });
+    const thumb = h("div", { class: "media-field__thumb", title: "Click to view full size", onclick: () => { const v = data[f.name]; if (v) viewMedia(v); } });
     const code = h("code");
     const bar = h("div", { class: "progress", hidden: true }, h("i"));
     const box = h("div", { class: "media-field" });
     const set = (v) => { data[f.name] = v; ctx.changed(path); draw(); };
     function draw() {
       const v = data[f.name];
-      thumb.innerHTML = ""; thumb.style.backgroundImage = "";
+      thumb.innerHTML = ""; thumb.style.backgroundImage = ""; thumb.classList.remove("is-missing");
       if (v && (kind === "video" || isVid(v))) thumb.appendChild(h("video", { src: assetURL(v), muted: true, preload: "metadata" }));
-      else if (v) thumb.style.backgroundImage = `url("${assetURL(v)}")`;
+      else if (v) {
+        const u = assetURL(v);
+        thumb.style.backgroundImage = `url("${u}")`;
+        // say so when the file can't be found, instead of an empty box
+        const probe = new Image();
+        probe.onerror = () => { if (data[f.name] !== v) return; thumb.style.backgroundImage = ""; thumb.innerHTML = ""; thumb.classList.add("is-missing"); thumb.appendChild(h("span", {}, "File missing")); };
+        probe.onload = () => thumb.classList.remove("is-missing");
+        probe.src = u;
+      }
       else thumb.appendChild(icon(kind === "video" ? "video" : "media"));
       code.textContent = v ? (/^https?:/.test(v) ? "Cloud: " + v.split("/").pop() : v.split("/").pop()) : "Nothing chosen";
       remove.hidden = !v;
@@ -1104,6 +1151,7 @@
       S.head = r.sha;
       S.drafts = { base: null, items: {} };
       saveDrafts();
+      preview.syncAssets();
       S.lastPublish = { sha: r.sha, at: Date.now(), state: "pending" };
       localStorage.setItem(lkey(), JSON.stringify(S.lastPublish));
       toast(S.demo ? "Demo: published in this browser only. The real website is not changed." : "Published! The site is updating.", "ok");
@@ -1135,7 +1183,11 @@
         last.state = d.state; last.url = d.url;
         localStorage.setItem(lkey(), JSON.stringify(last));
         refreshChrome();
-        if (d.state === "success") { if (!S.demo) toast("Your changes are live.", "ok", { href: "/", text: "View site" }); return; }
+        if (d.state === "success") {
+          if (!S.demo) toast("Your changes are live.", "ok", { href: liveSite() + "/", text: "View site" });
+          if (!S.demo) { await loadDeployed(); preview.syncAssets(); }
+          return;
+        }
         if (d.state === "failure" || d.state === "error") { toast("The site update failed. The previous version stays online. Open Activity for details.", "bad"); return; }
       } catch (e) { /* keep trying */ }
       await new Promise((r) => setTimeout(r, 6000));
@@ -1160,7 +1212,7 @@
         h("h1", { html: `${greet}, <span class="hl">${esc(S.user)}</span>` }),
         h("p", {}, n ? `You have ${n} unpublished change${n > 1 ? "s" : ""}. Review them and publish when you're ready.` : "Everything is published. Pick something to edit below, every change is previewed live before it goes online."),
         h("div", { class: "hello__actions" }, n ? h("button", { class: "btn", onclick: reviewModal }, "Review & publish") : null,
-          h("a", { class: "btn btn--ghost", href: "/", target: "_blank", rel: "noopener" }, icon("ext"), "View the website"))),
+          h("a", { class: "btn btn--ghost", href: liveSite() + "/", target: "_blank", rel: "noopener" }, icon("ext"), "View the website"))),
       h("div", { class: "stats" },
         h("div", { class: "card stat" }, h("small", {}, "Articles"), h("b", {}, posts.length), h("span", {}, `${live} live · ${posts.length - live} hidden`)),
         h("div", { class: "card stat" }, h("small", {}, "Projects"), h("b", {}, projects.filter((p) => p.state !== "deleted").length), h("span", {}, "in the portfolio")),
@@ -1982,7 +2034,10 @@
     const view = h("main", { class: "view", id: "view" });
     const app = $("#app");
     app.innerHTML = "";
-    app.appendChild(h("div", { class: "shell" }, nav, h("div", { class: "main" }, top, view)));
+    const snap = isSnapshot() && !S.demo ? h("div", { class: "snapshot" }, icon("clock"),
+      h("span", {}, h("b", {}, "You're on an old snapshot of the site. "), "This deployment link never shows newer changes, so recently published photos may look missing here. Edits still save and publish normally."),
+      h("a", { class: "btn btn--sm", href: MAIN_SITE + "/admin" }, "Open the latest admin")) : null;
+    app.appendChild(h("div", { class: "shell" }, nav, h("div", { class: "main" }, top, snap, view)));
     shellEls = { nav, top, view };
   }
   const isLeadsRoute = (hash) => /^#\/leads(\/|$)/.test(hash || "");
@@ -2049,7 +2104,7 @@
         S.demo ? h("span", { class: "badge badge--new", title: "Nothing you do in the demo changes the real website" }, "Demo mode · changes stay in this browser") : null,
         deploying && !S.demo ? h("span", { class: "deploy hide-sm" }, h("span", { class: "spin" }), "Updating the live site…") : null,
         n ? h("button", { class: "pending", onclick: reviewModal }, `${n} unpublished change${n > 1 ? "s" : ""}`) : h("span", { class: "pending pending--clear hide-sm" }, "All changes live"),
-        h("a", { class: "btn btn--ghost btn--sm hide-sm", href: "/", target: "_blank", rel: "noopener" }, icon("ext"), "View site"),
+        h("a", { class: "btn btn--ghost btn--sm hide-sm", href: liveSite() + "/", target: "_blank", rel: "noopener" }, icon("ext"), "View site"),
         h("button", { class: "btn btn--sm", disabled: !n, onclick: reviewModal }, "Publish", n ? h("span", { class: "btn__count" }, n) : null)),
     ]);
   }
@@ -2118,10 +2173,12 @@
     }
     loadDrafts();
     await restoreBlobURLs();
+    await loadDeployed();
     try { S.lastPublish = JSON.parse(localStorage.getItem(lkey())); } catch (e) { S.lastPublish = null; }
     shell();
     render();
     preview.start();    // warm up the preview engine in the background
+    measureMissing();
     loadLeads();        // for the new-leads count on the Leads switch
     loadBlobs().then(() => { if (location.hash === "#/media") render(); });   // videos stored in Vercel Blob
     if (S.lastPublish && S.lastPublish.state !== "success") trackDeploy();

@@ -1,5 +1,5 @@
-// One function for all the admin's content endpoints (/api/repo/tree, file, blob, commit,
-// history, deploy, bundle), so the site stays within the Vercel Hobby plan's limit of
+// One function for all the admin's content endpoints (/api/repo/tree, file, raw, blob,
+// commit, history, deploy, bundle), so the site stays within the Vercel Hobby plan's limit of
 // 12 functions per deployment. Each endpoint lives in api/_lib/repo-routes/.
 const { fail } = require("../_lib/http");
 
@@ -10,6 +10,7 @@ const ROUTES = {
   deploy: require("../_lib/repo-routes/deploy"),
   file: require("../_lib/repo-routes/file"),
   history: require("../_lib/repo-routes/history"),
+  raw: require("../_lib/repo-routes/raw"),
   tree: require("../_lib/repo-routes/tree"),
 };
 
