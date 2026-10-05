@@ -45,25 +45,42 @@ function checkFormToken(token) {
 // e.g. with Cloudflare's test key 1x00000000000000000000AA for local testing.
 const SITE_KEY = "0x4AAAAAAFOAs13rqrJZF0b9";
 const TURNSTILE_ACTION = "contact";   // must match `action` in assets/js/main.js
-const turnstileSiteKey = () => (process.env.TURNSTILE_SECRET_KEY ? process.env.TURNSTILE_SITE_KEY || SITE_KEY : null);
+// The secret: TURNSTILE_SECRET (Cloudflare's name) or TURNSTILE_SECRET_KEY (earlier README name).
+const turnstileSecret = () => process.env.TURNSTILE_SECRET || process.env.TURNSTILE_SECRET_KEY || "";
+const turnstileSiteKey = () => (turnstileSecret() ? process.env.TURNSTILE_SITE_KEY || SITE_KEY : null);
+// Frontend hostnames this deployment accepts tokens from. Production default: the live domains.
+// Set TURNSTILE_HOSTNAMES (comma-separated) to change it; never put localhost in production.
+const expectedHostnames = () => new Set(String(process.env.TURNSTILE_HOSTNAMES || "oxemarketingth.com,www.oxemarketingth.com")
+  .split(",").map((x) => x.trim().toLowerCase()).filter(Boolean));
+
+// Canonical server-side siteverify. Returns { ok: true } or { ok: false, reason }:
+//   "missing"  no / malformed token        "rejected"  Cloudflare said no (or wrong action / site)
+//   "unavailable"  Cloudflare couldn't be reached: refused (fail closed); the form then hands the
+//                  message to email / WhatsApp instead, so the visitor isn't stuck.
 async function checkTurnstile(token, req) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return true;     // not switched on
-  if (!token) return false;
+  const secret = turnstileSecret();
+  if (!secret) return { ok: true, off: true };     // not switched on
+  const hosts = expectedHostnames();
+  if (typeof token !== "string" || token.length === 0 || token.length > 2048 || hosts.size === 0) return { ok: false, reason: "missing" };
+  let result;
   try {
     const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ secret, response: String(token).slice(0, 2048), remoteip: ipOf(req) }),
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      signal: AbortSignal.timeout(10000),
+      body: new URLSearchParams({ secret, response: token, remoteip: ipOf(req) }),
     });
-    const d = await r.json();
-    if (!d.success) { console.warn("Turnstile rejected:", (d["error-codes"] || []).join(", ")); return false; }
-    // the token must come from the contact form's widget (tokens are single-use and expire after 5 minutes)
-    if (d.action && d.action !== TURNSTILE_ACTION) return false;
-    return true;
+    if (!r.ok) throw new Error(`siteverify ${r.status}`);
+    result = await r.json();
   } catch (e) {
-    console.warn("Turnstile unreachable:", e.message);
-    return true;   // Cloudflare unreachable: don't lose real enquiries; the other checks still apply
+    console.warn("Turnstile siteverify unavailable:", e.message);
+    return { ok: false, reason: "unavailable" };
   }
+  if (!result.success || result.action !== TURNSTILE_ACTION || !hosts.has(String(result.hostname || "").toLowerCase())) {
+    console.warn("Turnstile rejected:", (result["error-codes"] || []).join(", ") || `action=${result.action} hostname=${result.hostname}`);
+    return { ok: false, reason: "rejected" };
+  }
+  return { ok: true };   // tokens are single-use: replaying this one is rejected by Cloudflare
 }
 
 // ---- throttling (Supabase table, with an in-memory fallback)

@@ -57,7 +57,9 @@ module.exports = async (req, res) => {
   const tokenProblem = sec.checkFormToken(d.token);
   if (tokenProblem === "too-fast") return ok();              // filled in faster than a person can: a bot
   if (tokenProblem) return fail(res, 400, "This form has expired. Please refresh the page and send it again.");
-  if (!(await sec.checkTurnstile(d.turnstile, req))) return fail(res, 400, "Please complete the “I'm human” check and send again.");
+  const human = await sec.checkTurnstile(d.turnstile, req);
+  if (!human.ok && human.reason === "unavailable") return fail(res, 503, "We couldn't verify the form right now. Please contact us by email or WhatsApp.");
+  if (!human.ok) return fail(res, 400, "Please complete the “I'm human” check and send again.");
 
   const email = String(d.email || "").trim();
   if (!email || !leads.isEmail(email)) return fail(res, 400, "Please enter a valid email address.");
