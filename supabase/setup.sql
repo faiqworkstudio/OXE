@@ -62,3 +62,14 @@ alter table public.security_events enable row level security;
 -- ---------------------------------------------------------------- lock down
 -- Nothing above is for the public API keys; the server uses the service role key.
 revoke all on public.leads, public.security_events from anon, authenticated;
+
+-- Explicit "deny everything" policies for the public roles. RLS with no policies already
+-- denies all access; these make that intent visible (and clear Supabase's
+-- "RLS Enabled No Policy" advisor notice). The service role bypasses RLS, so the
+-- website's server functions keep working.
+drop policy if exists "No public access" on public.leads;
+create policy "No public access" on public.leads
+  as restrictive for all to anon, authenticated using (false) with check (false);
+drop policy if exists "No public access" on public.security_events;
+create policy "No public access" on public.security_events
+  as restrictive for all to anon, authenticated using (false) with check (false);
